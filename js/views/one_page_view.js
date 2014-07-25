@@ -386,6 +386,9 @@ ReadiumSDK.Views.OnePageView = function(options, classes, enableBookStyleOverrid
 
             if (_enableBookStyleOverrides) {
                 self.applyBookStyles();
+            
+                //if(!self.currentSpineItem().isFixedLayout())
+                resizeImages();
             }
             
             updateMetaSize();
@@ -443,6 +446,37 @@ ReadiumSDK.Views.OnePageView = function(options, classes, enableBookStyleOverrid
 
         self.showIFrame();
     };
+    
+    //scroll_view, reflowable spine item
+    var resizeImages = function() {
+
+        if(!_$epubHtml) {
+            return;
+        }
+
+        var $elem;
+        var height;
+        var width;
+
+        $('img', _$epubHtml).each(function(){
+
+            $elem = $(this);
+
+            // if we set max-width/max-height to 100% engine chops images embedded in the text
+            // (but not if we set it to 99-98%) go figure.
+            $elem.css('max-width', '98%');
+            $elem.css('max-height', '98%');
+
+            if(!$elem.css('height')) {
+                $elem.css('height', 'auto');
+            }
+
+            if(!$elem.css('width')) {
+                $elem.css('width', 'auto');
+            }
+
+        });
+    }
     
     this.setHeight = function(height) {
 

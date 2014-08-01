@@ -58,8 +58,13 @@ ReadiumSDK.Views.CfiNavigationLogic = function($viewport, $iframe, options){
      * @returns {boolean}
      */
     function isPageProgressionRightToLeft() {
-        return options.paginationInfo && !!options.paginationInfo.rightToLeft;
+        return options.paginationInfo && options.paginationInfo.rightToLeft;
     }
+
+    function isVerticalWritingMode() {
+        return options.paginationInfo && options.paginationInfo.isVerticalWritingMode;
+    }
+
 
     /**
      * @private
@@ -80,12 +85,6 @@ ReadiumSDK.Views.CfiNavigationLogic = function($viewport, $iframe, options){
      * @returns {number} Full width of a column in pixels
      */
     function getColumnFullWidth() {
-        
-        if (!options.paginationInfo || options.paginationInfo.isVerticalWritingMode)
-        {
-            return $iframe.width();
-        }
-        
         return options.paginationInfo.columnWidth + options.paginationInfo.columnGap;
     }
 
@@ -108,6 +107,9 @@ ReadiumSDK.Views.CfiNavigationLogic = function($viewport, $iframe, options){
     function checkVisibilityByVerticalOffsets(
             $element, visibleContentOffsets, shouldCalculateVisibilityOffset) {
 
+        // USED BY ONE PAGE VIEW
+        //console.warn("checkVisibilityByVerticalOffsets() is deprecated in favour of checkVisibilityByRectangles()");
+                
         var elementRect = ReadiumSDK.Helpers.Rect.fromElement($element);
         if (_.isNaN(elementRect.left)) {
             // this is actually a point element, doesnt have a bounding rectangle
@@ -169,17 +171,22 @@ ReadiumSDK.Views.CfiNavigationLogic = function($viewport, $iframe, options){
         }
 
         var isRtl = isPageProgressionRightToLeft();
+        var isVertical = isVerticalWritingMode();
+        
         var columnFullWidth = getColumnFullWidth();
         var frameDimensions = {
             width: $iframe.width(),
             height: $iframe.height()
         };
-
+console.debug("clientRectangles");
+console.log(JSON.stringify(clientRectangles));
         if (clientRectangles.length === 1) {
             // because of webkit inconsistency, that single rectangle should be adjusted
             // until it hits the end OR will be based on the FIRST column that is visible
             adjustRectangle(clientRectangles[0], frameDimensions, columnFullWidth,
                     isRtl, true);
+console.debug("clientRectangles ADJUST");
+console.log(JSON.stringify(clientRectangles));
         }
 
         // for an element split between several CSS columns,
@@ -194,6 +201,8 @@ ReadiumSDK.Views.CfiNavigationLogic = function($viewport, $iframe, options){
                 break;
             }
         }
+console.error(visibilityPercentage);
+console.log(shouldCalculateVisibilityPercentage);
         return visibilityPercentage;
     }
 
@@ -393,14 +402,19 @@ ReadiumSDK.Views.CfiNavigationLogic = function($viewport, $iframe, options){
      */
     function adjustRectangle(rect, frameDimensions, columnFullWidth, isRtl,
             shouldLookForFirstVisibleColumn) {
-
+        
+        //var isRtl = isPageProgressionRightToLeft();
+        var isVertical = isVerticalWritingMode();
+        
         if (isRtl) {
             columnFullWidth *= -1; // horizontal shifts are reverted in RTL mode
         }
 
         // first we go left/right (rebasing onto the very first column available)
         while (rect.top < 0) {
+console.error("rect.top < 0");
             offsetRectangle(rect, -columnFullWidth, frameDimensions.height);
+console.log(JSON.stringify(rect));
         }
 
         // ... then, if necessary (for visibility offset checks),
@@ -408,11 +422,15 @@ ReadiumSDK.Views.CfiNavigationLogic = function($viewport, $iframe, options){
         // the loop will be stopped when the column is aligned with a viewport
         // (i.e., is the first visible one).
         if (shouldLookForFirstVisibleColumn) {
+console.debug("shouldLookForFirstVisibleColumn");
             while (rect.bottom >= frameDimensions.height) {
+console.log("while: " + frameDimensions.height);
                 if (isRectVisible(rect, frameDimensions)) {
+console.log("if: " + frameDimensions.width);
                     break;
                 }
                 offsetRectangle(rect, columnFullWidth, -frameDimensions.height);
+console.debug(JSON.stringify(rect));
             }
         }
     }

@@ -74,9 +74,12 @@ ReadiumSDK.Views.ReflowableView = function(options, reader){
         columnGap : 20,
         spreadCount : 0,
         currentSpreadIndex : 0,
+        currentPageIndex : 0,
         columnWidth : undefined,
         pageOffset : 0,
-        columnCount: 0
+        columnCount: 0,
+        isVerticalWritingMode: 0,
+        rightToLeft: false
     };
 
     this.render = function(){
@@ -272,8 +275,6 @@ ReadiumSDK.Views.ReflowableView = function(options, reader){
             }
         }
         
-        _paginationInfo.isVerticalWritingMode = _htmlBodyIsVerticalWritingMode;
-        
         hideBook();
         _$iframe.css("opacity", "1");
         
@@ -396,6 +397,7 @@ ReadiumSDK.Views.ReflowableView = function(options, reader){
 
         if(pageIndex >= 0 && pageIndex < _paginationInfo.columnCount) {
             _paginationInfo.currentSpreadIndex = Math.floor(pageIndex / _paginationInfo.visibleColumnCount) ;
+            _paginationInfo.currentPageIndex = pageIndex; //pageIndex = _paginationInfo.visibleColumnCount * _paginationInfo.currentSpreadIndex (without the rounding issue)
             onPaginationChanged(pageRequest.initiator, pageRequest.spineItem, pageRequest.elementId);
         }
         else {
@@ -527,6 +529,19 @@ ReadiumSDK.Views.ReflowableView = function(options, reader){
 
         _paginationInfo.rightToLeft = _spine.isRightToLeft();
 
+console.debug("_htmlBodyIsVerticalWritingMode: " + _htmlBodyIsVerticalWritingMode);
+console.debug("_htmlBodyIsLTRDirection: " + _htmlBodyIsLTRDirection);
+console.debug("_htmlBodyIsLTRWritingMode: " + _htmlBodyIsLTRWritingMode);
+        
+        _paginationInfo.isVerticalWritingMode = _htmlBodyIsVerticalWritingMode;
+
+        var ltr = !_htmlBodyIsVerticalWritingMode ? _htmlBodyIsLTRDirection : _htmlBodyIsLTRWritingMode;
+        if (_paginationInfo.rightToLeft == ltr)
+        {
+            _paginationInfo.rightToLeft = !ltr;
+            console.warn("page progression direction != _htmlBodyIsLTRDirection || _htmlBodyIsLTRWritingMode ?!");
+        }
+
         _paginationInfo.columnWidth = Math.round(((_htmlBodyIsVerticalWritingMode ? _lastViewPortSize.height : _lastViewPortSize.width) - _paginationInfo.columnGap * (_paginationInfo.visibleColumnCount - 1)) / _paginationInfo.visibleColumnCount);
 
         _$epubHtml.css("width", (_htmlBodyIsVerticalWritingMode ? _lastViewPortSize.width : _paginationInfo.columnWidth) + "px");
@@ -550,7 +565,7 @@ ReadiumSDK.Views.ReflowableView = function(options, reader){
 
         if (colWidthCheck > _paginationInfo.columnWidth)
         {
-            console.debug("ADJUST COLUMN");
+            console.warn("ADJUST COLUMN");
             console.log(_paginationInfo.columnWidth);
             console.log(colWidthCheck);
             
@@ -695,13 +710,26 @@ ReadiumSDK.Views.ReflowableView = function(options, reader){
     };
 
     function getVisibleContentOffsets() {
-        //TODO: _htmlBodyIsVerticalWritingMode ? (_lastViewPortSize.height * _paginationInfo.currentSpreadIndex)
-        // NOT used with options.rectangleBased anyway (see CfiNavigationLogic constructor call, here in this reflow engine class)
-        var columnsLeftOfViewport = Math.round(_paginationInfo.pageOffset / (_paginationInfo.columnWidth + _paginationInfo.columnGap));
+        var columnsLeftOfViewport = _paginationInfo.currentSpreadIndex * _paginationInfo.visibleColumnCount;
 
-        var topOffset =  columnsLeftOfViewport * _$contentFrame.height();
-        var bottomOffset = topOffset + _paginationInfo.visibleColumnCount * _$contentFrame.height();
+        var check = Math.round(Math.abs(_paginationInfo.pageOffset) / (_paginationInfo.columnWidth + _paginationInfo.columnGap));
+        if (check != columnsLeftOfViewport)
+        {
+            console.warn("columnsLeftOfViewport discrepancy?!");
+        }
 
+        var h = _htmlBodyIsVerticalWritingMode ? _$contentFrame.width() : _$contentFrame.height();
+        
+        var topOffset =  columnsLeftOfViewport * h;
+        var bottomOffset = topOffset + _paginationInfo.visibleColumnCount * h;
+
+        console.log("_paginationInfo");
+        console.debug(_paginationInfo);
+        console.debug(_$contentFrame.width());
+        console.debug(_$contentFrame.height());
+        console.debug("topOffset: " + topOffset);
+        console.debug("bottomOffset: " + bottomOffset);
+        
         return {top: topOffset, bottom: bottomOffset};
     }
 
@@ -757,12 +785,14 @@ ReadiumSDK.Views.ReflowableView = function(options, reader){
     this.insureElementVisibility = function(spineItemId, element, initiator) {
 
         var $element = $(element);
-        if(_navigationLogic.isElementVisible($element, getVisibleContentOffsets()))
+        if(_navigationLogic.isElementVisible($element, getVisibleContentOffsets(), false)) //getVisibleContentOffsets() not used by function because _navigationLogic rectangleBased! (see checkVisibilityByRectangles() _props parameter)
         {
+console.debug("insureElementVisibility isElementVisible");
             return;
         }
 
         var page = _navigationLogic.getPageForElement($element);
+console.debug("insureElementVisibility page: " + page);
 
         if(page == -1)
         {

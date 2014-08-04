@@ -32,7 +32,7 @@
  * @class ReadiumSDK.Views.ReflowableView
  */
 
-ReadiumSDK.Views.ReflowableView = function(options){
+ReadiumSDK.Views.ReflowableView = function(options, reader){
 
     _.extend(this, Backbone.Events);
 
@@ -88,25 +88,11 @@ ReadiumSDK.Views.ReflowableView = function(options){
 
         // This fixes rendering issues with WebView (native apps), which clips content embedded in iframes unless GPU hardware acceleration is enabled for CSS rendering.
         _$el.css("transform", "translateZ(0)");
-        
-        _$contentFrame = $("#reflowable-content-frame", _$el);
-
-        _$iframe = $("#epubContentIframe", _$el);
-
-        _$iframe.css("left", "");
-        _$iframe.css("right", "");
-        _$iframe.css("position", "relative");
-        //_$iframe.css(_spine.isLeftToRight() ? "left" : "right", "0px");
-        _$iframe.css("overflow", "hidden");
-
-        _navigationLogic = new ReadiumSDK.Views.CfiNavigationLogic(
-                _$contentFrame, _$iframe,
-                { rectangleBased: true, paginationInfo: _paginationInfo });
-
 
         // See ReaderView.handleViewportResize
         // var lazyResize = _.debounce(self.onViewportResize, 100);
         // $(window).on("resize.ReadiumSDK.reflowableView", _.bind(lazyResize, self));
+        renderIframe();
 
         return self;
     };
@@ -160,9 +146,37 @@ ReadiumSDK.Views.ReflowableView = function(options){
         _paginationInfo.visibleColumnCount = _htmlBodyIsVerticalWritingMode ? 1 : (ReadiumSDK.Helpers.deduceSyntheticSpread(_$viewport, _currentSpineItem, _viewSettings) ? 2 : 1);
     }
 
+    function renderIframe() {
+        if (_$contentFrame) {
+            //destroy old contentFrame
+            _$contentFrame.remove();
+        }
+
+        var template = ReadiumSDK.Helpers.loadTemplate("reflowable_book_page_frame", {});
+        var $bookFrame = $(template);
+        $bookFrame = _$el.append($bookFrame);
+
+        _$contentFrame = $("#reflowable-content-frame", $bookFrame);
+
+        _$iframe = $("#epubContentIframe", $bookFrame);
+
+        _$iframe.css("left", "");
+        _$iframe.css("right", "");
+        _$iframe.css("position", "relative");
+        //_$iframe.css(_spine.isLeftToRight() ? "left" : "right", "0px");
+        _$iframe.css("overflow", "hidden");
+
+        _navigationLogic = new ReadiumSDK.Views.CfiNavigationLogic(
+            _$contentFrame, _$iframe,
+            { rectangleBased: true, paginationInfo: _paginationInfo });
+    }
+
     function loadSpineItem(spineItem) {
 
         if(_currentSpineItem != spineItem) {
+
+            //create & append iframe to container frame
+            renderIframe();
 
             _paginationInfo.pageOffset = 0;
             _paginationInfo.currentSpreadIndex = 0;
@@ -490,10 +504,27 @@ ReadiumSDK.Views.ReflowableView = function(options){
         _$epubHtml.css("min-height", _lastViewPortSize.height + "px");
         _$epubHtml.css("max-height", _lastViewPortSize.height + "px");
 
-        // Needed for Firefox, but unfortunately sometimes scrollWidth goes sky high even when value < _lastViewPortSize.height
-        _$htmlBody.css("min-height", "90%");
-        _$htmlBody.css("max-height", "100%");
-        
+        //normalise spacing to avoid interference with column-isation
+        _$epubHtml.css('margin', 0);
+        _$epubHtml.css('padding', 0);
+        _$epubHtml.css('border', 0);
+        _$htmlBody.css('margin-bottom', 0);
+        _$htmlBody.css('padding-bottom', 0);
+
+        var spacing = 0;
+        try
+        {
+            spacing = parseInt(_$htmlBody.css('padding-top')) + parseInt(_$htmlBody.css('border-top-width')) + parseInt(_$htmlBody.css('border-bottom-width'));
+        }
+        catch(err)
+        {
+            
+        }
+        // Needed for Firefox, otherwise content shrinks vertically, resulting in scrollWidth accomodating more columns than necessary
+        //_$htmlBody.css("min-height", _lastViewPortSize.height-spacing-9 + "px");
+        _$htmlBody.css("min-height", "50%");
+        _$htmlBody.css("max-height", _lastViewPortSize.height-spacing + "px");
+
         _paginationInfo.rightToLeft = _spine.isRightToLeft();
 
         _paginationInfo.columnWidth = Math.round(((_htmlBodyIsVerticalWritingMode ? _lastViewPortSize.height : _lastViewPortSize.width) - _paginationInfo.columnGap * (_paginationInfo.visibleColumnCount - 1)) / _paginationInfo.visibleColumnCount);

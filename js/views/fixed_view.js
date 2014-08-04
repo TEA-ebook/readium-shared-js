@@ -28,7 +28,7 @@
  * @class ReadiumSDK.Views.FixedView
  */
 
-ReadiumSDK.Views.FixedView = function(options){
+ReadiumSDK.Views.FixedView = function(options, reader){
 
     _.extend(this, Backbone.Events);
 
@@ -61,14 +61,7 @@ ReadiumSDK.Views.FixedView = function(options){
 
     function createOnePageView(elementClass) {
 
-        var pageView = new ReadiumSDK.Views.OnePageView({
-
-            iframeLoader: _iframeLoader,
-            spine: _spine,
-            bookStyles: _bookStyles,
-            // class: cssclass,
-            // contentAlignment: contentAlignment
-        },
+        var pageView = new ReadiumSDK.Views.OnePageView(options,
         [elementClass],
         false); //enableBookStyleOverrides
 
@@ -650,7 +643,7 @@ ReadiumSDK.Views.FixedView = function(options){
 
     this.insureElementVisibility = function(spineItemId, element, initiator) {
 
-        //for now we assume that for fixed layout element is always visible
+        //TODO: during zoom+pan, playing element might not actualy be visible
 
     }
 

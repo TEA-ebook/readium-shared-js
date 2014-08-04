@@ -270,7 +270,8 @@ ReadiumSDK.Helpers.loadTemplate.cache = {
     "fixed_book_frame" : '<div id="fixed-book-frame" class="clearfix book-frame fixed-book-frame"></div>',
     "single_page_frame" : '<div><div id="scaler"><iframe scrolling="no" class="iframe-fixed"></iframe></div></div>',
     "scrolled_book_frame" : '<div id="reflowable-book-frame" class="clearfix book-frame reflowable-book-frame"><div id="scrolled-content-frame"></div></div>',
-    "reflowable_book_frame" : '<div id="reflowable-book-frame" class="clearfix book-frame reflowable-book-frame"><div id="reflowable-content-frame" class="reflowable-content-frame"><iframe scrolling="no" id="epubContentIframe"></iframe></div></div>'
+    "reflowable_book_frame" : '<div id="reflowable-book-frame" class="clearfix book-frame reflowable-book-frame"></div>',
+    "reflowable_book_page_frame": '<div id="reflowable-content-frame" class="reflowable-content-frame"><iframe scrolling="no" id="epubContentIframe"></iframe></div>'
 };
 
 ReadiumSDK.Helpers.setStyles = function(styles, $element) {
@@ -337,14 +338,28 @@ ReadiumSDK.Helpers.isRenditionSpreadPermittedForItem = function(item, orientatio
         && orientation == ReadiumSDK.Views.ORIENTATION_PORTRAIT );
 };
 
-ReadiumSDK.Helpers.CSSTransformString = function(scale, left, top, angle, origin) {
+//scale, left, top, angle, origin
+ReadiumSDK.Helpers.CSSTransformString = function(options) {
+    var translate, scale, rotation,
+        origin = options.origin;
 
-    var translate = (left !== 0 || top !== 0) ? "translate(" + left + "px, " + top + "px)" : undefined;
-    var scale = scale !== 1 ? "scale(" + scale + ")" : undefined;
-    var rotation = angle !== 0 ? "rotate(" + angle + "deg)" : undefined;
+    if (options.left || options.top){
+        var left = options.left || 0, 
+            top = options.top || 0;
+
+        translate = "translate(" + left + "px, " + top + "px)";
+    }
+    if (options.scale){
+        scale = "scale(" + options.scale + ")";
+    }
+    if (options.angle){
+        rotation =  "rotate(" + options.angle + "deg)";
+    }
     
-    if (!(translate || scale || rotation)) return {};
-    
+    if (!(translate || scale || rotation)){
+        return {};
+    }
+
     var transformString = (translate && scale) ? (translate + " " + scale) : (translate ? translate : scale); // the order is important!
     if (rotation)
     {

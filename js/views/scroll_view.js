@@ -24,7 +24,7 @@
 //  OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED 
 //  OF THE POSSIBILITY OF SUCH DAMAGE.
 
-ReadiumSDK.Views.ScrollView = function(options, isContinuousScroll){
+ReadiumSDK.Views.ScrollView = function(options, isContinuousScroll, reader){
 
     var _DEBUG = false;
 
@@ -86,6 +86,7 @@ ReadiumSDK.Views.ScrollView = function(options, isContinuousScroll){
 
         _$contentFrame.on('scroll', function(e){
             lazyScroll(e);
+            onScrollDirect();
         });
 
         return self;
@@ -218,14 +219,45 @@ ReadiumSDK.Views.ScrollView = function(options, isContinuousScroll){
         }, assertScrollPosition);
     }
 
-    function onScroll(e) {
+    var _mediaOverlaysWasPlayingLastTimeScrollStarted = false;
 
+    function onScrollDirect(e)
+    {
+        var settings = reader.viewerSettings();
+        if (!settings.mediaOverlaysPreservePlaybackWhenScroll)
+        {
+            if (!_mediaOverlaysWasPlayingLastTimeScrollStarted && reader.isMediaOverlayAvailable())
+            {
+                _mediaOverlaysWasPlayingLastTimeScrollStarted = reader.isPlayingMediaOverlay();
+                if (_mediaOverlaysWasPlayingLastTimeScrollStarted)
+                {
+                    reader.pauseMediaOverlay();
+                }
+            }
+        }
+    }
+    
+    function onScroll(e)
+    {
         if(    !_isPerformingLayoutModifications
             && !_isSettingScrollPosition
             && !_isLoadingNewSpineItemOnPageRequest) {
 
             updateTransientViews();
             onPaginationChanged(self);
+
+            var settings = reader.viewerSettings();
+            if (!settings.mediaOverlaysPreservePlaybackWhenScroll)
+            {
+                if (_mediaOverlaysWasPlayingLastTimeScrollStarted)
+                {
+                    setTimeout(function()
+                    {
+                        reader.playMediaOverlay();
+                        _mediaOverlaysWasPlayingLastTimeScrollStarted = false;
+                    }, 100);
+                }
+            }
         }
     }
 
@@ -280,7 +312,7 @@ ReadiumSDK.Views.ScrollView = function(options, isContinuousScroll){
 
         var w = iframe.contentWindow;
         var d = iframe.contentDocument;
-                
+        
         var previousPolledContentHeight = parseInt(Math.round(parseFloat(w.getComputedStyle(d.documentElement).height))); //body can be shorter!;
         
         var initialContentHeight = previousPolledContentHeight;
@@ -323,14 +355,8 @@ ReadiumSDK.Views.ScrollView = function(options, isContinuousScroll){
                         var doc = iframe.contentDocument;
                         
                         var iframeHeight = parseInt(Math.round(parseFloat(window.getComputedStyle(iframe).height)));
-
-                        var scale = 1;
-                        if (fixedLayout) {
-                            //var iframeWidth = parseInt(Math.round(parseFloat(window.getComputedStyle(iframe).width)));
-                            scale = _$contentFrame.width() / metaWidth;
-                        }
                     
-                        var docHeight = parseInt(Math.round(parseFloat(win.getComputedStyle(doc.documentElement).height) * scale)); //body can be shorter!
+                        var docHeight = parseInt(Math.round(parseFloat(win.getComputedStyle(doc.documentElement).height))); //body can be shorter!
                         
                         if (previousPolledContentHeight !== docHeight)
                         {
@@ -365,7 +391,7 @@ ReadiumSDK.Views.ScrollView = function(options, isContinuousScroll){
                                 var win = iframe.contentWindow;
                                 var doc = iframe.contentDocument;
                                 
-                                var docHeightAfter = parseInt(Math.round(parseFloat(win.getComputedStyle(doc.documentElement).height) * scale)); //body can be shorter!
+                                var docHeightAfter = parseInt(Math.round(parseFloat(win.getComputedStyle(doc.documentElement).height))); //body can be shorter!
                                 var iframeHeightAfter = parseInt(Math.round(parseFloat(window.getComputedStyle(iframe).height)));
 
                                 var newdiff = iframeHeightAfter-docHeightAfter;

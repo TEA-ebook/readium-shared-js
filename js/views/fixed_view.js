@@ -264,7 +264,10 @@ ReadiumSDK.Views.FixedView = function(options, reader){
         if(!_contentMetaSize || !_bookMargins) {
             return false;
         }
-
+        
+        // NOTE: unitless content dimensions (assumed: pixels),
+        // regardless of box-sizing! (padding and border are *not* included)
+        // This is different than $element.css("width"), which returns a getComputedStyle() px unit, sensitive to box-sizing.
         var viewportWidth = _$viewport.width();
         var viewportHeight = _$viewport.height();
 
@@ -278,7 +281,10 @@ ReadiumSDK.Views.FixedView = function(options, reader){
         if(!isContentRendered()) {
             return;
         }
-
+        
+        // NOTE: unitless content dimensions (assumed: pixels),
+        // regardless of box-sizing! (padding and border are *not* included)
+        // This is different than $element.css("width"), which returns a getComputedStyle() px unit, sensitive to box-sizing.
         var viewportWidth = _$viewport.width();
         var viewportHeight = _$viewport.height();
 

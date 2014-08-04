@@ -533,6 +533,9 @@ ReadiumSDK.Views.ScrollView = function(options, isContinuousScroll, reader){
     function updatePageViewSize(pageView) {
 
         if(pageView.currentSpineItem().isFixedLayout()) {
+            // NOTE: unitless content dimensions (assumed: pixels),
+            // regardless of box-sizing! (padding and border are *not* included)
+            // This is different than $element.css("width"), which returns a getComputedStyle() px unit, sensitive to box-sizing.
             pageView.scaleToWidth(_$contentFrame.width());
         }
         else {

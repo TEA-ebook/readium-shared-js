@@ -83,6 +83,9 @@ ReadiumSDK.Views.CfiNavigationLogic = function($viewport, $iframe, options){
         
         if (!options.paginationInfo || options.paginationInfo.isVerticalWritingMode)
         {
+            // NOTE: unitless content dimensions (assumed: pixels),
+            // regardless of box-sizing! (padding and border are *not* included)
+            // This is different than $element.css("width"), which returns a getComputedStyle() px unit, sensitive to box-sizing.
             return $iframe.width();
         }
         
@@ -171,6 +174,9 @@ ReadiumSDK.Views.CfiNavigationLogic = function($viewport, $iframe, options){
         var isRtl = isPageProgressionRightToLeft();
         var columnFullWidth = getColumnFullWidth();
         var frameDimensions = {
+            // NOTE: unitless content dimensions (assumed: pixels),
+            // regardless of box-sizing! (padding and border are *not* included)
+            // This is different than $element.css("width"), which returns a getComputedStyle() px unit, sensitive to box-sizing.
             width: $iframe.width(),
             height: $iframe.height()
         };
@@ -215,7 +221,10 @@ ReadiumSDK.Views.CfiNavigationLogic = function($viewport, $iframe, options){
 
         var isRtl = isPageProgressionRightToLeft();
         var columnFullWidth = getColumnFullWidth();
-
+        
+        // NOTE: unitless content dimensions (assumed: pixels),
+        // regardless of box-sizing! (padding and border are *not* included)
+        // This is different than $element.css("width"), which returns a getComputedStyle() px unit, sensitive to box-sizing.
         var frameHeight = $iframe.height();
         var frameWidth  = $iframe.width();
 

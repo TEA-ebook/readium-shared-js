@@ -387,7 +387,7 @@ ReadiumSDK.Views.OnePageView = function(options, classes, enableBookStyleOverrid
                 self.applyBookStyles();
             
                 //if(!self.currentSpineItem().isFixedLayout())
-                resizeImages();
+                ReadiumSDK.Helpers.resizeImages(_$iframe[0]);
             }
             
             updateMetaSize();
@@ -447,37 +447,6 @@ ReadiumSDK.Views.OnePageView = function(options, classes, enableBookStyleOverrid
 
         self.showIFrame();
     };
-    
-    //scroll_view, reflowable spine item
-    var resizeImages = function() {
-
-        if(!_$epubHtml) {
-            return;
-        }
-
-        var $elem;
-        var height;
-        var width;
-
-        $('img', _$epubHtml).each(function(){
-
-            $elem = $(this);
-
-            // if we set max-width/max-height to 100% engine chops images embedded in the text
-            // (but not if we set it to 99-98%) go figure.
-            $elem.css('max-width', '98%');
-            $elem.css('max-height', '98%');
-
-            if(!$elem.css('height')) {
-                $elem.css('height', 'auto');
-            }
-
-            if(!$elem.css('width')) {
-                $elem.css('width', 'auto');
-            }
-
-        });
-    }
     
     this.setHeight = function(height) {
 
@@ -665,7 +634,11 @@ ReadiumSDK.Views.OnePageView = function(options, classes, enableBookStyleOverrid
             // Image fallback ... a bit of a hack, but it works with some eBooks :(
             var $img = $(contentDocument).find('img');
             if($img.length > 0) {
+
                 size = {
+                    // NOTE: unitless content dimensions (assumed: pixels),
+                    // regardless of box-sizing! (padding and border are *not* included)
+                    // This is different than $element.css("width"), which returns a getComputedStyle() px unit, sensitive to box-sizing.
                     width: $img.width(),
                     height: $img.height()
                 }
@@ -719,6 +692,9 @@ ReadiumSDK.Views.OnePageView = function(options, classes, enableBookStyleOverrid
         
         if (!size) {
             // Not a great fallback, as it has the aspect ratio of the full window, but it is better than no display at all.
+            // NOTE: unitless content dimensions (assumed: pixels),
+            // regardless of box-sizing! (padding and border are *not* included)
+            // This is different than $element.css("width"), which returns a getComputedStyle() px unit, sensitive to box-sizing.
             width = _$viewport.width();
             height = _$viewport.height();
             size = {

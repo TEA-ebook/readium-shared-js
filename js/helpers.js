@@ -314,7 +314,9 @@ ReadiumSDK.Helpers.isIframeAlive = function(iframe)
 
 
 ReadiumSDK.Helpers.getOrientation = function($viewport) {
-
+    // NOTE: unitless content dimensions (assumed: pixels),
+    // regardless of box-sizing! (padding and border are *not* included)
+    // This is different than $element.css("width"), which returns a getComputedStyle() px unit, sensitive to box-sizing.
     var viewportWidth = $viewport.width();
     var viewportHeight = $viewport.height();
 
@@ -375,6 +377,105 @@ ReadiumSDK.Helpers.CSSTransformString = function(options) {
     });
 
     return css;
+};
+
+ReadiumSDK.Helpers.resizeImages = function(iframe) {
+
+    if (!iframe) return;
+
+    var contentDoc = iframe.contentDocument;
+    if (!contentDoc) return;
+    
+    var $root = $("html", contentDoc); //contentDoc.documentElement
+    if(!$root || !$root.length) {
+        return;
+    }
+    
+    $('img', $root).each(function(){
+
+        var $elem = $(this);
+
+        $elem.css('box-sizing', 'border-box');
+
+        $elem.css('max-width', '98%');
+        $elem.css('max-height', '98%');
+
+        var width = $elem.attr("width");
+        var height = $elem.attr("height");
+
+        if (!width)
+        {
+            $elem.css('width', 'auto');
+        }
+
+        if (!height)
+        {
+            $elem.css('height', 'auto');
+        }
+    });
+    
+
+
+    // TODO: only apply "auto" when original CSS width/height does not depend on font size (image not scaled proportionally to text)
+    // See comments below for dependsOnFontSize() function. Note that getComputedStyle() returns final cascaded pixel unit value, see below for getMatchedCSSRules() alternative
+    // //window could also be determined from $root[0].ownerDocument.defaultView, when passing $root instead of iframe to this function
+    // var win = contentDoc.defaultView || iframe.contentWindow;
+    // if (!win) return;
+    // var computedStyle = win.getComputedStyle(this, null);
+    // if (computedStyle)
+    // {
+    //     width = computedStyle.getPropertyValue ? computedStyle.getPropertyValue("width") : computedStyle.width;
+    // }
+    // else
+    // {
+    //     // NOTE: unitless content dimensions (assumed: pixels),
+    //     // regardless of box-sizing! (padding and border are *not* included)
+    //     // This is different than $element.css("width"), which returns a getComputedStyle() px unit, sensitive to box-sizing.
+    //     //width = $elem.width();
+    //
+    //     width = $elem.css('width');
+    // }
+
+    // Problem: window.getMatchedCSSRules(el, '') seems to always return null! :(
+    //             if (typeof win.getMatchedCSSRules === 'function')
+    //             {
+    // var dependsOnFontSize = function(css)
+    // {
+    //     if (css.length <= 2) return false;
+    //
+    //     var unit = css.substr(-2);
+    //
+    //     return unit == 'em' // width
+    //         || unit == 'ex'; // height
+    // };
+    //                 var rules = win.getMatchedCSSRules(this, '');
+    //                 if (rules)
+    //                 {
+    //                     var clone = this.cloneNode(false);
+    //
+    //                     for (var i = 0; i < rules.length; i++)
+    //                     {
+    //                         var style = rules[i].style;
+    //
+    //                         for (var j = 0; j < style.length; j++)
+    //                         {
+    //                             var property = style[j];
+    //
+    //                             clone.style.setProperty(property, style.getPropertyValue(property), style.getPropertyPriority(property));
+    //                         }
+    //                     }
+    //
+    // SHOULD PROVIDE the original unit, e.g. 10em instead of a computed pixel value
+    // if (!dependsOnFontSize(clone.style.width))
+    // {
+    //     $elem.css('width', 'auto');
+    // }
+    // if (!dependsOnFontSize(clone.style.height))
+    // {
+    //     $elem.css('height', 'auto');
+    // }
+    //                 }
+    //             }
 };
 
 

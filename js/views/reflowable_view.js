@@ -302,7 +302,7 @@ ReadiumSDK.Views.ReflowableView = function(options, reader){
         // ////
         
         self.applyBookStyles();
-        resizeImages();
+        ReadiumSDK.Helpers.resizeImages(_$iframe[0]);
 
         updateHtmlFontSize();
         updateColumnGap();
@@ -423,7 +423,9 @@ ReadiumSDK.Views.ReflowableView = function(options, reader){
     }
 
     function updateViewportSize() {
-
+        // NOTE: unitless content dimensions (assumed: pixels),
+        // regardless of box-sizing! (padding and border are *not* included)
+        // This is different than $element.css("width"), which returns a getComputedStyle() px unit, sensitive to box-sizing.
         var newWidth = _$contentFrame.width();
         var newHeight = _$contentFrame.height();
 
@@ -651,37 +653,6 @@ ReadiumSDK.Views.ReflowableView = function(options, reader){
 
         return indexes;
 
-    }
-
-    //we need this styles for css columnizer not to chop big images
-    function resizeImages() {
-
-        if(!_$epubHtml) {
-            return;
-        }
-
-        var $elem;
-        var height;
-        var width;
-
-        $('img', _$epubHtml).each(function(){
-
-            $elem = $(this);
-
-            // if we set max-width/max-height to 100% columnizing engine chops images embedded in the text
-            // (but not if we set it to 99-98%) go figure.
-            $elem.css('max-width', '98%');
-            $elem.css('max-height', '98%');
-
-            if(!$elem.css('height')) {
-                $elem.css('height', 'auto');
-            }
-
-            if(!$elem.css('width')) {
-                $elem.css('width', 'auto');
-            }
-
-        });
     }
 
     this.bookmarkCurrentPage = function() {

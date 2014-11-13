@@ -67,13 +67,14 @@ ReadiumSDK = {
         MEDIA_OVERLAY_TTS_SPEAK: "MediaOverlayTTSSpeak",
         MEDIA_OVERLAY_TTS_STOP: "MediaOverlayTTSStop",
         GESTURE_PINCH: "GesturePinch",
-        GESTURE_TAP: "GestureTap"
+        GESTURE_TAP: "GestureTap",
+        GESTURE_SWIPE_LEFT: "GestureSwipeLeft",
+        GESTURE_SWIPE_RIGHT: "GestureSwipeRight"
     },
 
     InternalEvents: {
         CURRENT_VIEW_PAGINATION_CHANGED: "CurrentViewPaginationChanged"
     }
-
 };
 
 

@@ -39,14 +39,14 @@ ReadiumSDK = {
      @static
      @return {string} version
      */
-    version: function() {
+    version: function () {
         return "0.8.0";
     },
 
-    Models :    {
-                    Smil: {}
-                },
-    Views : {
+    Models: {
+        Smil: {}
+    },
+    Views: {
         ORIENTATION_LANDSCAPE: "orientation_landscape",
         ORIENTATION_PORTRAIT: "orientation_portrait"
     },
@@ -54,22 +54,24 @@ ReadiumSDK = {
     Routers: {},
     Helpers: {},
     Events: {
-                READER_INITIALIZED: "ReaderInitialized",
-                // PAGINATION_CHANGED gets triggered on every page turnover. it includes spine information and such.
-                PAGINATION_CHANGED: "PaginationChanged",
-                SETTINGS_APPLIED: "SettingsApplied",
-                FXL_VIEW_RESIZED: "FXLViewResized",
-                READER_VIEW_CREATED: "ReaderViewCreated",
-                READER_VIEW_DESTROYED: "ReaderViewDestroyed",
-                CONTENT_DOCUMENT_LOAD_START: "ContentDocumentLoadStart",
-                CONTENT_DOCUMENT_LOADED: "ContentDocumentLoaded",
-                MEDIA_OVERLAY_STATUS_CHANGED: "MediaOverlayStatusChanged",
-                MEDIA_OVERLAY_TTS_SPEAK: "MediaOverlayTTSSpeak",
-                MEDIA_OVERLAY_TTS_STOP: "MediaOverlayTTSStop"
-            },
+        READER_INITIALIZED: "ReaderInitialized",
+        // PAGINATION_CHANGED gets triggered on every page turnover. it includes spine information and such.
+        PAGINATION_CHANGED: "PaginationChanged",
+        SETTINGS_APPLIED: "SettingsApplied",
+        FXL_VIEW_RESIZED: "FXLViewResized",
+        READER_VIEW_CREATED: "ReaderViewCreated",
+        READER_VIEW_DESTROYED: "ReaderViewDestroyed",
+        CONTENT_DOCUMENT_LOAD_START: "ContentDocumentLoadStart",
+        CONTENT_DOCUMENT_LOADED: "ContentDocumentLoaded",
+        MEDIA_OVERLAY_STATUS_CHANGED: "MediaOverlayStatusChanged",
+        MEDIA_OVERLAY_TTS_SPEAK: "MediaOverlayTTSSpeak",
+        MEDIA_OVERLAY_TTS_STOP: "MediaOverlayTTSStop",
+        GESTURE_PINCH: "GesturePinch",
+        GESTURE_TAP: "GestureTap"
+    },
 
     InternalEvents: {
-        CURRENT_VIEW_PAGINATION_CHANGED: "CurrentViewPaginationChanged",
+        CURRENT_VIEW_PAGINATION_CHANGED: "CurrentViewPaginationChanged"
     }
 
 };

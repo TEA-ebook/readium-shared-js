@@ -664,6 +664,7 @@ ReadiumSDK.Views.ReflowableView = function(options, reader){
         //_$htmlBody.css("min-height", _lastViewPortSize.height-spacing-9 + "px");
         _$htmlBody.css("min-height", "50%");
         _$htmlBody.css("max-height", _lastViewPortSize.height-spacing + "px");
+        _$htmlBody.css("height", _lastViewPortSize.height-spacing + "px");
 
         _paginationInfo.rightToLeft = _spine.isRightToLeft();
 

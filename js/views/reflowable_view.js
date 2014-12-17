@@ -339,6 +339,13 @@ ReadiumSDK.Views.ReflowableView = function(options, reader){
 
         _$epubHtml.css("column-axis", (_htmlBodyIsVerticalWritingMode ? "vertical" : "horizontal"));
 
+        //apply hyphens auto
+        _$htmlBody.css('hyphens', 'auto');
+        _$htmlBody.css('-o-hyphens', 'auto');
+        _$htmlBody.css('-ms-hyphens', 'auto');
+        _$htmlBody.css('-moz-hyphens', 'auto');
+        _$htmlBody.css('-webkit-hyphens', 'auto');
+
         //
         // /////////
         // //Columns Debugging

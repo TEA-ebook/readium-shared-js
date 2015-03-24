@@ -710,16 +710,19 @@ ReadiumSDK.Views.ReflowableView = function(options, reader){
     function hideBook()
     {
         if (_currentOpacity != -1) return; // already hidden
-        
-        _currentOpacity = _$epubHtml.css('opacity');
-        _$epubHtml.css('opacity', "0");
+
+        _currentOpacity = _$epubHtml[0].style.opacity;
+        if (_currentOpacity === "") {
+            _currentOpacity = 1;
+        }
+        _$epubHtml[0].style.opacity = 0;
     }
 
     function showBook()
     {
         if (_currentOpacity != -1)
         {
-            _$epubHtml.css('opacity', _currentOpacity);
+            _$epubHtml[0].style.opacity = _currentOpacity;
         }
         _currentOpacity = -1;
     }

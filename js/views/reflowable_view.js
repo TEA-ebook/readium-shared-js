@@ -459,10 +459,20 @@ ReadiumSDK.Views.ReflowableView = function(options, reader){
     }
 
     function onPaginationChanged(initiator, paginationRequest_spineItem, paginationRequest_elementId) {
-
         _paginationInfo.pageOffset = (_paginationInfo.columnWidth + _paginationInfo.columnGap) * _paginationInfo.visibleColumnCount * _paginationInfo.currentSpreadIndex;
         
         redraw();
+
+        if (!paginationRequest_elementId) {
+            var elementInPage = Array.prototype.filter.call(_$htmlBody[0].querySelectorAll("div[id], p[id], span[id]"), function (element) {
+                return !/^no/.test(element.id) && element.getBoundingClientRect().right <= window.screen.availWidth;
+            });
+
+            if (elementInPage && elementInPage.length > 0) {
+                paginationRequest_elementId = elementInPage.pop().id;
+            }
+        }
+
         self.trigger(ReadiumSDK.InternalEvents.CURRENT_VIEW_PAGINATION_CHANGED, { paginationInfo: self.getPaginationInfo(), initiator: initiator, spineItem: paginationRequest_spineItem, elementId: paginationRequest_elementId } );
     }
 

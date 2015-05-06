@@ -628,12 +628,15 @@ ReadiumSDK.Views.ReflowableView = function(options, reader){
         _$epubHtml.css("min-height", _lastViewPortSize.height + "px");
         _$epubHtml.css("max-height", _lastViewPortSize.height + "px");
 
-        //normalise spacing to avoid interference with column-isation
+        // normalise spacing to avoid interference with column-isation
         _$epubHtml.css('margin', 0);
         _$epubHtml.css('padding', 0);
         _$epubHtml.css('border', 0);
         _$htmlBody.css('margin', 0);
         _$htmlBody.css('padding', 0);
+
+        // body must be 100% height so children can use % heights
+        _$htmlBody.css("height", "100%");
 
         _paginationInfo.rightToLeft = _spine.isRightToLeft();
 

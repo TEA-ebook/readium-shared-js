@@ -42,6 +42,10 @@ define(['console_shim', 'eventEmitter', 'URIjs', 'readium_cfi_js', 'readium_js_p
 
         window.URL = window.webkitURL;
     }
+
+    // polyfill to support old versions of some browsers
+    window.BlobBuilder = window.BlobBuilder || window.WebKitBlobBuilder || window.MozBlobBuilder || window.MSBlobBuilder;
+
     // Plugins bootstrapping begins
     Globals.Plugins = PluginsController;
     Globals.on(Globals.Events.READER_INITIALIZED, function(reader) {

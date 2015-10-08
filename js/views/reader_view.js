@@ -498,6 +498,17 @@ var ReaderView = function (options) {
     };
 
     /**
+     *
+     * @param deltaX
+     * @param deltaY
+     */
+    this.moveInPage = function (deltaX, deltaY) {
+        if (self.isCurrentViewFixedLayout()) {
+            _currentView.moveInPage(deltaX, deltaY);
+        }
+    };
+
+    /**
      * Returns the current view scale as a percentage
      *
      * @returns {number}

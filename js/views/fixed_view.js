@@ -289,6 +289,11 @@ var FixedView = function(options, reader){
         return viewportWidth && viewportHeight;
     }
 
+    this.moveInPage = function(deltaX, deltaY) {
+        _$viewport.scrollTop(_$viewport.scrollTop() + deltaY);
+        _$viewport.scrollLeft(_$viewport.scrollLeft() + deltaX);
+    };
+
     function resizeBook(viewportIsResizing) {
 
         updatePageSwitchDir(0, false);
@@ -318,10 +323,10 @@ var FixedView = function(options, reader){
 
         var horScale = potentialContentSize.width / _contentMetaSize.width;
         var verScale = potentialContentSize.height / _contentMetaSize.height;
-        
-        _$viewport.css("overflow", "auto");
+
+        //_$viewport.css("overflow", "auto");
             
-        var scale;
+        var scale, scaleRatio;
         if (_zoom.style == 'fit-width'){
             scale = horScale;
         }
@@ -338,6 +343,7 @@ var FixedView = function(options, reader){
             _$viewport.css("overflow", "hidden");
         }
 
+        scaleRatio = scale / _currentScale;
         _currentScale = scale;
 
         var contentSize = { width: _contentMetaSize.width * scale,
@@ -386,7 +392,11 @@ var FixedView = function(options, reader){
 
             _centerPageView[transFunc](scale, left, top);
         }
-        
+
+        if (_zoom.center) {
+            self.moveInPage(Math.round(_zoom.center.x * (scaleRatio - 1)) - _$viewport.offset().left, Math.round(_zoom.center.y * (scaleRatio - 1)) - _$viewport.offset().top);
+        }
+
         self.emit(Globals.Events.FXL_VIEW_RESIZED);
     }
 

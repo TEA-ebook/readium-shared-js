@@ -1,24 +1,31 @@
-define(['readium_js_plugins', 'jquery'], function (Plugins, $) {
+define(['readium_js_plugins'], function (Plugins) {
+
+    // don't block anything by default
     var config = {
-        backgroundColor: "yellow",
-        borderColor: "red"
+        blockCopy: false,
+        blockContext: false
     };
 
-    Plugins.register("example", function (api) {
-        var self = this;
+    Plugins.register("nocopy", function (api) {
 
-        api.plugin.warn('Example warning. Used when this plugin is initialized.');
+        var block = function (event) {
+            console.debug("No you can't");
+            event.preventDefault();
+        };
 
-        api.reader.on(ReadiumSDK.Events.CONTENT_DOCUMENT_LOADED, function ($iframe, spineItem) {
-            var div = '<div id="" style="position: absolute; left: 0; top: 0; border: 1px solid '
-                + config.borderColor + '; background-color: ' + config.backgroundColor + ';">'
-                + 'spineItemIdref: ' + spineItem.idref + '</div>';
-            $(div).appendTo($iframe[0].contentDocument.documentElement).on('click', function () {
-                self.emit("exampleEvent", api.reader.bookmarkCurrentPage());
-            });
+        api.reader.on(ReadiumSDK.Events.CONTENT_DOCUMENT_LOADED, function ($iframe) {
+            var doc = $iframe[0].contentDocument.documentElement;
+
+            if (config.blockContext) {
+                doc.addEventListener('contextmenu', block, true);
+                api.reader.on(ReadiumSDK.Events.GESTURE_PRESS, block);
+            }
+
+            if (config.blockCopy) {
+                doc.addEventListener('copy', block, true);
+                doc.addEventListener('cut', block, true);
+            }
         });
-
-        $("body").css({border: '10px solid ' + config.borderColor});
     });
 
     return config;

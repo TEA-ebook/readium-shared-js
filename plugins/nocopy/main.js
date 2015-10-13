@@ -9,7 +9,6 @@ define(['readium_js_plugins'], function (Plugins) {
     Plugins.register("nocopy", function (api) {
 
         var block = function (event) {
-            console.debug("No you can't");
             event.preventDefault();
         };
 

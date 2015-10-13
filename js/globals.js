@@ -69,7 +69,6 @@ var Globals = {
         MEDIA_OVERLAY_STATUS_CHANGED: "MediaOverlayStatusChanged",
         MEDIA_OVERLAY_TTS_SPEAK: "MediaOverlayTTSSpeak",
         MEDIA_OVERLAY_TTS_STOP: "MediaOverlayTTSStop",
-        CONTENT_LCP_PROTECTED: "ContentLcpProtected",
         GESTURE_PINCH: "GesturePinch",
         GESTURE_PINCH_MOVE: "GesturePinchMove",
         GESTURE_TAP: "GestureTap",

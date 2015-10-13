@@ -1,0 +1,7 @@
+plugins:
+  include: [
+    'nocopy'
+  ]
+  exclude: [
+    'annotations'
+  ]

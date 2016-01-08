@@ -342,7 +342,7 @@ var ReflowableView = function(options, reader){
         // ////
 
         self.applyBookStyles();
-        resizeImages();
+        resizeImages(_currentSpineItem);
 
         updateHtmlFontSize();
         updateColumnGap();
@@ -798,34 +798,34 @@ var ReflowableView = function(options, reader){
     }
 
     //we need this styles for css columnizer not to chop big images
-    function resizeImages() {
-
+    function resizeImages(currentSpineItem) {
         if(!_$epubHtml) {
             return;
         }
 
-        var $elem;
-        var height;
-        var width;
+        $('img, svg', _$epubHtml).each(function() {
+            var element = this;
 
-        $('img, svg', _$epubHtml).each(function(){
+            if (currentSpineItem.index === 0) {
+                element.style['width'] = 'auto';
+                element.style['height'] = 'auto';
+                element.style['max-width'] = '100%';
+                element.style['max-height'] = '99vh';
+            } else {
+                // if we set max-width/max-height to 100% columnizing engine chops images embedded in the text
+                // (but not if we set it to 99-98%) go figure.
+                // TODO: CSS min-w/h is content-box, not border-box (does not take into account padding + border)? => images may still overrun?
+                element.style['max-width'] = '99%';
+                element.style['max-height'] = '99%';
 
-            $elem = $(this);
+                if(!element.style['height']) {
+                    element.style['height'] = 'auto';
+                }
 
-            // if we set max-width/max-height to 100% columnizing engine chops images embedded in the text
-            // (but not if we set it to 99-98%) go figure.
-            // TODO: CSS min-w/h is content-box, not border-box (does not take into account padding + border)? => images may still overrun?
-            $elem.css('max-width', '98%');
-            $elem.css('max-height', '98%');
-
-            if(!$elem.css('height')) {
-                $elem.css('height', 'auto');
+                if(!element.style['width']) {
+                    element.style['width'] = 'auto';
+                }
             }
-
-            if(!$elem.css('width')) {
-                $elem.css('width', 'auto');
-            }
-
         });
     }
 

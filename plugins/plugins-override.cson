@@ -3,5 +3,6 @@ plugins:
     'nocopy'
   ]
   exclude: [
-    'annotations'
+    'annotations',
+    'highlights'
   ]

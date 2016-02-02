@@ -190,7 +190,8 @@ var FontLoaderNative = function(document, options) {
             _.each(document.fonts, fontIterator);
         }
 
-        document.fonts.ready.then(function() {
+        var ready = typeof document.fonts.ready === 'function' ? document.fonts.ready() : document.fonts.ready;
+        ready.then(function() {
             if (debug) {
                 // All fonts were loaded
                 console.log("(native) font loader: all fonts were loaded");

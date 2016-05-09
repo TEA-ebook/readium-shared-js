@@ -1,0 +1,4 @@
+[submodule "readium-cfi-js"]
+	path = readium-cfi-js
+	url = git@github.com:TEA-ebook/readium-cfi-js.git
+	branch = tea

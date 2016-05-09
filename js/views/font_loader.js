@@ -190,15 +190,18 @@ var FontLoaderNative = function(document, options) {
             _.each(document.fonts, fontIterator);
         }
 
-        var ready = typeof document.fonts.ready === 'function' ? document.fonts.ready() : document.fonts.ready;
-        ready.then(function() {
+        var fontsReady = document.fonts.ready;
+        // In older implementations (chromium 35 for example) this is a method not a property
+        if (_.isFunction(fontsReady)) {
+            fontsReady = fontsReady.call(document.fonts);
+        }
+        fontsReady.then(function() {
             if (debug) {
                 // All fonts were loaded
                 console.log("(native) font loader: all fonts were loaded");
             }
             callback();
         });
-
 
         window.setTimeout(function() {
             if (debug && loadCount !== fontFaceCount) {

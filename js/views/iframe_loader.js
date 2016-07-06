@@ -26,7 +26,7 @@
 //  OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED 
 //  OF THE POSSIBILITY OF SUCH DAMAGE.
 
-define(["jquery", "underscore"], function($, _) {
+define(["../globals", "jquery", "underscore", "eventEmitter"], function(Globals, $, _, EventEmitter) {
 /**
  *
  * @constructor
@@ -36,6 +36,7 @@ var IFrameLoader = function() {
     var self = this;
     var eventListeners = {};
 
+    $.extend(this, new EventEmitter());
 
     this.addIFrameEventListener = function (eventName, callback, context) {
 
@@ -82,8 +83,12 @@ var IFrameLoader = function() {
     };
 
     this._loadIframeWithUri = function (iframe, attachedData, contentUri, callback) {
-
-        iframe.onload = function () {
+          iframe.onload = function () {
+            if (iframe.src !== iframe.contentWindow.location.href) {
+              $(iframe).contents().empty();
+              self.emit(Globals.Events.SCRIPT_NAVIGATION_DETECTED, iframe.contentWindow.location.href);
+              return;
+            }
 
             var doc = iframe.contentDocument || iframe.contentWindow.document;
             $('svg', doc).load(function(){

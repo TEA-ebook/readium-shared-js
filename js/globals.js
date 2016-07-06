@@ -77,7 +77,8 @@ var Globals = {
         GESTURE_TAP: "GestureTap",
         GESTURE_SWIPE_LEFT: "GestureSwipeLeft",
         GESTURE_SWIPE_RIGHT: "GestureSwipeRight",
-        GESTURE_PRESS: "GesturePress"
+        GESTURE_PRESS: "GesturePress",
+        SCRIPT_NAVIGATION_DETECTED: "ScriptNavigationDetected"
     },
 
     InternalEvents: {

@@ -87,6 +87,10 @@ var ReaderView = function (options) {
     else {
         _iframeLoader = new IFrameLoader({mathJaxUrl: options.mathJaxUrl});
     }
+    _iframeLoader.on(Globals.Events.SCRIPT_NAVIGATION_DETECTED, function (url) {
+      console.warn('SCRIPT_NAVIGATION_DETECTED', url);
+      self.openContentUrl(url);
+    });
 
 
     _needsFixedLayoutScalerWorkAround = options.needsFixedLayoutScalerWorkAround;

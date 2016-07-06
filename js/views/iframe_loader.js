@@ -84,7 +84,8 @@ var IFrameLoader = function() {
 
     this._loadIframeWithUri = function (iframe, attachedData, contentUri, callback) {
           iframe.onload = function () {
-            if (iframe.src !== iframe.contentWindow.location.href) {
+            // prevent epub own programmatic navigation
+            if (iframe.src !== "" && iframe.contentWindow !== null && iframe.src !== iframe.contentWindow.location.href) {
               $(iframe).contents().empty();
               self.emit(Globals.Events.SCRIPT_NAVIGATION_DETECTED, iframe.contentWindow.location.href);
               return;

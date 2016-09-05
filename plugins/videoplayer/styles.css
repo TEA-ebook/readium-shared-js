@@ -1,0 +1,49 @@
+.video-controls {
+    align-items: center;
+    background-color: rgb(225, 225, 225);
+    bottom: 0;
+    display: flex;
+    height: 35px;
+    justify-content: space-between;
+    left: -1px;
+    line-height: 35px;
+    overflow: hidden;
+    position: absolute;
+    width: 102%;
+    -webkit-backface-visibility: hidden;
+    -webkit-transform: translateZ(0);
+}
+
+.video-control {
+    align-self: baseline;
+    background-color: transparent;
+    border: 0;
+    color: #5a5a5a;
+    font-size: 20px;
+    height: 100%;
+    line-height: 30px;
+    margin-left: 5px;
+    outline: 0;
+    padding: 0;
+    width: 30px;
+}
+
+.video-control:last-child {
+    margin-right: 5px;
+}
+
+.play-icon:before {
+    content: '\25BA';
+}
+
+.pause-icon:before {
+    content: '=';
+    display: block;
+    font-size: 22px;
+    transform: scale(1.5) rotate(90deg);
+}
+
+.fullscreen-icon:before {
+    content: '\29C8';
+    font-size: 26px;
+}

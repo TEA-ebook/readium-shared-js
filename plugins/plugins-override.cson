@@ -1,6 +1,7 @@
 plugins:
   include: [
-    'nocopy'
+    'nocopy',
+    'videoplayer'
   ]
   exclude: [
     'annotations',

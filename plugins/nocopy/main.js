@@ -3,13 +3,16 @@ define(['readium_js_plugins'], function (Plugins) {
     // don't block anything by default
     var config = {
         blockCopy: false,
-        blockContext: false
+        blockContext: false,
+        whitelist: []
     };
 
     Plugins.register("nocopy", function (api) {
 
         var block = function (event) {
-            event.preventDefault();
+            if (config.whitelist.indexOf(event.target.nodeName) === -1) {
+                event.preventDefault();
+            }
         };
 
         api.reader.on(ReadiumSDK.Events.CONTENT_DOCUMENT_LOADED, function ($iframe) {

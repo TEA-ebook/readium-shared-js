@@ -22,7 +22,7 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
   function loadCss(document, css) {
     var style = document.createElement('style');
     style.type = 'text/css';
-    style.innerText = css;
+    style.innerHTML = css;
     document.getElementsByTagName('head')[0].appendChild(style);
   }
 
@@ -90,11 +90,10 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
   }
 
   function createRangeElement(document, className) {
-    var range = document.createElement('input');
+    var range = document.createElement('progress');
 
     range.classList.add(className);
 
-    range.setAttribute('type', 'range');
     range.setAttribute('value', '0');
     range.setAttribute('min', '0');
     range.setAttribute('max', '100');
@@ -149,20 +148,20 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
         var seekBar = controlsElement.querySelector('.seek-bar');
         if (seekBar) {
           video.addEventListener('timeupdate', updateProgressBar.bind(seekBar), false);
-          seekBar.addEventListener('change', function () {
-            video.currentTime = this.value * video.duration / 100;
+          seekBar.addEventListener('click', function (event) {
+            video.currentTime = (event.offsetX / event.target.clientWidth) * video.duration;
           });
         }
 
         // display/hide controls
         video.parentElement.addEventListener('mouseenter', function () {
-          controlsElement.style.visibility = 'visible';
+          controlsElement.style.opacity = 1;
         }, false);
         video.parentElement.addEventListener('mouseleave', function () {
           if (video.paused) {
             return;
           }
-          controlsElement.style.visibility = 'hidden';
+          controlsElement.style.opacity = 0;
         }, false);
       });
     });

@@ -696,6 +696,25 @@ console.trace(JSON.stringify(status));
         openPage(openPageRequest, 1);
     };
 
+    /**
+     * Opens the next spine item.
+     */
+    this.openChapterNext = function (paginationInfo) {
+      var lastOpenPage = paginationInfo.openPages[paginationInfo.openPages.length - 1];
+
+      var currentSpineItem = _spine.getItemById(lastOpenPage.idref);
+      var nextSpineItem = _spine.nextItem(currentSpineItem);
+
+      if (!nextSpineItem) {
+        return;
+      }
+
+      var openPageRequest = new PageOpenRequest(nextSpineItem, self);
+      openPageRequest.setFirstPage();
+
+      openPage(openPageRequest, 2);
+    };
+
     function getSpineItem(idref) {
 
         if (!idref) {

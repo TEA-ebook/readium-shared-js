@@ -1,7 +1,8 @@
 plugins:
   include: [
     'nocopy',
-    'videoplayer'
+    'videoplayer',
+    'gestures'
   ]
   exclude: [
     'annotations',

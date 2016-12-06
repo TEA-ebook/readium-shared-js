@@ -87,7 +87,10 @@ require.config({
             process._RJS_rootDir(1) + '/lib/rangy/rangy-cssclassapplier',
 
         "rangy-position":
-            process._RJS_rootDir(1) + '/lib/rangy/rangy-position'
+            process._RJS_rootDir(1) + '/lib/rangy/rangy-position',
+
+        'hammer':
+            process._RJS_rootDir(1) + '/lib/hammer.min',
     },
 
     shim:

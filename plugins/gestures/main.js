@@ -2,10 +2,17 @@ define(['readium_js_plugins', 'jquery', 'hammer'], function (Plugins, $, Hammer)
 
   var SHADOW_WIDTH = 15;
 
-  Plugins.register("gestures", function (api) {
+  Plugins.register('gestures', function (api) {
     api.reader.on(ReadiumSDK.Events.CONTENT_DOCUMENT_LOADED, function ($iframe) {
+      var doc = $iframe[0].contentDocument.documentElement;
+
       // set hammer's document root
-      setupHammer(Hammer, api.reader, $iframe[0].contentDocument.documentElement);
+      setupHammer(Hammer, api.reader, doc);
+
+      // mouse events
+      doc.addEventListener('mousemove', function (event) {
+        api.reader.trigger(ReadiumSDK.Events.MOUSE_MOVE, event);
+      }, false);
     });
   });
 
@@ -24,13 +31,13 @@ function setupHammer (Hammer, reader, element) {
   hammertime.get('tap').set({ interval: 400, posThreshold: 100, threshold: 10 });
 
   // set up the hammer gesture events swiping handlers
-  hammertime.on("swipeleft", onSwipe);
-  hammertime.on("swiperight", onSwipe);
-  hammertime.on("tap", onTap);
-  hammertime.on("pinchin", onPinch);
-  hammertime.on("pinchout", onPinch);
-  hammertime.on("panmove", onPanMove);
-  hammertime.on("press", onPress);
+  hammertime.on('swipeleft', onSwipe);
+  hammertime.on('swiperight', onSwipe);
+  hammertime.on('tap', onTap);
+  hammertime.on('pinchin', onPinch);
+  hammertime.on('pinchout', onPinch);
+  hammertime.on('panmove', onPanMove);
+  hammertime.on('press', onPress);
 
   return hammertime;
 }

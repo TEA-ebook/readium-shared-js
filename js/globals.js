@@ -78,7 +78,8 @@ var Globals = {
         GESTURE_SWIPE_LEFT: "GestureSwipeLeft",
         GESTURE_SWIPE_RIGHT: "GestureSwipeRight",
         GESTURE_PRESS: "GesturePress",
-        SCRIPT_NAVIGATION_DETECTED: "ScriptNavigationDetected"
+        SCRIPT_NAVIGATION_DETECTED: "ScriptNavigationDetected",
+        MOUSE_MOVE: "MouseMove"
     },
 
     InternalEvents: {

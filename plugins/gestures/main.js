@@ -5,9 +5,10 @@ define(['readium_js_plugins', 'jquery', 'hammer'], function (Plugins, $, Hammer)
   Plugins.register('gestures', function (api) {
     api.reader.on(ReadiumSDK.Events.CONTENT_DOCUMENT_LOADED, function ($iframe) {
       var doc = $iframe[0].contentDocument.documentElement;
+      var iframe = $iframe[0].contentWindow;
 
       // set hammer's document root
-      setupHammer(Hammer, api.reader, doc);
+      setupHammer(Hammer, api.reader, iframe, doc);
 
       // mouse events
       doc.addEventListener('mousemove', function (event) {
@@ -15,16 +16,19 @@ define(['readium_js_plugins', 'jquery', 'hammer'], function (Plugins, $, Hammer)
       }, false);
     });
   });
-
-  return;
 });
 
 var onSwipe, onTap, onPinch, onPanMove, onPress;
 
-function setupHammer (Hammer, reader, element) {
-  setGesturesHandler(reader);
+function setupHammer (Hammer, reader, iframe, element) {
+  setGesturesHandler(reader, iframe);
 
-  var hammertime = new Hammer(element);
+  var hammertime = new Hammer(element, {
+    cssProps: {
+      userSelect: 'auto',
+      touchSelect: 'auto'
+    }
+  });
   hammertime.get('swipe').set({ threshold: 10, velocity: 0.3, direction: Hammer.DIRECTION_HORIZONTAL });
   hammertime.get('pinch').set({ enable: true });
   hammertime.get('pan').set({ threshold: 1 });
@@ -42,7 +46,7 @@ function setupHammer (Hammer, reader, element) {
   return hammertime;
 }
 
-function setGesturesHandler (reader, viewport) {
+function setGesturesHandler (reader, window) {
   onSwipe = function (event) {
     if (event.direction === Hammer.DIRECTION_LEFT) {
       reader.trigger(ReadiumSDK.Events.GESTURE_SWIPE_LEFT, event);
@@ -55,6 +59,13 @@ function setGesturesHandler (reader, viewport) {
     if (event.target.hasAttribute('href') || (event.target.parentNode.hasAttribute && event.target.parentNode.hasAttribute('href'))) {
       $(event.target).click();
     } else {
+      if (event.tapCount === 2) {
+        var textSelected = window.getSelection().toString();
+        if (textSelected.length > 0) {
+          reader.trigger(ReadiumSDK.Events.TEXT_SELECTED, event, textSelected);
+        }
+      }
+
       reader.trigger(ReadiumSDK.Events.GESTURE_TAP, event);
     }
   };

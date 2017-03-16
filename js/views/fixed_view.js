@@ -349,7 +349,7 @@ var FixedView = function(options, reader){
         var horScale = potentialContentSize.width / _contentMetaSize.width;
         var verScale = potentialContentSize.height / _contentMetaSize.height;
 
-        //_$viewport.css("overflow", "auto");
+        _$viewport.css("overflow", "auto");
             
         var scale, scaleRatio;
         if (_zoom.style == 'fit-width'){
@@ -363,9 +363,6 @@ var FixedView = function(options, reader){
         }
         else{
             scale = Math.min(horScale, verScale);
-
-            // no need for pan during "viewport fit" zoom
-            _$viewport.css("overflow", "hidden");
         }
 
         scaleRatio = scale / _currentScale;

@@ -1,11 +1,16 @@
 define(['readium_js_plugins', 'jquery', 'hammer'], function (Plugins, $, Hammer) {
 
-  var SHADOW_WIDTH = 15;
-
   Plugins.register('gestures', function (api) {
     api.reader.on(ReadiumSDK.Events.CONTENT_DOCUMENT_LOADED, function ($iframe) {
       var doc = $iframe[0].contentDocument.documentElement;
       var iframe = $iframe[0].contentWindow;
+
+      // remove stupid ipad safari elastic scrolling (improves UX for gestures)
+      $(doc).on('touchmove', function (e) {
+        if (isGestureHandled(api.reader)) {
+          e.preventDefault();
+        }
+      });
 
       // set hammer's document root
       setupHammer(Hammer, api.reader, iframe, doc);
@@ -16,11 +21,12 @@ define(['readium_js_plugins', 'jquery', 'hammer'], function (Plugins, $, Hammer)
       }, false);
     });
   });
+
 });
 
 var onSwipe, onTap, onPinch, onPanMove, onPress;
 
-function setupHammer (Hammer, reader, iframe, element) {
+function setupHammer(Hammer, reader, iframe, element) {
   setGesturesHandler(reader, iframe);
 
   var hammertime = new Hammer(element, {
@@ -29,6 +35,7 @@ function setupHammer (Hammer, reader, iframe, element) {
       touchSelect: 'auto'
     }
   });
+
   hammertime.get('swipe').set({ threshold: 10, velocity: 0.3, direction: Hammer.DIRECTION_HORIZONTAL });
   hammertime.get('pinch').set({ enable: true });
   hammertime.get('pan').set({ threshold: 1 });
@@ -46,7 +53,7 @@ function setupHammer (Hammer, reader, iframe, element) {
   return hammertime;
 }
 
-function setGesturesHandler (reader, window) {
+function setGesturesHandler(reader, window) {
   onSwipe = function (event) {
     if (event.direction === Hammer.DIRECTION_LEFT) {
       reader.trigger(ReadiumSDK.Events.GESTURE_SWIPE_LEFT, event);
@@ -89,4 +96,12 @@ function setGesturesHandler (reader, window) {
   onPress = function (event) {
     reader.trigger(ReadiumSDK.Events.GESTURE_PRESS, event);
   };
+}
+
+function isGestureHandled(reader) {
+  var viewType = reader.getCurrentViewType();
+
+  // ReadiumSDK.Views.ReaderView.VIEW_TYPE_COLUMNIZED = 1
+  // ReadiumSDK.Views.ReaderView.VIEW_TYPE_FIXED = 2
+  return viewType === 1 || viewType === 2;
 }

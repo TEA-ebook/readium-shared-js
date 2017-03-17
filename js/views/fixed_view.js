@@ -348,6 +348,7 @@ var FixedView = function(options, reader){
 
         var horScale = potentialContentSize.width / _contentMetaSize.width;
         var verScale = potentialContentSize.height / _contentMetaSize.height;
+        var minScale = Math.min(horScale, verScale);
 
         _$viewport.css("overflow", "auto");
             
@@ -361,9 +362,13 @@ var FixedView = function(options, reader){
         else if (_zoom.style == 'user'){
             scale = _zoom.scale;
         }
-        else{
-            scale = Math.min(horScale, verScale);
+        else {
+            scale = minScale;
         }
+
+        _$viewport.find('iframe').each(function () {
+          this.contentDocument.body.style.cursor = scale > minScale ? 'move' : 'auto';
+        });
 
         scaleRatio = scale / _currentScale;
         _currentScale = scale;

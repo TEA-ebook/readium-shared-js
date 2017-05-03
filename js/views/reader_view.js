@@ -88,8 +88,10 @@ var ReaderView = function (options) {
         _iframeLoader = new IFrameLoader({mathJaxUrl: options.mathJaxUrl});
     }
     _iframeLoader.on(Globals.Events.SCRIPT_NAVIGATION_DETECTED, function (url) {
-      console.warn('SCRIPT_NAVIGATION_DETECTED', url);
-      self.openContentUrl(url);
+      var rootUrl = self.package().rootUrl;
+      var relativePath = url.slice(url.indexOf(rootUrl) + rootUrl.length + 1);
+      console.warn('SCRIPT_NAVIGATION_DETECTED', relativePath);
+      self.openContentUrl(relativePath);
     });
 
 

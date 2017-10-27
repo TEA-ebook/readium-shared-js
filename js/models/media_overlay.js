@@ -32,9 +32,9 @@ define(["./smil_model"], function(SmilModel) {
  * @param package
  * @constructor
  */
-var MediaOverlay = function(package) {
+var MediaOverlay = function(_package) {
 
-    this.package = package;
+    this.package = _package;
     
 
     this.parallelAt = function(timeMilliseconds)

@@ -1,5 +1,5 @@
 /*!
- * jQuery JavaScript Library v2.2.3
+ * jQuery JavaScript Library v2.2.4
  * http://jquery.com/
  *
  * Includes Sizzle.js
@@ -9,7 +9,7 @@
  * Released under the MIT license
  * http://jquery.org/license
  *
- * Date: 2016-04-05T19:26Z
+ * Date: 2016-05-20T17:23Z
  */
 
 (function( global, factory ) {
@@ -65,7 +65,7 @@ var support = {};
 
 
 var
-	version = "2.2.3",
+	version = "2.2.4",
 
 	// Define a local copy of jQuery
 	jQuery = function( selector, context ) {
@@ -5006,13 +5006,14 @@ jQuery.Event.prototype = {
 	isDefaultPrevented: returnFalse,
 	isPropagationStopped: returnFalse,
 	isImmediatePropagationStopped: returnFalse,
+	isSimulated: false,
 
 	preventDefault: function() {
 		var e = this.originalEvent;
 
 		this.isDefaultPrevented = returnTrue;
 
-		if ( e ) {
+		if ( e && !this.isSimulated ) {
 			e.preventDefault();
 		}
 	},
@@ -5021,7 +5022,7 @@ jQuery.Event.prototype = {
 
 		this.isPropagationStopped = returnTrue;
 
-		if ( e ) {
+		if ( e && !this.isSimulated ) {
 			e.stopPropagation();
 		}
 	},
@@ -5030,7 +5031,7 @@ jQuery.Event.prototype = {
 
 		this.isImmediatePropagationStopped = returnTrue;
 
-		if ( e ) {
+		if ( e && !this.isSimulated ) {
 			e.stopImmediatePropagation();
 		}
 
@@ -5960,19 +5961,6 @@ function getWidthOrHeight( elem, name, extra ) {
 		val = name === "width" ? elem.offsetWidth : elem.offsetHeight,
 		styles = getStyles( elem ),
 		isBorderBox = jQuery.css( elem, "boxSizing", false, styles ) === "border-box";
-
-	// Support: IE11 only
-	// In IE 11 fullscreen elements inside of an iframe have
-	// 100x too small dimensions (gh-1764).
-	if ( document.msFullscreenElement && window.top !== window ) {
-
-		// Support: IE11 only
-		// Running getBoundingClientRect on a disconnected node
-		// in IE throws an error.
-		if ( elem.getClientRects().length ) {
-			val = Math.round( elem.getBoundingClientRect()[ name ] * 100 );
-		}
-	}
 
 	// Some non-html elements return undefined for offsetWidth, so check for null/undefined
 	// svg - https://bugzilla.mozilla.org/show_bug.cgi?id=649285
@@ -7864,6 +7852,7 @@ jQuery.extend( jQuery.event, {
 	},
 
 	// Piggyback on a donor event to simulate a different one
+	// Used only for `focus(in | out)` events
 	simulate: function( type, elem, event ) {
 		var e = jQuery.extend(
 			new jQuery.Event(),
@@ -7871,27 +7860,10 @@ jQuery.extend( jQuery.event, {
 			{
 				type: type,
 				isSimulated: true
-
-				// Previously, `originalEvent: {}` was set here, so stopPropagation call
-				// would not be triggered on donor event, since in our own
-				// jQuery.event.stopPropagation function we had a check for existence of
-				// originalEvent.stopPropagation method, so, consequently it would be a noop.
-				//
-				// But now, this "simulate" function is used only for events
-				// for which stopPropagation() is noop, so there is no need for that anymore.
-				//
-				// For the 1.x branch though, guard for "click" and "submit"
-				// events is still used, but was moved to jQuery.event.stopPropagation function
-				// because `originalEvent` should point to the original event for the constancy
-				// with other events and for more focused logic
 			}
 		);
 
 		jQuery.event.trigger( e, null, elem );
-
-		if ( e.isDefaultPrevented() ) {
-			event.preventDefault();
-		}
 	}
 
 } );
@@ -11928,7 +11900,7 @@ return jQuery;
  * URI.js - Mutating URLs
  * IPv6 Support
  *
- * Version: 1.17.1
+ * Version: 1.19.0
  *
  * Author: Rodney Rehm
  * Web: http://medialize.github.io/URI.js/
@@ -11941,7 +11913,7 @@ return jQuery;
 (function (root, factory) {
   'use strict';
   // https://github.com/umdjs/umd/blob/master/returnExports.js
-  if (typeof exports === 'object') {
+  if (typeof module === 'object' && module.exports) {
     // Node
     module.exports = factory();
   } else if (typeof define === 'function' && define.amd) {
@@ -12100,7 +12072,7 @@ return jQuery;
     if (root.IPv6 === this) {
       root.IPv6 = _IPv6;
     }
-  
+
     return this;
   }
 
@@ -12114,7 +12086,7 @@ return jQuery;
  * URI.js - Mutating URLs
  * Second Level Domain (SLD) Support
  *
- * Version: 1.17.1
+ * Version: 1.19.0
  *
  * Author: Rodney Rehm
  * Web: http://medialize.github.io/URI.js/
@@ -12127,7 +12099,7 @@ return jQuery;
 (function (root, factory) {
   'use strict';
   // https://github.com/umdjs/umd/blob/master/returnExports.js
-  if (typeof exports === 'object') {
+  if (typeof module === 'object' && module.exports) {
     // Node
     module.exports = factory();
   } else if (typeof define === 'function' && define.amd) {
@@ -12285,7 +12257,12 @@ return jQuery;
       'ye':' co com gov ltd me net org plc ',
       'yu':' ac co edu gov org ',
       'za':' ac agric alt bourse city co cybernet db edu gov grondar iaccess imt inca landesign law mil net ngo nis nom olivetti org pix school tm web ',
-      'zm':' ac co com edu gov net org sch '
+      'zm':' ac co com edu gov net org sch ',
+      // https://en.wikipedia.org/wiki/CentralNic#Second-level_domains
+      'com': 'ar br cn de eu gb gr hu jpn kr no qc ru sa se uk us uy za ',
+      'net': 'gb jp se uk ',
+      'org': 'ae',
+      'de': 'com '
     },
     // gorhill 2013-10-25: Using indexOf() instead Regexp(). Significant boost
     // in both performance and memory footprint. No initialization required.
@@ -12354,7 +12331,7 @@ return jQuery;
 /*!
  * URI.js - Mutating URLs
  *
- * Version: 1.17.1
+ * Version: 1.19.0
  *
  * Author: Rodney Rehm
  * Web: http://medialize.github.io/URI.js/
@@ -12366,7 +12343,7 @@ return jQuery;
 (function (root, factory) {
   'use strict';
   // https://github.com/umdjs/umd/blob/master/returnExports.js
-  if (typeof exports === 'object') {
+  if (typeof module === 'object' && module.exports) {
     // Node
     module.exports = factory(require('./punycode'), require('./IPv6'), require('./SecondLevelDomains'));
   } else if (typeof define === 'function' && define.amd) {
@@ -12414,6 +12391,12 @@ return jQuery;
       }
     }
 
+    if (url === null) {
+      if (_urlSupplied) {
+        throw new TypeError('null is not a valid argument for URI');
+      }
+    }
+
     this.href(url);
 
     // resolve to base according to http://dvcs.w3.org/hg/url/raw-file/tip/Overview.html#constructor
@@ -12424,7 +12407,11 @@ return jQuery;
     return this;
   }
 
-  URI.version = '1.17.1';
+  function isInteger(value) {
+    return /^[0-9]+$/.test(value);
+  }
+
+  URI.version = '1.19.0';
 
   var p = URI.prototype;
   var hasOwn = Object.prototype.hasOwnProperty;
@@ -12544,17 +12531,22 @@ return jQuery;
       query: null,
       fragment: null,
       // state
+      preventInvalidHostname: URI.preventInvalidHostname,
       duplicateQueryParameters: URI.duplicateQueryParameters,
       escapeQuerySpace: URI.escapeQuerySpace
     };
   };
+  // state: throw on invalid hostname
+  // see https://github.com/medialize/URI.js/pull/345
+  // and https://github.com/medialize/URI.js/issues/354
+  URI.preventInvalidHostname = false;
   // state: allow duplicate query parameters (a=1&a=1)
   URI.duplicateQueryParameters = false;
   // state: replaces + with %20 (space in query strings)
   URI.escapeQuerySpace = true;
   // static properties
   URI.protocol_expression = /^[a-z][a-z0-9.+-]*$/i;
-  URI.idn_expression = /[^a-z0-9\.-]/i;
+  URI.idn_expression = /[^a-z0-9\._-]/i;
   URI.punycode_expression = /(xn--)/i;
   // well, 333.444.555.666 matches, but it sure ain't no IPv4 - do we care?
   URI.ip4_expression = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
@@ -12573,7 +12565,9 @@ return jQuery;
     // everything up to the next whitespace
     end: /[\s\r\n]|$/,
     // trim trailing punctuation captured by end RegExp
-    trim: /[`!()\[\]{};:'".,<>?«»“”„‘’]+$/
+    trim: /[`!()\[\]{};:'".,<>?«»“”„‘’]+$/,
+    // balanced parens inclusion (), [], {}, <>
+    parens: /(\([^\)]*\)|\[[^\]]*\]|\{[^}]*\}|<[^>]*>)/g,
   };
   // http://www.iana.org/assignments/uri-schemes.html
   // http://en.wikipedia.org/wiki/List_of_TCP_and_UDP_port_numbers#Well-known_ports
@@ -12585,10 +12579,16 @@ return jQuery;
     ws: '80',
     wss: '443'
   };
+  // list of protocols which always require a hostname
+  URI.hostProtocols = [
+    'http',
+    'https'
+  ];
+
   // allowed hostname characters according to RFC 3986
   // ALPHA DIGIT "-" "." "_" "~" "!" "$" "&" "'" "(" ")" "*" "+" "," ";" "=" %encoded
-  // I've never seen a (non-IDN) hostname other than: ALPHA DIGIT . -
-  URI.invalid_hostname_characters = /[^a-zA-Z0-9\.-]/;
+  // I've never seen a (non-IDN) hostname other than: ALPHA DIGIT . - _
+  URI.invalid_hostname_characters = /[^a-zA-Z0-9\.\-:_]/;
   // map DOM Elements to their URI attribute
   URI.domAttributes = {
     'a': 'href',
@@ -12820,7 +12820,9 @@ return jQuery;
   URI.parse = function(string, parts) {
     var pos;
     if (!parts) {
-      parts = {};
+      parts = {
+        preventInvalidHostname: URI.preventInvalidHostname
+      };
     }
     // [protocol"://"[username[":"password]"@"]hostname[":"port]"/"?][path]["?"querystring]["#"fragment]
 
@@ -12873,6 +12875,10 @@ return jQuery;
     return parts;
   };
   URI.parseHost = function(string, parts) {
+    if (!string) {
+      string = '';
+    }
+
     // Copy chrome, IE, opera backslash-handling behavior.
     // Back slashes before the query string get converted to forward slashes
     // See: https://github.com/joyent/node/blob/386fd24f49b0e9d1a8a076592a404168faeecc34/lib/url.js#L115-L124
@@ -12918,6 +12924,14 @@ return jQuery;
     if (parts.hostname && string.substring(pos).charAt(0) !== '/') {
       pos++;
       string = '/' + string;
+    }
+
+    if (parts.preventInvalidHostname) {
+      URI.ensureValidHostname(parts.hostname, parts.protocol);
+    }
+
+    if (parts.port) {
+      URI.ensureValidPort(parts.port);
     }
 
     return string.substring(pos) || '/';
@@ -13109,6 +13123,21 @@ return jQuery;
       throw new TypeError('URI.addQuery() accepts an object, string as the name parameter');
     }
   };
+
+  URI.setQuery = function(data, name, value) {
+    if (typeof name === 'object') {
+      for (var key in name) {
+        if (hasOwn.call(name, key)) {
+          URI.setQuery(data, key, name[key]);
+        }
+      }
+    } else if (typeof name === 'string') {
+      data[name] = value === undefined ? null : value;
+    } else {
+      throw new TypeError('URI.setQuery() accepts an object, string as the name parameter');
+    }
+  };
+
   URI.removeQuery = function(data, name, value) {
     var i, length, key;
 
@@ -13295,6 +13324,7 @@ return jQuery;
     var _start = options.start || URI.findUri.start;
     var _end = options.end || URI.findUri.end;
     var _trim = options.trim || URI.findUri.trim;
+    var _parens = options.parens || URI.findUri.parens;
     var _attributeOpen = /[a-z0-9-]=["']?$/i;
 
     _start.lastIndex = 0;
@@ -13314,13 +13344,43 @@ return jQuery;
       }
 
       var end = start + string.slice(start).search(_end);
-      var slice = string.slice(start, end).replace(_trim, '');
+      var slice = string.slice(start, end);
+      // make sure we include well balanced parens
+      var parensEnd = -1;
+      while (true) {
+        var parensMatch = _parens.exec(slice);
+        if (!parensMatch) {
+          break;
+        }
+
+        var parensMatchEnd = parensMatch.index + parensMatch[0].length;
+        parensEnd = Math.max(parensEnd, parensMatchEnd);
+      }
+
+      if (parensEnd > -1) {
+        slice = slice.slice(0, parensEnd) + slice.slice(parensEnd).replace(_trim, '');
+      } else {
+        slice = slice.replace(_trim, '');
+      }
+
+      if (slice.length <= match[0].length) {
+        // the extract only contains the starting marker of a URI,
+        // e.g. "www" or "http://"
+        continue;
+      }
+
       if (options.ignore && options.ignore.test(slice)) {
         continue;
       }
 
       end = start + slice.length;
       var result = callback(slice, start, end, string);
+      if (result === undefined) {
+        _start.lastIndex = end;
+        continue;
+      }
+
+      result = String(result);
       string = string.slice(0, start) + result + string.slice(end);
       _start.lastIndex = start + result.length;
     }
@@ -13329,20 +13389,42 @@ return jQuery;
     return string;
   };
 
-  URI.ensureValidHostname = function(v) {
+  URI.ensureValidHostname = function(v, protocol) {
     // Theoretically URIs allow percent-encoding in Hostnames (according to RFC 3986)
     // they are not part of DNS and therefore ignored by URI.js
 
-    if (v.match(URI.invalid_hostname_characters)) {
+    var hasHostname = !!v; // not null and not an empty string
+    var hasProtocol = !!protocol;
+    var rejectEmptyHostname = false;
+
+    if (hasProtocol) {
+      rejectEmptyHostname = arrayContains(URI.hostProtocols, protocol);
+    }
+
+    if (rejectEmptyHostname && !hasHostname) {
+      throw new TypeError('Hostname cannot be empty, if protocol is ' + protocol);
+    } else if (v && v.match(URI.invalid_hostname_characters)) {
       // test punycode
       if (!punycode) {
-        throw new TypeError('Hostname "' + v + '" contains characters other than [A-Z0-9.-] and Punycode.js is not available');
+        throw new TypeError('Hostname "' + v + '" contains characters other than [A-Z0-9.-:_] and Punycode.js is not available');
       }
-
       if (punycode.toASCII(v).match(URI.invalid_hostname_characters)) {
-        throw new TypeError('Hostname "' + v + '" contains characters other than [A-Z0-9.-]');
+        throw new TypeError('Hostname "' + v + '" contains characters other than [A-Z0-9.-:_]');
       }
     }
+  };
+
+  URI.ensureValidPort = function (v) {
+    if (!v) {
+      return;
+    }
+
+    var port = Number(v);
+    if (isInteger(port) && (port > 0) && (port < 65536)) {
+      return;
+    }
+
+    throw new TypeError('Port "' + v + '" is not a valid port');
   };
 
   // noConflict
@@ -13573,16 +13655,15 @@ return jQuery;
   var _hostname = p.hostname;
 
   p.protocol = function(v, build) {
-    if (v !== undefined) {
-      if (v) {
-        // accept trailing ://
-        v = v.replace(/:(\/\/)?$/, '');
+    if (v) {
+      // accept trailing ://
+      v = v.replace(/:(\/\/)?$/, '');
 
-        if (!v.match(URI.protocol_expression)) {
-          throw new TypeError('Protocol "' + v + '" contains characters other than [A-Z0-9.+-] or doesn\'t start with [A-Z]');
-        }
+      if (!v.match(URI.protocol_expression)) {
+        throw new TypeError('Protocol "' + v + '" contains characters other than [A-Z0-9.+-] or doesn\'t start with [A-Z]');
       }
     }
+
     return _protocol.call(this, v, build);
   };
   p.scheme = p.protocol;
@@ -13602,9 +13683,7 @@ return jQuery;
           v = v.substring(1);
         }
 
-        if (v.match(/[^0-9]/)) {
-          throw new TypeError('Port "' + v + '" contains characters other than [0-9]');
-        }
+        URI.ensureValidPort(v);
       }
     }
     return _port.call(this, v, build);
@@ -13615,14 +13694,18 @@ return jQuery;
     }
 
     if (v !== undefined) {
-      var x = {};
+      var x = { preventInvalidHostname: this._parts.preventInvalidHostname };
       var res = URI.parseHost(v, x);
       if (res !== '/') {
         throw new TypeError('Hostname "' + v + '" contains characters other than [A-Z0-9.-]');
       }
 
       v = x.hostname;
+      if (this._parts.preventInvalidHostname) {
+        URI.ensureValidHostname(v, this._parts.protocol);
+      }
     }
+
     return _hostname.call(this, v, build);
   };
 
@@ -13740,8 +13823,12 @@ return jQuery;
         v += '.';
       }
 
+      if (v.indexOf(':') !== -1) {
+        throw new TypeError('Domains cannot contain colons');
+      }
+
       if (v) {
-        URI.ensureValidHostname(v);
+        URI.ensureValidHostname(v, this._parts.protocol);
       }
 
       this._parts.hostname = this._parts.hostname.replace(replace, v);
@@ -13780,7 +13867,11 @@ return jQuery;
         throw new TypeError('cannot set domain empty');
       }
 
-      URI.ensureValidHostname(v);
+      if (v.indexOf(':') !== -1) {
+        throw new TypeError('Domains cannot contain colons');
+      }
+
+      URI.ensureValidHostname(v, this._parts.protocol);
 
       if (!this._parts.hostname || this.is('IP')) {
         this._parts.hostname = v;
@@ -13891,7 +13982,7 @@ return jQuery;
       return v === undefined ? '' : this;
     }
 
-    if (v === undefined || v === true) {
+    if (typeof v !== 'string') {
       if (!this._parts.path || this._parts.path === '/') {
         return '';
       }
@@ -14415,7 +14506,10 @@ return jQuery;
     //
     // Readium patch >>
 
-    if (!resolved._parts.protocol) {
+    if (resolved._parts.protocol) {
+      // Directly returns even if this._parts.hostname is empty.
+      return resolved;
+    } else {
       resolved._parts.protocol = base._parts.protocol;
     }
 
@@ -14432,15 +14526,17 @@ return jQuery;
       if (!resolved._parts.query) {
         resolved._parts.query = base._parts.query;
       }
-    } else if (resolved._parts.path.substring(-2) === '..') {
-      resolved._parts.path += '/';
-    }
+    } else {
+      if (resolved._parts.path.substring(-2) === '..') {
+        resolved._parts.path += '/';
+      }
 
-    if (resolved.path().charAt(0) !== '/') {
-      basedir = base.directory();
-      basedir = basedir ? basedir : base.path().indexOf('/') === 0 ? '/' : '';
-      resolved._parts.path = (basedir ? (basedir + '/') : '') + resolved._parts.path;
-      resolved.normalizePath();
+      if (resolved.path().charAt(0) !== '/') {
+        basedir = base.directory();
+        basedir = basedir ? basedir : base.path().indexOf('/') === 0 ? '/' : '';
+        resolved._parts.path = (basedir ? (basedir + '/') : '') + resolved._parts.path;
+        resolved.normalizePath();
+      }
     }
 
     resolved.build();
@@ -14573,6 +14669,11 @@ return jQuery;
   };
 
   // state
+  p.preventInvalidHostname = function(v) {
+    this._parts.preventInvalidHostname = !!v;
+    return this;
+  };
+
   p.duplicateQueryParameters = function(v) {
     this._parts.duplicateQueryParameters = !!v;
     return this;
@@ -14801,24 +14902,42 @@ define('domReady',[],function () {
 
 define('eventEmitter',['require','exports','module'],function (require, exports, module) {'use strict';
 
-var has = Object.prototype.hasOwnProperty;
-
-//
-// We store our EE objects in a plain object whose properties are event names.
-// If `Object.create(null)` is not supported we prefix the event names with a
-// `~` to make sure that the built-in object properties are not overridden or
-// used as an attack vector.
-// We also assume that `Object.create(null)` is available when the event name
-// is an ES6 Symbol.
-//
-var prefix = typeof Object.create !== 'function' ? '~' : false;
+var has = Object.prototype.hasOwnProperty
+  , prefix = '~';
 
 /**
- * Representation of a single EventEmitter function.
+ * Constructor to create a storage for our `EE` objects.
+ * An `Events` instance is a plain object whose properties are event names.
  *
- * @param {Function} fn Event handler to be called.
- * @param {Mixed} context Context for function execution.
- * @param {Boolean} [once=false] Only emit once
+ * @constructor
+ * @api private
+ */
+function Events() {}
+
+//
+// We try to not inherit from `Object.prototype`. In some engines creating an
+// instance in this way is faster than calling `Object.create(null)` directly.
+// If `Object.create(null)` is not supported we prefix the event names with a
+// character to make sure that the built-in object properties are not
+// overridden or used as an attack vector.
+//
+if (Object.create) {
+  Events.prototype = Object.create(null);
+
+  //
+  // This hack is needed because the `__proto__` property is still inherited in
+  // some old browsers like Android 4, iPhone 5.1, Opera 11 and Safari 5.
+  //
+  if (!new Events().__proto__) prefix = false;
+}
+
+/**
+ * Representation of a single event listener.
+ *
+ * @param {Function} fn The listener function.
+ * @param {Mixed} context The context to invoke the listener with.
+ * @param {Boolean} [once=false] Specify if the listener is a one-time listener.
+ * @constructor
  * @api private
  */
 function EE(fn, context, once) {
@@ -14828,21 +14947,16 @@ function EE(fn, context, once) {
 }
 
 /**
- * Minimal EventEmitter interface that is molded against the Node.js
- * EventEmitter interface.
+ * Minimal `EventEmitter` interface that is molded against the Node.js
+ * `EventEmitter` interface.
  *
  * @constructor
  * @api public
  */
-function EventEmitter() { /* Nothing to set */ }
-
-/**
- * Hold the assigned EventEmitters by name.
- *
- * @type {Object}
- * @private
- */
-EventEmitter.prototype._events = undefined;
+function EventEmitter() {
+  this._events = new Events();
+  this._eventsCount = 0;
+}
 
 /**
  * Return an array listing the events for which the emitter has registered
@@ -14852,13 +14966,13 @@ EventEmitter.prototype._events = undefined;
  * @api public
  */
 EventEmitter.prototype.eventNames = function eventNames() {
-  var events = this._events
-    , names = []
+  var names = []
+    , events
     , name;
 
-  if (!events) return names;
+  if (this._eventsCount === 0) return names;
 
-  for (name in events) {
+  for (name in (events = this._events)) {
     if (has.call(events, name)) names.push(prefix ? name.slice(1) : name);
   }
 
@@ -14870,16 +14984,16 @@ EventEmitter.prototype.eventNames = function eventNames() {
 };
 
 /**
- * Return a list of assigned event listeners.
+ * Return the listeners registered for a given event.
  *
- * @param {String} event The events that should be listed.
- * @param {Boolean} exists We only need to know if there are listeners.
+ * @param {String|Symbol} event The event name.
+ * @param {Boolean} exists Only check if there are listeners.
  * @returns {Array|Boolean}
  * @api public
  */
 EventEmitter.prototype.listeners = function listeners(event, exists) {
   var evt = prefix ? prefix + event : event
-    , available = this._events && this._events[evt];
+    , available = this._events[evt];
 
   if (exists) return !!available;
   if (!available) return [];
@@ -14893,23 +15007,23 @@ EventEmitter.prototype.listeners = function listeners(event, exists) {
 };
 
 /**
- * Emit an event to all registered event listeners.
+ * Calls each of the listeners registered for a given event.
  *
- * @param {String} event The name of the event.
- * @returns {Boolean} Indication if we've emitted an event.
+ * @param {String|Symbol} event The event name.
+ * @returns {Boolean} `true` if the event had listeners, else `false`.
  * @api public
  */
 EventEmitter.prototype.emit = function emit(event, a1, a2, a3, a4, a5) {
   var evt = prefix ? prefix + event : event;
 
-  if (!this._events || !this._events[evt]) return false;
+  if (!this._events[evt]) return false;
 
   var listeners = this._events[evt]
     , len = arguments.length
     , args
     , i;
 
-  if ('function' === typeof listeners.fn) {
+  if (listeners.fn) {
     if (listeners.once) this.removeListener(event, listeners.fn, undefined, true);
 
     switch (len) {
@@ -14937,6 +15051,7 @@ EventEmitter.prototype.emit = function emit(event, a1, a2, a3, a4, a5) {
         case 1: listeners[i].fn.call(listeners[i].context); break;
         case 2: listeners[i].fn.call(listeners[i].context, a1); break;
         case 3: listeners[i].fn.call(listeners[i].context, a1, a2); break;
+        case 4: listeners[i].fn.call(listeners[i].context, a1, a2, a3); break;
         default:
           if (!args) for (j = 1, args = new Array(len -1); j < len; j++) {
             args[j - 1] = arguments[j];
@@ -14951,115 +15066,118 @@ EventEmitter.prototype.emit = function emit(event, a1, a2, a3, a4, a5) {
 };
 
 /**
- * Register a new EventListener for the given event.
+ * Add a listener for a given event.
  *
- * @param {String} event Name of the event.
- * @param {Function} fn Callback function.
- * @param {Mixed} [context=this] The context of the function.
+ * @param {String|Symbol} event The event name.
+ * @param {Function} fn The listener function.
+ * @param {Mixed} [context=this] The context to invoke the listener with.
+ * @returns {EventEmitter} `this`.
  * @api public
  */
 EventEmitter.prototype.on = function on(event, fn, context) {
   var listener = new EE(fn, context || this)
     , evt = prefix ? prefix + event : event;
 
-  if (!this._events) this._events = prefix ? {} : Object.create(null);
-  if (!this._events[evt]) this._events[evt] = listener;
-  else {
-    if (!this._events[evt].fn) this._events[evt].push(listener);
-    else this._events[evt] = [
-      this._events[evt], listener
-    ];
-  }
+  if (!this._events[evt]) this._events[evt] = listener, this._eventsCount++;
+  else if (!this._events[evt].fn) this._events[evt].push(listener);
+  else this._events[evt] = [this._events[evt], listener];
 
   return this;
 };
 
 /**
- * Add an EventListener that's only called once.
+ * Add a one-time listener for a given event.
  *
- * @param {String} event Name of the event.
- * @param {Function} fn Callback function.
- * @param {Mixed} [context=this] The context of the function.
+ * @param {String|Symbol} event The event name.
+ * @param {Function} fn The listener function.
+ * @param {Mixed} [context=this] The context to invoke the listener with.
+ * @returns {EventEmitter} `this`.
  * @api public
  */
 EventEmitter.prototype.once = function once(event, fn, context) {
   var listener = new EE(fn, context || this, true)
     , evt = prefix ? prefix + event : event;
 
-  if (!this._events) this._events = prefix ? {} : Object.create(null);
-  if (!this._events[evt]) this._events[evt] = listener;
-  else {
-    if (!this._events[evt].fn) this._events[evt].push(listener);
-    else this._events[evt] = [
-      this._events[evt], listener
-    ];
-  }
+  if (!this._events[evt]) this._events[evt] = listener, this._eventsCount++;
+  else if (!this._events[evt].fn) this._events[evt].push(listener);
+  else this._events[evt] = [this._events[evt], listener];
 
   return this;
 };
 
 /**
- * Remove event listeners.
+ * Remove the listeners of a given event.
  *
- * @param {String} event The event we want to remove.
- * @param {Function} fn The listener that we need to find.
- * @param {Mixed} context Only remove listeners matching this context.
- * @param {Boolean} once Only remove once listeners.
+ * @param {String|Symbol} event The event name.
+ * @param {Function} fn Only remove the listeners that match this function.
+ * @param {Mixed} context Only remove the listeners that have this context.
+ * @param {Boolean} once Only remove one-time listeners.
+ * @returns {EventEmitter} `this`.
  * @api public
  */
 EventEmitter.prototype.removeListener = function removeListener(event, fn, context, once) {
   var evt = prefix ? prefix + event : event;
 
-  if (!this._events || !this._events[evt]) return this;
-
-  var listeners = this._events[evt]
-    , events = [];
-
-  if (fn) {
-    if (listeners.fn) {
-      if (
-           listeners.fn !== fn
-        || (once && !listeners.once)
-        || (context && listeners.context !== context)
-      ) {
-        events.push(listeners);
-      }
-    } else {
-      for (var i = 0, length = listeners.length; i < length; i++) {
-        if (
-             listeners[i].fn !== fn
-          || (once && !listeners[i].once)
-          || (context && listeners[i].context !== context)
-        ) {
-          events.push(listeners[i]);
-        }
-      }
-    }
+  if (!this._events[evt]) return this;
+  if (!fn) {
+    if (--this._eventsCount === 0) this._events = new Events();
+    else delete this._events[evt];
+    return this;
   }
 
-  //
-  // Reset the array, or remove it completely if we have no more listeners.
-  //
-  if (events.length) {
-    this._events[evt] = events.length === 1 ? events[0] : events;
+  var listeners = this._events[evt];
+
+  if (listeners.fn) {
+    if (
+         listeners.fn === fn
+      && (!once || listeners.once)
+      && (!context || listeners.context === context)
+    ) {
+      if (--this._eventsCount === 0) this._events = new Events();
+      else delete this._events[evt];
+    }
   } else {
-    delete this._events[evt];
+    for (var i = 0, events = [], length = listeners.length; i < length; i++) {
+      if (
+           listeners[i].fn !== fn
+        || (once && !listeners[i].once)
+        || (context && listeners[i].context !== context)
+      ) {
+        events.push(listeners[i]);
+      }
+    }
+
+    //
+    // Reset the array, or remove it completely if we have no more listeners.
+    //
+    if (events.length) this._events[evt] = events.length === 1 ? events[0] : events;
+    else if (--this._eventsCount === 0) this._events = new Events();
+    else delete this._events[evt];
   }
 
   return this;
 };
 
 /**
- * Remove all listeners or only the listeners for the specified event.
+ * Remove all listeners, or those of the specified event.
  *
- * @param {String} event The event want to remove all listeners for.
+ * @param {String|Symbol} [event] The event name.
+ * @returns {EventEmitter} `this`.
  * @api public
  */
 EventEmitter.prototype.removeAllListeners = function removeAllListeners(event) {
-  if (!this._events) return this;
+  var evt;
 
-  if (event) delete this._events[prefix ? prefix + event : event];
-  else this._events = prefix ? {} : Object.create(null);
+  if (event) {
+    evt = prefix ? prefix + event : event;
+    if (this._events[evt]) {
+      if (--this._eventsCount === 0) this._events = new Events();
+      else delete this._events[evt];
+    }
+  } else {
+    this._events = new Events();
+    this._eventsCount = 0;
+  }
 
   return this;
 };
@@ -15081,6 +15199,11 @@ EventEmitter.prototype.setMaxListeners = function setMaxListeners() {
 // Expose the prefix.
 //
 EventEmitter.prefixed = prefix;
+
+//
+// Allow `EventEmitter` to be imported as module namespace.
+//
+EventEmitter.EventEmitter = EventEmitter;
 
 //
 // Expose the module.
@@ -22902,7 +23025,7 @@ CSSOM.CSSStyleDeclaration.prototype = {
 			this[this.length] = name;
 			this.length++;
 		}
-		this[name] = value;
+		this[name] = value + "";
 		this._importants[name] = priority;
 	},
 
@@ -23438,6 +23561,34 @@ Object.defineProperty(CSSOM.CSSFontFaceRule.prototype, "cssText", {
   get: function() {
     return "@font-face {" + this.style.cssText + "}";
   }
+});
+
+
+
+/**
+ * @constructor
+ * @see http://www.w3.org/TR/shadow-dom/#host-at-rule
+ */
+CSSOM.CSSHostRule = function CSSHostRule() {
+	CSSOM.CSSRule.call(this);
+	this.cssRules = [];
+};
+
+CSSOM.CSSHostRule.prototype = new CSSOM.CSSRule();
+CSSOM.CSSHostRule.prototype.constructor = CSSOM.CSSHostRule;
+CSSOM.CSSHostRule.prototype.type = 1001;
+//FIXME
+//CSSOM.CSSHostRule.prototype.insertRule = CSSStyleSheet.prototype.insertRule;
+//CSSOM.CSSHostRule.prototype.deleteRule = CSSStyleSheet.prototype.deleteRule;
+
+Object.defineProperty(CSSOM.CSSHostRule.prototype, "cssText", {
+	get: function() {
+		var cssTexts = [];
+		for (var i=0, length=this.cssRules.length; i < length; i++) {
+			cssTexts.push(this.cssRules[i].cssText);
+		}
+		return "@host {" + cssTexts.join("") + "}";
+	}
 });
 
 
@@ -24062,10 +24213,12 @@ CSSOM.parse = function parse(token) {
 
 	var index;
 	var buffer = "";
+	var valueParenthesisDepth = 0;
 
 	var SIGNIFICANT_WHITESPACE = {
 		"selector": true,
 		"value": true,
+		"value-parenthesis": true,
 		"atRule": true,
 		"importRule-begin": true,
 		"importRule": true,
@@ -24081,7 +24234,7 @@ CSSOM.parse = function parse(token) {
 	// @type CSSMediaRule|CSSKeyframesRule|CSSDocumentRule
 	var parentRule;
 
-	var name, priority="", styleRule, mediaRule, importRule, fontFaceRule, keyframesRule, documentRule;
+	var name, priority="", styleRule, mediaRule, importRule, fontFaceRule, keyframesRule, documentRule, hostRule;
 
 	var atKeyframesRegExp = /@(-(?:\w+-)+)?keyframes/g;
 
@@ -24187,6 +24340,13 @@ CSSOM.parse = function parse(token) {
 				i += "media".length;
 				buffer = "";
 				break;
+			} else if (token.indexOf("@host", i) === i) {
+				state = "hostRule-begin";
+				i += "host".length;
+				hostRule = new CSSOM.CSSHostRule();
+				hostRule.__starts = i;
+				buffer = "";
+				break;
 			} else if (token.indexOf("@import", i) === i) {
 				state = "importRule-begin";
 				i += "import".length;
@@ -24227,6 +24387,11 @@ CSSOM.parse = function parse(token) {
 				mediaRule.media.mediaText = buffer.trim();
 				currentScope = parentRule = mediaRule;
 				mediaRule.parentStyleSheet = styleSheet;
+				buffer = "";
+				state = "before-selector";
+			} else if (state === "hostRule-begin") {
+				currentScope = parentRule = hostRule;
+				hostRule.parentStyleSheet = styleSheet;
 				buffer = "";
 				state = "before-selector";
 			} else if (state === "fontFaceRule-begin") {
@@ -24289,8 +24454,14 @@ CSSOM.parse = function parse(token) {
 					}
 				} else {
 					state = 'value-parenthesis';
+					//always ensure this is reset to 1 on transition
+					//from value to value-parenthesis
+					valueParenthesisDepth = 1;
 					buffer += character;
 				}
+			} else if (state === 'value-parenthesis') {
+				valueParenthesisDepth++;
+				buffer += character;
 			} else {
 				buffer += character;
 			}
@@ -24298,7 +24469,8 @@ CSSOM.parse = function parse(token) {
 
 		case ")":
 			if (state === 'value-parenthesis') {
-				state = 'value';
+				valueParenthesisDepth--;
+				if (valueParenthesisDepth === 0) state = 'value';
 			}
 			buffer += character;
 			break;
@@ -24474,922 +24646,12 @@ define("cssom", (function (global) {
     };
 }(this)));
 
-/* globals define, exports, module */
-
-(function(root, definition) {
-	if (typeof define === 'function' && define.amd) {
-		// AMD. Register as an anonymous module.
-		define('FontLoader',[], definition);
-	} else if (typeof exports === 'object') {
-		// Node. Does not work with strict CommonJS, but only CommonJS-like 
-		// environments that support module.exports, like Node.
-		module.exports = definition();
-	} else {
-		// Browser globals (root is window)
-		root.FontLoader = definition();
-	}
-}(window, function() {
-	
-	var isIE = /MSIE/i.test(navigator.userAgent),
-		ieVer = null;
-	
-	// Get Internet Explorer version
-	if (isIE) {
-		var re, result;
-		re = new RegExp("MSIE ([0-9]{1,}[.0-9]{0,})");
-		result = re.exec(navigator.userAgent);
-		if (result !== null) {
-			ieVer = parseFloat(result[1]);
-		}
-	}
-
-    /**
-     * @typedef {Object} FontDescriptor
-     * @property {String} family
-     * @property {String} weight
-     * @property {String} style
-     */
-
-	/**
-	 * FontLoader detects when web fonts specified in the "fontFamiliesArray" array were loaded and rendered. Then it
-	 * notifies the specified delegate object via "fontLoaded" and "complete" methods when specific or all fonts were
-	 * loaded respectively. The use of this functions implies that the insertion of specified web fonts into the
-	 * document is done elsewhere.
-	 *
-     * The fonts parameter may be an array of strings specifying the font-families with optionally specified font
-     * variations using FVD notation or font descriptor objects of the following type:
-     * {
-     *     family: "fontFamily",
-     *     weight: 400,
-     *     style: 'normal'
-     * }
-     * Where styles may ne one of the following: normal, bold, italic or oblique. If only string is specified, the
-     * default used weight and style are 400 and 'normal' respectively.
-     *
-	 * If all the specified fonts were loaded before the timeout was reached, the "complete" delegate method will be
-     * invoked with "null" error parameter. Otherwise, if timeout was reached before all specified fonts were loaded,
-     * the "complete" method will be invoked with an error object with two fields: the "message" string and the
-     * "notLoadedFonts" array of FontDescriptor objects of all the fonts that weren't loaded.
-	 *
-	 * @param {Array.<String|FontDescriptor>} fonts   Array of font-family strings or font descriptor objects.
-	 * @param {Object}        delegate                Delegate object whose callback methods will be invoked in its own context.
-	 * @param {Function}      [delegate.complete]     Called when all fonts were loaded or the timeout was reached.
-	 * @param {Function}      [delegate.fontLoaded]   Called for each loaded font with its font-family string as its single parameter.
-	 * @param {Number}        [timeout=3000]          Timeout in milliseconds. Pass "null" to disable timeout.
-	 * @param {HTMLDocument}  [contextDocument]       The DOM tree context to use, if none provided then it will be the document.
-	 * @constructor
-	 */
-	function FontLoader(fonts, delegate, timeout, contextDocument) {
-		// Public
-		this.delegate = delegate;
-		this.timeout = (typeof timeout !== "undefined") ? timeout : 3000;
-
-		// Private
-        this._fontsArray = this._parseFonts(fonts);
-		this._testDiv = null;
-		this._testContainer = null;
-		this._adobeBlankSizeWatcher = null;
-		this._sizeWatchers = [];
-		this._timeoutId = null;
-		this._intervalId = null;
-		this._intervalDelay = 50;
-		this._numberOfLoadedFonts = 0;
-		this._numberOfFonts = this._fontsArray.length;
-		this._fontsMap = {};
-		this._finished = false;
-		this._document = contextDocument || document;
-	}
-
-	FontLoader.useAdobeBlank = !isIE || ieVer >= 11.0;
-	FontLoader.useResizeEvent = isIE && ieVer < 11.0 && typeof document.attachEvent !== "undefined";
-	FontLoader.useIntervalChecking = window.opera || (isIE && ieVer < 11.0 && !FontLoader.useResizeEvent);
-	FontLoader.referenceText = " !\"\\#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_`abcdefghijklmnopqrstuvwxyz{|}~";
-	FontLoader.referenceFontFamilies = FontLoader.useAdobeBlank ? ["AdobeBlank"] : ["serif", "cursive"];
-    FontLoader.adobeBlankFontFaceStyleId = "fontLoaderAdobeBlankFontFace";
-    FontLoader.adobeBlankReferenceSize = null;
-	FontLoader.referenceFontFamilyVariationSizes = {};
-	FontLoader.adobeBlankFontFaceRule = "@font-face{ font-family:AdobeBlank; src:url('data:font/opentype;base64,T1RUTwAKAIAAAwAgQ0ZGIM6ZbkwAAEPEAAAZM0RTSUcAAAABAABtAAAAAAhPUy8yAR6vMwAAARAAAABgY21hcDqI98oAACjEAAAa4GhlYWT+BQILAAAArAAAADZoaGVhCCID7wAAAOQAAAAkaG10eAPoAHwAAFz4AAAQBm1heHAIAVAAAAABCAAAAAZuYW1lD/tWxwAAAXAAACdScG9zdP+4ADIAAEOkAAAAIAABAAAAAQj1Snw1O18PPPUAAwPoAAAAAM2C2p8AAAAAzYLanwB8/4gDbANwAAAAAwACAAAAAAAAAAEAAANw/4gAyAPoAHwAfANsAAEAAAAAAAAAAAAAAAAAAAACAABQAAgBAAAABAAAAZAABQAAAooCWAAAAEsCigJYAAABXgAyANwAAAAAAAAAAAAAAAD3/67/+9///w/gAD8AAAAAQURCRQHAAAD//wNw/4gAyANwAHhgLwH/AAAAAAAAAAAAAAAgAAAAAAARANIAAQAAAAAAAQALAAAAAQAAAAAAAgAHAAsAAQAAAAAAAwAbABIAAQAAAAAABAALAAAAAQAAAAAABQA5AC0AAQAAAAAABgAKAGYAAwABBAkAAABuAHAAAwABBAkAAQAWAN4AAwABBAkAAgAOAPQAAwABBAkAAwA2AQIAAwABBAkABAAWAN4AAwABBAkABQByATgAAwABBAkABgAUAaoAAwABBAkACAA0Ab4AAwABBAkACwA0AfIAAwABBAkADSQSAiYAAwABBAkADgBIJjhBZG9iZSBCbGFua1JlZ3VsYXIxLjAzNTtBREJFO0Fkb2JlQmxhbms7QURPQkVWZXJzaW9uIDEuMDM1O1BTIDEuMDAzO2hvdGNvbnYgMS4wLjcwO21ha2VvdGYubGliMi41LjU5MDBBZG9iZUJsYW5rAKkAIAAyADAAMQAzACAAQQBkAG8AYgBlACAAUwB5AHMAdABlAG0AcwAgAEkAbgBjAG8AcgBwAG8AcgBhAHQAZQBkAC4AIABBAGwAbAAgAFIAaQBnAGgAdABzACAAUgBlAHMAZQByAHYAZQBkAC4AQQBkAG8AYgBlACAAQgBsAGEAbgBrAFIAZQBnAHUAbABhAHIAMQAuADAAMwA1ADsAQQBEAEIARQA7AEEAZABvAGIAZQBCAGwAYQBuAGsAOwBBAEQATwBCAEUAVgBlAHIAcwBpAG8AbgAgADEALgAwADMANQA7AFAAUwAgADEALgAwADAAMwA7AGgAbwB0AGMAbwBuAHYAIAAxAC4AMAAuADcAMAA7AG0AYQBrAGUAbwB0AGYALgBsAGkAYgAyAC4ANQAuADUAOQAwADAAQQBkAG8AYgBlAEIAbABhAG4AawBBAGQAbwBiAGUAIABTAHkAcwB0AGUAbQBzACAASQBuAGMAbwByAHAAbwByAGEAdABlAGQAaAB0AHQAcAA6AC8ALwB3AHcAdwAuAGEAZABvAGIAZQAuAGMAbwBtAC8AdAB5AHAAZQAvAEEAZABvAGIAZQAgAEIAbABhAG4AawAgAGkAcwAgAHIAZQBsAGUAYQBzAGUAZAAgAHUAbgBkAGUAcgAgAHQAaABlACAAUwBJAEwAIABPAHAAZQBuACAARgBvAG4AdAAgAEwAaQBjAGUAbgBzAGUAIAAtACAAcABsAGUAYQBzAGUAIAByAGUAYQBkACAAaQB0ACAAYwBhAHIAZQBmAHUAbABsAHkAIABhAG4AZAAgAGQAbwAgAG4AbwB0ACAAZABvAHcAbgBsAG8AYQBkACAAdABoAGUAIABmAG8AbgB0AHMAIAB1AG4AbABlAHMAcwAgAHkAbwB1ACAAYQBnAHIAZQBlACAAdABvACAAdABoAGUAIAB0AGgAZQAgAHQAZQByAG0AcwAgAG8AZgAgAHQAaABlACAAbABpAGMAZQBuAHMAZQA6AA0ACgANAAoAQwBvAHAAeQByAGkAZwBoAHQAIACpACAAMgAwADEAMwAgAEEAZABvAGIAZQAgAFMAeQBzAHQAZQBtAHMAIABJAG4AYwBvAHIAcABvAHIAYQB0AGUAZAAgACgAaAB0AHQAcAA6AC8ALwB3AHcAdwAuAGEAZABvAGIAZQAuAGMAbwBtAC8AKQAsACAAdwBpAHQAaAAgAFIAZQBzAGUAcgB2AGUAZAAgAEYAbwBuAHQAIABOAGEAbQBlACAAQQBkAG8AYgBlACAAQgBsAGEAbgBrAA0ACgANAAoAVABoAGkAcwAgAEYAbwBuAHQAIABTAG8AZgB0AHcAYQByAGUAIABpAHMAIABsAGkAYwBlAG4AcwBlAGQAIAB1AG4AZABlAHIAIAB0AGgAZQAgAFMASQBMACAATwBwAGUAbgAgAEYAbwBuAHQAIABMAGkAYwBlAG4AcwBlACwAIABWAGUAcgBzAGkAbwBuACAAMQAuADEALgANAAoADQAKAFQAaABpAHMAIABsAGkAYwBlAG4AcwBlACAAaQBzACAAYwBvAHAAaQBlAGQAIABiAGUAbABvAHcALAAgAGEAbgBkACAAaQBzACAAYQBsAHMAbwAgAGEAdgBhAGkAbABhAGIAbABlACAAdwBpAHQAaAAgAGEAIABGAEEAUQAgAGEAdAA6ACAAaAB0AHQAcAA6AC8ALwBzAGMAcgBpAHAAdABzAC4AcwBpAGwALgBvAHIAZwAvAE8ARgBMAA0ACgANAAoALQAtAC0ALQAtAC0ALQAtAC0ALQAtAC0ALQAtAC0ALQAtAC0ALQAtAC0ALQAtAC0ALQAtAC0ALQAtAC0ALQAtAC0ALQAtAC0ALQAtAC0ALQAtAC0ALQAtAC0ALQAtAC0ALQAtAC0ALQAtAC0ALQAtAC0ALQAtAA0ACgBTAEkATAAgAE8AUABFAE4AIABGAE8ATgBUACAATABJAEMARQBOAFMARQAgAFYAZQByAHMAaQBvAG4AIAAxAC4AMQAgAC0AIAAyADYAIABGAGUAYgByAHUAYQByAHkAIAAyADAAMAA3AA0ACgAtAC0ALQAtAC0ALQAtAC0ALQAtAC0ALQAtAC0ALQAtAC0ALQAtAC0ALQAtAC0ALQAtAC0ALQAtAC0ALQAtAC0ALQAtAC0ALQAtAC0ALQAtAC0ALQAtAC0ALQAtAC0ALQAtAC0ALQAtAC0ALQAtAC0ALQAtAC0ADQAKAA0ACgBQAFIARQBBAE0AQgBMAEUADQAKAFQAaABlACAAZwBvAGEAbABzACAAbwBmACAAdABoAGUAIABPAHAAZQBuACAARgBvAG4AdAAgAEwAaQBjAGUAbgBzAGUAIAAoAE8ARgBMACkAIABhAHIAZQAgAHQAbwAgAHMAdABpAG0AdQBsAGEAdABlACAAdwBvAHIAbABkAHcAaQBkAGUAIABkAGUAdgBlAGwAbwBwAG0AZQBuAHQAIABvAGYAIABjAG8AbABsAGEAYgBvAHIAYQB0AGkAdgBlACAAZgBvAG4AdAAgAHAAcgBvAGoAZQBjAHQAcwAsACAAdABvACAAcwB1AHAAcABvAHIAdAAgAHQAaABlACAAZgBvAG4AdAAgAGMAcgBlAGEAdABpAG8AbgAgAGUAZgBmAG8AcgB0AHMAIABvAGYAIABhAGMAYQBkAGUAbQBpAGMAIABhAG4AZAAgAGwAaQBuAGcAdQBpAHMAdABpAGMAIABjAG8AbQBtAHUAbgBpAHQAaQBlAHMALAAgAGEAbgBkACAAdABvACAAcAByAG8AdgBpAGQAZQAgAGEAIABmAHIAZQBlACAAYQBuAGQAIABvAHAAZQBuACAAZgByAGEAbQBlAHcAbwByAGsAIABpAG4AIAB3AGgAaQBjAGgAIABmAG8AbgB0AHMAIABtAGEAeQAgAGIAZQAgAHMAaABhAHIAZQBkACAAYQBuAGQAIABpAG0AcAByAG8AdgBlAGQAIABpAG4AIABwAGEAcgB0AG4AZQByAHMAaABpAHAAIAB3AGkAdABoACAAbwB0AGgAZQByAHMALgANAAoADQAKAFQAaABlACAATwBGAEwAIABhAGwAbABvAHcAcwAgAHQAaABlACAAbABpAGMAZQBuAHMAZQBkACAAZgBvAG4AdABzACAAdABvACAAYgBlACAAdQBzAGUAZAAsACAAcwB0AHUAZABpAGUAZAAsACAAbQBvAGQAaQBmAGkAZQBkACAAYQBuAGQAIAByAGUAZABpAHMAdAByAGkAYgB1AHQAZQBkACAAZgByAGUAZQBsAHkAIABhAHMAIABsAG8AbgBnACAAYQBzACAAdABoAGUAeQAgAGEAcgBlACAAbgBvAHQAIABzAG8AbABkACAAYgB5ACAAdABoAGUAbQBzAGUAbAB2AGUAcwAuACAAVABoAGUAIABmAG8AbgB0AHMALAAgAGkAbgBjAGwAdQBkAGkAbgBnACAAYQBuAHkAIABkAGUAcgBpAHYAYQB0AGkAdgBlACAAdwBvAHIAawBzACwAIABjAGEAbgAgAGIAZQAgAGIAdQBuAGQAbABlAGQALAAgAGUAbQBiAGUAZABkAGUAZAAsACAAcgBlAGQAaQBzAHQAcgBpAGIAdQB0AGUAZAAgAGEAbgBkAC8AbwByACAAcwBvAGwAZAAgAHcAaQB0AGgAIABhAG4AeQAgAHMAbwBmAHQAdwBhAHIAZQAgAHAAcgBvAHYAaQBkAGUAZAAgAHQAaABhAHQAIABhAG4AeQAgAHIAZQBzAGUAcgB2AGUAZAAgAG4AYQBtAGUAcwAgAGEAcgBlACAAbgBvAHQAIAB1AHMAZQBkACAAYgB5ACAAZABlAHIAaQB2AGEAdABpAHYAZQAgAHcAbwByAGsAcwAuACAAVABoAGUAIABmAG8AbgB0AHMAIABhAG4AZAAgAGQAZQByAGkAdgBhAHQAaQB2AGUAcwAsACAAaABvAHcAZQB2AGUAcgAsACAAYwBhAG4AbgBvAHQAIABiAGUAIAByAGUAbABlAGEAcwBlAGQAIAB1AG4AZABlAHIAIABhAG4AeQAgAG8AdABoAGUAcgAgAHQAeQBwAGUAIABvAGYAIABsAGkAYwBlAG4AcwBlAC4AIABUAGgAZQAgAHIAZQBxAHUAaQByAGUAbQBlAG4AdAAgAGYAbwByACAAZgBvAG4AdABzACAAdABvACAAcgBlAG0AYQBpAG4AIAB1AG4AZABlAHIAIAB0AGgAaQBzACAAbABpAGMAZQBuAHMAZQAgAGQAbwBlAHMAIABuAG8AdAAgAGEAcABwAGwAeQAgAHQAbwAgAGEAbgB5ACAAZABvAGMAdQBtAGUAbgB0ACAAYwByAGUAYQB0AGUAZAAgAHUAcwBpAG4AZwAgAHQAaABlACAAZgBvAG4AdABzACAAbwByACAAdABoAGUAaQByACAAZABlAHIAaQB2AGEAdABpAHYAZQBzAC4ADQAKAA0ACgBEAEUARgBJAE4ASQBUAEkATwBOAFMADQAKACIARgBvAG4AdAAgAFMAbwBmAHQAdwBhAHIAZQAiACAAcgBlAGYAZQByAHMAIAB0AG8AIAB0AGgAZQAgAHMAZQB0ACAAbwBmACAAZgBpAGwAZQBzACAAcgBlAGwAZQBhAHMAZQBkACAAYgB5ACAAdABoAGUAIABDAG8AcAB5AHIAaQBnAGgAdAAgAEgAbwBsAGQAZQByACgAcwApACAAdQBuAGQAZQByACAAdABoAGkAcwAgAGwAaQBjAGUAbgBzAGUAIABhAG4AZAAgAGMAbABlAGEAcgBsAHkAIABtAGEAcgBrAGUAZAAgAGEAcwAgAHMAdQBjAGgALgAgAFQAaABpAHMAIABtAGEAeQAgAGkAbgBjAGwAdQBkAGUAIABzAG8AdQByAGMAZQAgAGYAaQBsAGUAcwAsACAAYgB1AGkAbABkACAAcwBjAHIAaQBwAHQAcwAgAGEAbgBkACAAZABvAGMAdQBtAGUAbgB0AGEAdABpAG8AbgAuAA0ACgANAAoAIgBSAGUAcwBlAHIAdgBlAGQAIABGAG8AbgB0ACAATgBhAG0AZQAiACAAcgBlAGYAZQByAHMAIAB0AG8AIABhAG4AeQAgAG4AYQBtAGUAcwAgAHMAcABlAGMAaQBmAGkAZQBkACAAYQBzACAAcwB1AGMAaAAgAGEAZgB0AGUAcgAgAHQAaABlACAAYwBvAHAAeQByAGkAZwBoAHQAIABzAHQAYQB0AGUAbQBlAG4AdAAoAHMAKQAuAA0ACgANAAoAIgBPAHIAaQBnAGkAbgBhAGwAIABWAGUAcgBzAGkAbwBuACIAIAByAGUAZgBlAHIAcwAgAHQAbwAgAHQAaABlACAAYwBvAGwAbABlAGMAdABpAG8AbgAgAG8AZgAgAEYAbwBuAHQAIABTAG8AZgB0AHcAYQByAGUAIABjAG8AbQBwAG8AbgBlAG4AdABzACAAYQBzACAAZABpAHMAdAByAGkAYgB1AHQAZQBkACAAYgB5ACAAdABoAGUAIABDAG8AcAB5AHIAaQBnAGgAdAAgAEgAbwBsAGQAZQByACgAcwApAC4ADQAKAA0ACgAiAE0AbwBkAGkAZgBpAGUAZAAgAFYAZQByAHMAaQBvAG4AIgAgAHIAZQBmAGUAcgBzACAAdABvACAAYQBuAHkAIABkAGUAcgBpAHYAYQB0AGkAdgBlACAAbQBhAGQAZQAgAGIAeQAgAGEAZABkAGkAbgBnACAAdABvACwAIABkAGUAbABlAHQAaQBuAGcALAAgAG8AcgAgAHMAdQBiAHMAdABpAHQAdQB0AGkAbgBnACAALQAtACAAaQBuACAAcABhAHIAdAAgAG8AcgAgAGkAbgAgAHcAaABvAGwAZQAgAC0ALQAgAGEAbgB5ACAAbwBmACAAdABoAGUAIABjAG8AbQBwAG8AbgBlAG4AdABzACAAbwBmACAAdABoAGUAIABPAHIAaQBnAGkAbgBhAGwAIABWAGUAcgBzAGkAbwBuACwAIABiAHkAIABjAGgAYQBuAGcAaQBuAGcAIABmAG8AcgBtAGEAdABzACAAbwByACAAYgB5ACAAcABvAHIAdABpAG4AZwAgAHQAaABlACAARgBvAG4AdAAgAFMAbwBmAHQAdwBhAHIAZQAgAHQAbwAgAGEAIABuAGUAdwAgAGUAbgB2AGkAcgBvAG4AbQBlAG4AdAAuAA0ACgANAAoAIgBBAHUAdABoAG8AcgAiACAAcgBlAGYAZQByAHMAIAB0AG8AIABhAG4AeQAgAGQAZQBzAGkAZwBuAGUAcgAsACAAZQBuAGcAaQBuAGUAZQByACwAIABwAHIAbwBnAHIAYQBtAG0AZQByACwAIAB0AGUAYwBoAG4AaQBjAGEAbAAgAHcAcgBpAHQAZQByACAAbwByACAAbwB0AGgAZQByACAAcABlAHIAcwBvAG4AIAB3AGgAbwAgAGMAbwBuAHQAcgBpAGIAdQB0AGUAZAAgAHQAbwAgAHQAaABlACAARgBvAG4AdAAgAFMAbwBmAHQAdwBhAHIAZQAuAA0ACgANAAoAUABFAFIATQBJAFMAUwBJAE8ATgAgACYAIABDAE8ATgBEAEkAVABJAE8ATgBTAA0ACgBQAGUAcgBtAGkAcwBzAGkAbwBuACAAaQBzACAAaABlAHIAZQBiAHkAIABnAHIAYQBuAHQAZQBkACwAIABmAHIAZQBlACAAbwBmACAAYwBoAGEAcgBnAGUALAAgAHQAbwAgAGEAbgB5ACAAcABlAHIAcwBvAG4AIABvAGIAdABhAGkAbgBpAG4AZwAgAGEAIABjAG8AcAB5ACAAbwBmACAAdABoAGUAIABGAG8AbgB0ACAAUwBvAGYAdAB3AGEAcgBlACwAIAB0AG8AIAB1AHMAZQAsACAAcwB0AHUAZAB5ACwAIABjAG8AcAB5ACwAIABtAGUAcgBnAGUALAAgAGUAbQBiAGUAZAAsACAAbQBvAGQAaQBmAHkALAAgAHIAZQBkAGkAcwB0AHIAaQBiAHUAdABlACwAIABhAG4AZAAgAHMAZQBsAGwAIABtAG8AZABpAGYAaQBlAGQAIABhAG4AZAAgAHUAbgBtAG8AZABpAGYAaQBlAGQAIABjAG8AcABpAGUAcwAgAG8AZgAgAHQAaABlACAARgBvAG4AdAAgAFMAbwBmAHQAdwBhAHIAZQAsACAAcwB1AGIAagBlAGMAdAAgAHQAbwAgAHQAaABlACAAZgBvAGwAbABvAHcAaQBuAGcAIABjAG8AbgBkAGkAdABpAG8AbgBzADoADQAKAA0ACgAxACkAIABOAGUAaQB0AGgAZQByACAAdABoAGUAIABGAG8AbgB0ACAAUwBvAGYAdAB3AGEAcgBlACAAbgBvAHIAIABhAG4AeQAgAG8AZgAgAGkAdABzACAAaQBuAGQAaQB2AGkAZAB1AGEAbAAgAGMAbwBtAHAAbwBuAGUAbgB0AHMALAAgAGkAbgAgAE8AcgBpAGcAaQBuAGEAbAAgAG8AcgAgAE0AbwBkAGkAZgBpAGUAZAAgAFYAZQByAHMAaQBvAG4AcwAsACAAbQBhAHkAIABiAGUAIABzAG8AbABkACAAYgB5ACAAaQB0AHMAZQBsAGYALgANAAoADQAKADIAKQAgAE8AcgBpAGcAaQBuAGEAbAAgAG8AcgAgAE0AbwBkAGkAZgBpAGUAZAAgAFYAZQByAHMAaQBvAG4AcwAgAG8AZgAgAHQAaABlACAARgBvAG4AdAAgAFMAbwBmAHQAdwBhAHIAZQAgAG0AYQB5ACAAYgBlACAAYgB1AG4AZABsAGUAZAAsACAAcgBlAGQAaQBzAHQAcgBpAGIAdQB0AGUAZAAgAGEAbgBkAC8AbwByACAAcwBvAGwAZAAgAHcAaQB0AGgAIABhAG4AeQAgAHMAbwBmAHQAdwBhAHIAZQAsACAAcAByAG8AdgBpAGQAZQBkACAAdABoAGEAdAAgAGUAYQBjAGgAIABjAG8AcAB5ACAAYwBvAG4AdABhAGkAbgBzACAAdABoAGUAIABhAGIAbwB2AGUAIABjAG8AcAB5AHIAaQBnAGgAdAAgAG4AbwB0AGkAYwBlACAAYQBuAGQAIAB0AGgAaQBzACAAbABpAGMAZQBuAHMAZQAuACAAVABoAGUAcwBlACAAYwBhAG4AIABiAGUAIABpAG4AYwBsAHUAZABlAGQAIABlAGkAdABoAGUAcgAgAGEAcwAgAHMAdABhAG4AZAAtAGEAbABvAG4AZQAgAHQAZQB4AHQAIABmAGkAbABlAHMALAAgAGgAdQBtAGEAbgAtAHIAZQBhAGQAYQBiAGwAZQAgAGgAZQBhAGQAZQByAHMAIABvAHIAIABpAG4AIAB0AGgAZQAgAGEAcABwAHIAbwBwAHIAaQBhAHQAZQAgAG0AYQBjAGgAaQBuAGUALQByAGUAYQBkAGEAYgBsAGUAIABtAGUAdABhAGQAYQB0AGEAIABmAGkAZQBsAGQAcwAgAHcAaQB0AGgAaQBuACAAdABlAHgAdAAgAG8AcgAgAGIAaQBuAGEAcgB5ACAAZgBpAGwAZQBzACAAYQBzACAAbABvAG4AZwAgAGEAcwAgAHQAaABvAHMAZQAgAGYAaQBlAGwAZABzACAAYwBhAG4AIABiAGUAIABlAGEAcwBpAGwAeQAgAHYAaQBlAHcAZQBkACAAYgB5ACAAdABoAGUAIAB1AHMAZQByAC4ADQAKAA0ACgAzACkAIABOAG8AIABNAG8AZABpAGYAaQBlAGQAIABWAGUAcgBzAGkAbwBuACAAbwBmACAAdABoAGUAIABGAG8AbgB0ACAAUwBvAGYAdAB3AGEAcgBlACAAbQBhAHkAIAB1AHMAZQAgAHQAaABlACAAUgBlAHMAZQByAHYAZQBkACAARgBvAG4AdAAgAE4AYQBtAGUAKABzACkAIAB1AG4AbABlAHMAcwAgAGUAeABwAGwAaQBjAGkAdAAgAHcAcgBpAHQAdABlAG4AIABwAGUAcgBtAGkAcwBzAGkAbwBuACAAaQBzACAAZwByAGEAbgB0AGUAZAAgAGIAeQAgAHQAaABlACAAYwBvAHIAcgBlAHMAcABvAG4AZABpAG4AZwAgAEMAbwBwAHkAcgBpAGcAaAB0ACAASABvAGwAZABlAHIALgAgAFQAaABpAHMAIAByAGUAcwB0AHIAaQBjAHQAaQBvAG4AIABvAG4AbAB5ACAAYQBwAHAAbABpAGUAcwAgAHQAbwAgAHQAaABlACAAcAByAGkAbQBhAHIAeQAgAGYAbwBuAHQAIABuAGEAbQBlACAAYQBzACAAcAByAGUAcwBlAG4AdABlAGQAIAB0AG8AIAB0AGgAZQAgAHUAcwBlAHIAcwAuAA0ACgANAAoANAApACAAVABoAGUAIABuAGEAbQBlACgAcwApACAAbwBmACAAdABoAGUAIABDAG8AcAB5AHIAaQBnAGgAdAAgAEgAbwBsAGQAZQByACgAcwApACAAbwByACAAdABoAGUAIABBAHUAdABoAG8AcgAoAHMAKQAgAG8AZgAgAHQAaABlACAARgBvAG4AdAAgAFMAbwBmAHQAdwBhAHIAZQAgAHMAaABhAGwAbAAgAG4AbwB0ACAAYgBlACAAdQBzAGUAZAAgAHQAbwAgAHAAcgBvAG0AbwB0AGUALAAgAGUAbgBkAG8AcgBzAGUAIABvAHIAIABhAGQAdgBlAHIAdABpAHMAZQAgAGEAbgB5ACAATQBvAGQAaQBmAGkAZQBkACAAVgBlAHIAcwBpAG8AbgAsACAAZQB4AGMAZQBwAHQAIAB0AG8AIABhAGMAawBuAG8AdwBsAGUAZABnAGUAIAB0AGgAZQAgAGMAbwBuAHQAcgBpAGIAdQB0AGkAbwBuACgAcwApACAAbwBmACAAdABoAGUAIABDAG8AcAB5AHIAaQBnAGgAdAAgAEgAbwBsAGQAZQByACgAcwApACAAYQBuAGQAIAB0AGgAZQAgAEEAdQB0AGgAbwByACgAcwApACAAbwByACAAdwBpAHQAaAAgAHQAaABlAGkAcgAgAGUAeABwAGwAaQBjAGkAdAAgAHcAcgBpAHQAdABlAG4AIABwAGUAcgBtAGkAcwBzAGkAbwBuAC4ADQAKAA0ACgA1ACkAIABUAGgAZQAgAEYAbwBuAHQAIABTAG8AZgB0AHcAYQByAGUALAAgAG0AbwBkAGkAZgBpAGUAZAAgAG8AcgAgAHUAbgBtAG8AZABpAGYAaQBlAGQALAAgAGkAbgAgAHAAYQByAHQAIABvAHIAIABpAG4AIAB3AGgAbwBsAGUALAAgAG0AdQBzAHQAIABiAGUAIABkAGkAcwB0AHIAaQBiAHUAdABlAGQAIABlAG4AdABpAHIAZQBsAHkAIAB1AG4AZABlAHIAIAB0AGgAaQBzACAAbABpAGMAZQBuAHMAZQAsACAAYQBuAGQAIABtAHUAcwB0ACAAbgBvAHQAIABiAGUAIABkAGkAcwB0AHIAaQBiAHUAdABlAGQAIAB1AG4AZABlAHIAIABhAG4AeQAgAG8AdABoAGUAcgAgAGwAaQBjAGUAbgBzAGUALgAgAFQAaABlACAAcgBlAHEAdQBpAHIAZQBtAGUAbgB0ACAAZgBvAHIAIABmAG8AbgB0AHMAIAB0AG8AIAByAGUAbQBhAGkAbgAgAHUAbgBkAGUAcgAgAHQAaABpAHMAIABsAGkAYwBlAG4AcwBlACAAZABvAGUAcwAgAG4AbwB0ACAAYQBwAHAAbAB5ACAAdABvACAAYQBuAHkAIABkAG8AYwB1AG0AZQBuAHQAIABjAHIAZQBhAHQAZQBkACAAdQBzAGkAbgBnACAAdABoAGUAIABGAG8AbgB0ACAAUwBvAGYAdAB3AGEAcgBlAC4ADQAKAA0ACgBUAEUAUgBNAEkATgBBAFQASQBPAE4ADQAKAFQAaABpAHMAIABsAGkAYwBlAG4AcwBlACAAYgBlAGMAbwBtAGUAcwAgAG4AdQBsAGwAIABhAG4AZAAgAHYAbwBpAGQAIABpAGYAIABhAG4AeQAgAG8AZgAgAHQAaABlACAAYQBiAG8AdgBlACAAYwBvAG4AZABpAHQAaQBvAG4AcwAgAGEAcgBlACAAbgBvAHQAIABtAGUAdAAuAA0ACgANAAoARABJAFMAQwBMAEEASQBNAEUAUgANAAoAVABIAEUAIABGAE8ATgBUACAAUwBPAEYAVABXAEEAUgBFACAASQBTACAAUABSAE8AVgBJAEQARQBEACAAIgBBAFMAIABJAFMAIgAsACAAVwBJAFQASABPAFUAVAAgAFcAQQBSAFIAQQBOAFQAWQAgAE8ARgAgAEEATgBZACAASwBJAE4ARAAsACAARQBYAFAAUgBFAFMAUwAgAE8AUgAgAEkATQBQAEwASQBFAEQALAAgAEkATgBDAEwAVQBEAEkATgBHACAAQgBVAFQAIABOAE8AVAAgAEwASQBNAEkAVABFAEQAIABUAE8AIABBAE4AWQAgAFcAQQBSAFIAQQBOAFQASQBFAFMAIABPAEYAIABNAEUAUgBDAEgAQQBOAFQAQQBCAEkATABJAFQAWQAsACAARgBJAFQATgBFAFMAUwAgAEYATwBSACAAQQAgAFAAQQBSAFQASQBDAFUATABBAFIAIABQAFUAUgBQAE8AUwBFACAAQQBOAEQAIABOAE8ATgBJAE4ARgBSAEkATgBHAEUATQBFAE4AVAAgAE8ARgAgAEMATwBQAFkAUgBJAEcASABUACwAIABQAEEAVABFAE4AVAAsACAAVABSAEEARABFAE0AQQBSAEsALAAgAE8AUgAgAE8AVABIAEUAUgAgAFIASQBHAEgAVAAuACAASQBOACAATgBPACAARQBWAEUATgBUACAAUwBIAEEATABMACAAVABIAEUAIABDAE8AUABZAFIASQBHAEgAVAAgAEgATwBMAEQARQBSACAAQgBFACAATABJAEEAQgBMAEUAIABGAE8AUgAgAEEATgBZACAAQwBMAEEASQBNACwAIABEAEEATQBBAEcARQBTACAATwBSACAATwBUAEgARQBSACAATABJAEEAQgBJAEwASQBUAFkALAAgAEkATgBDAEwAVQBEAEkATgBHACAAQQBOAFkAIABHAEUATgBFAFIAQQBMACwAIABTAFAARQBDAEkAQQBMACwAIABJAE4ARABJAFIARQBDAFQALAAgAEkATgBDAEkARABFAE4AVABBAEwALAAgAE8AUgAgAEMATwBOAFMARQBRAFUARQBOAFQASQBBAEwAIABEAEEATQBBAEcARQBTACwAIABXAEgARQBUAEgARQBSACAASQBOACAAQQBOACAAQQBDAFQASQBPAE4AIABPAEYAIABDAE8ATgBUAFIAQQBDAFQALAAgAFQATwBSAFQAIABPAFIAIABPAFQASABFAFIAVwBJAFMARQAsACAAQQBSAEkAUwBJAE4ARwAgAEYAUgBPAE0ALAAgAE8AVQBUACAATwBGACAAVABIAEUAIABVAFMARQAgAE8AUgAgAEkATgBBAEIASQBMAEkAVABZACAAVABPACAAVQBTAEUAIABUAEgARQAgAEYATwBOAFQAIABTAE8ARgBUAFcAQQBSAEUAIABPAFIAIABGAFIATwBNACAATwBUAEgARQBSACAARABFAEEATABJAE4ARwBTACAASQBOACAAVABIAEUAIABGAE8ATgBUACAAUwBPAEYAVABXAEEAUgBFAC4ADQAKAGgAdAB0AHAAOgAvAC8AdwB3AHcALgBhAGQAbwBiAGUALgBjAG8AbQAvAHQAeQBwAGUALwBsAGUAZwBhAGwALgBoAHQAbQBsAAAAAAAFAAAAAwAAADgAAAAEAAABUAABAAAAAAAsAAMAAQAAADgAAwAKAAABUAAGAAwAAAAAAAEAAAAEARgAAABCAEAABQACB/8P/xf/H/8n/y//N/8//0f/T/9X/1//Z/9v/3f/f/+H/4//l/+f/6f/r/+3/7//x//P/9f/5//v//f//c///f//AAAAAAgAEAAYACAAKAAwADgAQABIAFAAWABgAGgAcAB4AIAAiACQAJgAoACoALAAuADAAMgA0ADgAOgA8AD4AP3w//8AAfgB8AHoAeAB2AHQAcgBwAG4AbABqAGgAZgBkAGIAYABeAFwAWgBYAFYAVABSAFAATgBMAEgARgBEAEIAQgBAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADAAAAAAZkAAAAAAAAAIgAAAAAAAAB/8AAAABAAAIAAAAD/8AAAABAAAQAAAAF/8AAAABAAAYAAAAH/8AAAABAAAgAAAAJ/8AAAABAAAoAAAAL/8AAAABAAAwAAAAN/8AAAABAAA4AAAAP/8AAAABAABAAAAAR/8AAAABAABIAAAAT/8AAAABAABQAAAAV/8AAAABAABYAAAAX/8AAAABAABgAAAAZ/8AAAABAABoAAAAb/8AAAABAABwAAAAd/8AAAABAAB4AAAAf/8AAAABAACAAAAAh/8AAAABAACIAAAAj/8AAAABAACQAAAAl/8AAAABAACYAAAAn/8AAAABAACgAAAAp/8AAAABAACoAAAAr/8AAAABAACwAAAAt/8AAAABAAC4AAAAv/8AAAABAADAAAAAx/8AAAABAADIAAAAz/8AAAABAADQAAAA1/8AAAABAADgAAAA5/8AAAABAADoAAAA7/8AAAABAADwAAAA9/8AAAABAAD4AAAA/c8AAAABAAD98AAA//0AAAXxAAEAAAABB/8AAAABAAEIAAABD/8AAAABAAEQAAABF/8AAAABAAEYAAABH/8AAAABAAEgAAABJ/8AAAABAAEoAAABL/8AAAABAAEwAAABN/8AAAABAAE4AAABP/8AAAABAAFAAAABR/8AAAABAAFIAAABT/8AAAABAAFQAAABV/8AAAABAAFYAAABX/8AAAABAAFgAAABZ/8AAAABAAFoAAABb/8AAAABAAFwAAABd/8AAAABAAF4AAABf/8AAAABAAGAAAABh/8AAAABAAGIAAABj/8AAAABAAGQAAABl/8AAAABAAGYAAABn/8AAAABAAGgAAABp/8AAAABAAGoAAABr/8AAAABAAGwAAABt/8AAAABAAG4AAABv/8AAAABAAHAAAABx/8AAAABAAHIAAABz/8AAAABAAHQAAAB1/8AAAABAAHYAAAB3/8AAAABAAHgAAAB5/8AAAABAAHoAAAB7/8AAAABAAHwAAAB9/8AAAABAAH4AAAB//0AAAABAAIAAAACB/8AAAABAAIIAAACD/8AAAABAAIQAAACF/8AAAABAAIYAAACH/8AAAABAAIgAAACJ/8AAAABAAIoAAACL/8AAAABAAIwAAACN/8AAAABAAI4AAACP/8AAAABAAJAAAACR/8AAAABAAJIAAACT/8AAAABAAJQAAACV/8AAAABAAJYAAACX/8AAAABAAJgAAACZ/8AAAABAAJoAAACb/8AAAABAAJwAAACd/8AAAABAAJ4AAACf/8AAAABAAKAAAACh/8AAAABAAKIAAACj/8AAAABAAKQAAACl/8AAAABAAKYAAACn/8AAAABAAKgAAACp/8AAAABAAKoAAACr/8AAAABAAKwAAACt/8AAAABAAK4AAACv/8AAAABAALAAAACx/8AAAABAALIAAACz/8AAAABAALQAAAC1/8AAAABAALYAAAC3/8AAAABAALgAAAC5/8AAAABAALoAAAC7/8AAAABAALwAAAC9/8AAAABAAL4AAAC//0AAAABAAMAAAADB/8AAAABAAMIAAADD/8AAAABAAMQAAADF/8AAAABAAMYAAADH/8AAAABAAMgAAADJ/8AAAABAAMoAAADL/8AAAABAAMwAAADN/8AAAABAAM4AAADP/8AAAABAANAAAADR/8AAAABAANIAAADT/8AAAABAANQAAADV/8AAAABAANYAAADX/8AAAABAANgAAADZ/8AAAABAANoAAADb/8AAAABAANwAAADd/8AAAABAAN4AAADf/8AAAABAAOAAAADh/8AAAABAAOIAAADj/8AAAABAAOQAAADl/8AAAABAAOYAAADn/8AAAABAAOgAAADp/8AAAABAAOoAAADr/8AAAABAAOwAAADt/8AAAABAAO4AAADv/8AAAABAAPAAAADx/8AAAABAAPIAAADz/8AAAABAAPQAAAD1/8AAAABAAPYAAAD3/8AAAABAAPgAAAD5/8AAAABAAPoAAAD7/8AAAABAAPwAAAD9/8AAAABAAP4AAAD//0AAAABAAQAAAAEB/8AAAABAAQIAAAED/8AAAABAAQQAAAEF/8AAAABAAQYAAAEH/8AAAABAAQgAAAEJ/8AAAABAAQoAAAEL/8AAAABAAQwAAAEN/8AAAABAAQ4AAAEP/8AAAABAARAAAAER/8AAAABAARIAAAET/8AAAABAARQAAAEV/8AAAABAARYAAAEX/8AAAABAARgAAAEZ/8AAAABAARoAAAEb/8AAAABAARwAAAEd/8AAAABAAR4AAAEf/8AAAABAASAAAAEh/8AAAABAASIAAAEj/8AAAABAASQAAAEl/8AAAABAASYAAAEn/8AAAABAASgAAAEp/8AAAABAASoAAAEr/8AAAABAASwAAAEt/8AAAAB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AAloAAAJb/8AAAABAAlwAAAJd/8AAAABAAl4AAAJf/8AAAABAAmAAAAJh/8AAAABAAmIAAAJj/8AAAABAAmQAAAJl/8AAAABAAmYAAAJn/8AAAABAAmgAAAJp/8AAAABAAmoAAAJr/8AAAABAAmwAAAJt/8AAAABAAm4AAAJv/8AAAABAAnAAAAJx/8AAAABAAnIAAAJz/8AAAABAAnQAAAJ1/8AAAABAAnYAAAJ3/8AAAABAAngAAAJ5/8AAAABAAnoAAAJ7/8AAAABAAnwAAAJ9/8AAAABAAn4AAAJ//0AAAABAAoAAAAKB/8AAAABAAoIAAAKD/8AAAABAAoQAAAKF/8AAAABAAoYAAAKH/8AAAABAAogAAAKJ/8AAAABAAooAAAKL/8AAAABAAowAAAKN/8AAAABAAo4AAAKP/8AAAABAApAAAAKR/8AAAABAApIAAAKT/8AAAABAApQAAAKV/8AAAABAApYAAAKX/8AAAABAApgAAAKZ/8AAAABAApoAAAKb/8AAAABAApwAAAKd/8AAAABAAp4AAAKf/8AAAABAAqAAAAKh/8AAAABAAqIAAAKj/8AAAABAAqQAAAKl/8AAAABAAqYAAAKn/8AAAABAAqgAAAKp/8AAAABAAqoAAAKr/8AAAABAAqwAAAKt/8AAAABAAq4AAAKv/8AAAABAArAAAAKx/8AAAABAArIAAAKz/8AAAABAArQAAAK1/8AAAABAArYAAAK3/8AAAABAArgAAAK5/8AAAABAAroAAAK7/8AAAABAArwAAAK9/8AAAABAAr4AAAK//0AAAABAAsAAAALB/8AAAABAAsIAAALD/8AAAABAAsQAAALF/8AAAABAAsYAAALH/8AAAABAAsgAAALJ/8AAAABAAsoAAALL/8AAAABAAswAAALN/8AAAABAAs4AAALP/8AAAABAAtAAAALR/8AAAABAAtIAAALT/8AAAABAAtQAAALV/8AAAABAAtYAAALX/8AAAABAAtgAAALZ/8AAAABAAtoAAALb/8AAAABAAtwAAALd/8AAAABAAt4AAALf/8AAAABAAuAAAALh/8AAAABAAuIAAALj/8AAAABAAuQAAALl/8AAAABAAuYAAALn/8AAAABAAugAAALp/8AAAABAAuoAAALr/8AAAABAAuwAAALt/8AAAABAAu4AAALv/8AAAAB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ASwBLQEuAS8BMAExATIBMwE0ATUBNgE3ATgBOQE6ATsBPAE9AT4BPwFAAUEBQgFDAUQBRQFGAUcBSAFJAUoBSwFMAU0BTgFPAVABUQFSAVMBVAFVAVYBVwFYAVkBWgFbAVwBXQFeAV8BYAFhAWIBYwFkAWUBZgFnAWgBaQFqAWsBbAFtAW4BbwFwAXEBcgFzAXQBdQF2AXcBeAF5AXoBewF8AX0BfgF/AYABgQGCAYMBhAGFAYYBhwGIAYkBigGLAYwBjQGOAY8BkAGRAZIBkwGUAZUBlgGXAZgBmQGaAZsBnAGdAZ4BnwGgAaEBogGjAaQBpQGmAacBqAGpAaoBqwGsAa0BrgGvAbABsQGyAbMBtAG1AbYBtwG4AbkBugG7AbwBvQG+Ab8BwAHBAcIBwwHEAcUBxgHHAcgByQHKAcsBzAHNAc4BzwHQAdEB0gHTAdQB1QHWAdcB2AHZAdoB2wHcAd0B3gHfAeAB4QHiAeMB5AHlAeYB5wHoAekB6gHrAewB7QHuAe8B8AHxAfIB8wH0AfUB9gH3AfgB+QH6AfsB/AH9Af4B/wIAAgECAgIDAgQCBQIGAgcCCAIJAgoCCwIMAg0CDgIPAhACEQISAhMCFAIVAhYCFwIYAhkCGgIbAhwCHQIeAh8CIAIhAiICIwIkAiUCJgInAigCKQIqAisCLAItAi4CLwIwAjECMgIzAjQCNQI2AjcCOAI5AjoCOwI8Aj0CPgI/AkACQQJCAkMCRAJFAkYCRwJIAkkCSgJLAkwCTQJOAk8CUAJRAlICUwJUAlUCVgJXAlgCWQJaAlsCXAJdAl4CXwJgAmECYgJjAmQCZQJmAmcCaAJpAmoCawJsAm0CbgJvAnACcQJyAnMCdAJ1AnYCdwJ4AnkCegJ7AnwCfQJ+An8CgAKBAoICgwKEAoUChgKHAogCiQKKAosCjAKNAo4CjwKQApECkgKTApQClQKWApcCmAKZApoCmwKcAp0CngKfAqACoQKiAqMCpAKlAqYCpwKoAqkCqgKrAqwCrQKuAq8CsAKxArICswK0ArUCtgK3ArgCuQK6ArsCvAK9Ar4CvwLAAsECwgLDAsQCxQLGAscCyALJAsoCywLMAs0CzgLPAtAC0QLSAtMC1ALVAtYC1wLYAtkC2gLbAtwC3QLeAt8C4ALhAuIC4wLkAuUC5gLnAugC6QLqAusC7ALtAu4C7wLwAvEC8gLzAvQC9QL2AvcC+AL5AvoC+wL8Av0C/gL/AwADAQMCAwMDBAMFAwYDBwMIAwkDCgMLAwwDDQMOAw8DEAMRAxIDEwMUAxUDFgMXAxgDGQMaAxsDHAMdAx4DHwMgAyEDIgMjAyQDJQMmAycDKAMpAyoDKwMsAy0DLgMvAzADMQMyAzMDNAM1AzYDNwM4AzkDOgM7AzwDPQM+Az8DQANBA0IDQwNEA0UDRgNHA0gDSQNKA0sDTANNA04DTwNQA1EDUgNTA1QDVQNWA1cDWANZA1oDWwNcA10DXgNfA2ADYQNiA2MDZANlA2YDZwNoA2kDagNrA2wDbQNuA28DcANxA3IDcwN0A3UDdgN3A3gDeQN6A3sDfAN9A34DfwOAA4EDggODA4QDhQOGA4cDiAOJA4oDiwOMA40DjgOPA5ADkQOSA5MDlAOVA5YDlwOYA5kDmgObA5wDnQOeA58DoAOhA6IDowOkA6UDpgOnA6gDqQOqA6sDrAOtA64DrwOwA7EDsgOzA7QDtQO2A7cDuAO5A7oDuwO8A70DvgO/A8ADwQPCA8MDxAPFA8YDxwPIA8kDygPLA8wDzQPOA88D0APRA9ID0wPUA9UD1gPXA9gD2QPaA9sD3APdA94D3wPgA+ED4gPjA+QD5QPmA+cD6APpA+oD6wPsA+0D7gPvA/AD8QPyA/MD9AP1A/YD9wP4A/kD+gP7A/wD/QP+A/8EAAQBBAIEAwQEBAUEBgQHBAgECQQKBAsEDAQNBA4EDwQQBBEEEgQTBBQEFQQWBBcEGAQZBBoEGwQcBB0EHgQfBCAEIQQiBCMEJAQlBCYEJwQoBCkEKgQrBCwELQQuBC8EMAQxBDIEMwQ0BDUENgQ3BDgEOQQ6BDsEPAQ9BD4EPwRABEEEQgRDBEQERQRGBEcESARJBEoESwRMBE0ETgRPBFAEUQRSBFMEVARVBFYEVwRYBFkEWgRbBFwEXQReBF8EYARhBGIEYwRkBGUEZgRnBGgEaQRqBGsEbARtBG4EbwRwBHEEcgRzBHQEdQR2BHcEeAR5BHoEewR8BH0EfgR/BIAEgQSCBIMEhASFBIYEhwSIBIkEigSLBIwEjQSOBI8EkASRBJIEkwSUBJUElgSXBJgEmQSaBJsEnASdBJ4EnwSgBKEEogSjBKQEpQSmBKcEqASpBKoEqwSsBK0ErgSvBLAEsQSyBLMEtAS1BLYEtwS4BLkEugS7BLwEvQS+BL8EwATBBMIEwwTEBMUExgTHBMgEyQTKBMsEzATNBM4EzwTQBNEE0gTTBNQE1QTWBNcE2ATZBNoE2wTcBN0E3gTfBOAE4QTiBOME5ATlBOYE5wToBOkE6gTrBOwE7QTuBO8E8ATxBPIE8wT0BPUE9gT3BPgE+QT6BPsE/AT9BP4E/wUABQEFAgUDBQQFBQUGBQcFCAUJBQoFCwUMBQ0FDgUPBRAFEQUSBRMFFAUVBRYFFwUYBRkFGgUbBRwFHQUeBR8FIAUhBSIFIwUkBSUFJgUnBSgFKQUqBSsFLAUtBS4FLwUwBTEFMgUzBTQFNQU2BTcFOAU5BToFOwU8BT0FPgU/BUAFQQVCBUMFRAVFBUYFRwVIBUkFSgVLBUwFTQVOBU8FUAVRBVIFUwVUBVUFVgVXBVgFWQVaBVsFXAVdBV4FXwVgBWEFYgVjBWQFZQVmBWcFaAVpBWoFawVsBW0FbgVvBXAFcQVyBXMFdAV1BXYFdwV4BXkFegV7BXwFfQV+BX8FgAWBBYIFgwWEBYUFhgWHBYgFiQWKBYsFjAWNBY4FjwWQBZEFkgWTBZQFlQWWBZcFmAWZBZoFmwWcBZ0FngWfBaAFoQWiBaMFpAWlBaYFpwWoBakFqgWrBawFrQWuBa8FsAWxBbIFswW0BbUFtgW3BbgFuQW6BbsFvAW9Bb4FvwXABcEFwgXDBcQFxQXGBccFyAXJBcoFywXMBc0FzgXPBdAF0QXSBdMF1AXVBdYF1wXYBdkF2gXbBdwF3QXeBd8F4AXhBeIF4wXkBeUF5gXnBegF6QXqBesF7AXtBe4F7wXwBfEF8gXzBfQF9QX2BfcF+AX5BfoF+wX8Bf0F/gX/BgAGAQYCBgMGBAYFBgYGBwYIBgkGCgYLBgwGDQYOBg8GEAYRBhIGEwYUBhUGFgYXBhgGGQYaBhsGHAYdBh4GHwYgBiEGIgYjBiQGJQYmBicGKAYpBioGKwYsBi0GLgYvBjAGMQYyBjMGNAY1BjYGNwY4BjkGOgY7BjwGPQY+Bj8GQAZBBkIGQwZEBkUGRgZHBkgGSQZKBksGTAZNBk4GTwZQBlEGUgZTBlQGVQZWBlcGWAZZBloGWwZcBl0GXgZfBmAGYQZiBmMGZAZlBmYGZwZoBmkGagZrBmwGbQZuBm8GcAZxBnIGcwZ0BnUGdgZ3BngGeQZ6BnsGfAZ9Bn4GfwaABoEGggaDBoQGhQaGBocGiAaJBooGiwaMBo0GjgaPBpAGkQaSBpMGlAaVBpYGlwaYBpkGmgabBpwGnQaeBp8GoAahBqIGowakBqUGpganBqgGqQaqBqsGrAatBq4GrwawBrEGsgazBrQGtQa2BrcGuAa5BroGuwa8Br0Gvga/BsAGwQbCBsMGxAbFBsYGxwbIBskGygbLBswGzQbOBs8G0AbRBtIG0wbUBtUG1gbXBtgG2QbaBtsG3AbdBt4G3wbgBuEG4gbjBuQG5QbmBucG6AbpBuoG6wbsBu0G7gbvBvAG8QbyBvMG9Ab1BvYG9wb4BvkG+gb7BvwG/Qb+Bv8HAAcBBwIHAwcEBwUHBgcHBwgHCQcKBwsHDAcNBw4HDwcQBxEHEgcTBxQHFQcWBxcHGAcZBxoHGwccBx0HHgcfByAHIQciByMHJAclByYHJwcoBykHKgcrBywHLQcuBy8HMAcxBzIHMwc0BzUHNgc3BzgHOQc6BzsHPAc9Bz4HPwdAB0EHQgdDB0QHRQdGB0cHSAdJB0oHSwdMB00HTgdPB1AHUQdSB1MHVAdVB1YHVwdYB1kHWgdbB1wHXQdeB18HYAdhB2IHYwdkB2UHZgdnB2gHaQdqB2sHbAdtB24HbwdwB3EHcgdzB3QHdQd2B3cHeAd5B3oHewd8B30Hfgd/B4AHgQeCB4MHhAeFB4YHhweIB4kHigeLB4wHjQeOB48HkAeRB5IHkweUB5UHlgeXB5gHmQeaB5sHnAedB54HnwegB6EHogejB6QHpQemB6cHqAepB6oHqwesB60HrgevB7AHsQeyB7MHtAe1B7YHtwe4B7kHuge7B7wHvQe+B78HwAfBB8IHwwfEB8UHxgfHB8gHyQfKB8sHzAfNB84HzwfQB9EH0gfTB9QH1QfWB9cH2AfZB9oH2wfcB90H3gffB+AH4QfiB+MH5AflB+YH5wfoB+kH6gfrB+wH7QfuB+8H8AfxB/IH8wf0B/UH9gf3B/gH+Qf6B/sH/Af9B/4H/wgACAEIAggDCAQIBQgGCAcICAgJCAoICwgMCA0IDggPCBAIEQgSCBMIFAgVCBYIFwgYCBkIGggbCBwIHQgeCB8IIAghCCIIIwgkCCUIJggnCCgIKQgqCCsILAgtCC4ILwgwCDEIMggzCDQINQg2CDcIOAg5CDoIOwg8CD0IPgg/CEAIQQhCCEMIRAhFCEYIRwhICEkISghLIPsMt/oktwH3ELf5LLcD9xD6BBX+fPmE+nwH/Vj+JxX50gf3xfwzBaawFfvF+DcF+PYGpmIV/dIH+8X4MwVwZhX3xfw3Bfz2Bg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODgABAQEK+B8MJpocGSQS+46LHAVGiwa9Cr0L+ucVAAPoAHwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAA') format('truetype'); }";
-    FontLoader.fontStyleAliasesMap = {"n": "normal", "b": "bold", "i": "italic", "o": "oblique"};
-	
-	FontLoader.prototype = {
-		constructor: FontLoader,
-		loadFonts: function() {
-			var self = this,
-                newFontVariations;
-			
-			if (this._numberOfFonts === 0) {
-				this._finish();
-				return;
-			}
-			
-			if (this.timeout !== null) {
-				this._timeoutId = window.setTimeout(function timeoutFire() {
-					self._finish();
-				}, this.timeout);
-			}
-			
-			// Use constant line-height so there won't be changes in height because Adobe Blank uses zero width but not zero height.
-			this._testContainer = this._document.createElement("div");
-			this._testContainer.style.cssText = "position:absolute; left:-10000px; top:-10000px; white-space:nowrap; font-size:20px; line-height:20px; visibility:hidden;";
-
-            // Create testDiv template that will be cloned for each font
-            this._testDiv = this._document.createElement("div");
-            this._testDiv.style.position = "absolute";
-            this._testDiv.appendChild(this._document.createTextNode(FontLoader.referenceText));
-
-            if (!FontLoader.useAdobeBlank) {
-                // AdobeBlank is not used
-                // We need to extract dimensions of reference font-families for each requested font variation.
-                // The extracted dimensions are stored in a static property "referenceFontFamilyVariationSizes",
-                // so we might already have some or all of them all.
-                newFontVariations = this._getNewFontVariationsFromFonts(this._fontsArray);
-                if (newFontVariations.length) {
-                    this._extractReferenceFontSizes(newFontVariations);
-                }
-                this._loadFonts();
-            } else if (FontLoader.adobeBlankReferenceSize) {
-                // AdobeBlank is used, and was loaded
-                this._loadFonts();
-            } else {
-                // AdobeBlank is used but was not loaded
-                this._loadAdobeBlankFont();
-            }
-		},
-        _extractReferenceFontSizes: function(newFontVariations) {
-			var clonedDiv, j, i,
-                key, size, fontVariation;
-
-            clonedDiv = this._testDiv.cloneNode(true);
-            this._testContainer.appendChild(clonedDiv);
-            this._document.body.appendChild(this._testContainer);
-
-            for (i = 0; i < newFontVariations.length; i++) {
-                fontVariation = newFontVariations[i];
-                key = fontVariation.key;
-                FontLoader.referenceFontFamilyVariationSizes[key] = [];
-                for (j = 0; j < FontLoader.referenceFontFamilies.length; j++) {
-                    clonedDiv.style.fontFamily = FontLoader.referenceFontFamilies[j];
-                    clonedDiv.style.fontWeight = fontVariation.weight;
-                    clonedDiv.style.fontStyle = fontVariation.style;
-                    size = new Size(clonedDiv.offsetWidth, clonedDiv.offsetHeight);
-                    FontLoader.referenceFontFamilyVariationSizes[key].push(size);
-                }
-            }
-
-            this._testContainer.parentNode.removeChild(this._testContainer);
-            clonedDiv.parentNode.removeChild(clonedDiv);
-		},
-        _loadAdobeBlankFont: function() {
-            var self = this,
-                adobeBlankDiv,
-                adobeBlankFallbackFont = "serif";
-
-            this._addAdobeBlankFontFaceIfNeeded();
-
-            adobeBlankDiv = this._testDiv.cloneNode(true);
-            this._testContainer.appendChild(adobeBlankDiv);
-            this._document.body.appendChild(this._testContainer);
-
-            // When using AdobeBlank (all browsers except IE < 11) only interval checking and size watcher methods
-            // are available for watching element size.
-            if (FontLoader.useIntervalChecking) {
-                adobeBlankDiv.style.fontFamily = FontLoader.referenceFontFamilies[0] + ", " + adobeBlankFallbackFont;
-                this._testContainer.appendChild(adobeBlankDiv);
-                // Start polling element sizes but also do first synchronous check in case all fonts where already loaded.
-                this._intervalId = window.setInterval(function intervalFire() {
-                    self._checkAdobeBlankSize();
-                }, this._intervalDelay);
-                this._checkAdobeBlankSize();
-            } else {
-                adobeBlankDiv.style.fontFamily = adobeBlankFallbackFont;
-                this._adobeBlankSizeWatcher = new SizeWatcher(/** @type HTMLElement */adobeBlankDiv, {
-                    container: this._testContainer,
-                    delegate: this,
-                    continuous: true,
-                    direction: SizeWatcher.directions.decrease,
-                    dimension: SizeWatcher.dimensions.horizontal,
-                    document: this._document
-                });
-                this._adobeBlankSizeWatcher.prepareForWatch();
-                this._adobeBlankSizeWatcher.beginWatching();
-                adobeBlankDiv.style.fontFamily = FontLoader.referenceFontFamilies[0] + ", " + adobeBlankFallbackFont;
-            }
-        },
-        _getNewFontVariationsFromFonts: function(fonts) {
-            var font, key, i,
-                variations = [],
-                variationsMap = {};
-
-            for (i = 0; i < fonts.length; i++) {
-                font = fonts[i];
-                key = this._fontVariationKeyForFont(font);
-                if (!(key in variationsMap) && !(key in FontLoader.referenceFontFamilyVariationSizes)) {
-                    variationsMap[key] = true;
-                    variations.push({
-                        key: key,
-                        weight: font.weight,
-                        style: font.style
-                    });
-                }
-            }
-            return variations;
-        },
-		_parseFonts: function(fonts) {
-			var processedFonts = [];
-
-			fonts.forEach(function (font) {
-                if (typeof font === "string") {
-                    if (font.indexOf(':') > -1) {
-                        processedFonts = processedFonts.concat(this._convertShorthandToFontObjects(font));
-                    } else {
-                        processedFonts.push({
-                            family: font,
-                            weight: 400,
-                            style: 'normal'
-                        });
-                    }
-                } else if (this._isValidFontObject(font)) {
-                    processedFonts.push(font);
-                } else {
-                    throw new Error("Invalid font format");
-                }
-			}, this);
-
-			return processedFonts;
-		},
-        /**
-         * @param {FontDescriptor} fontObject
-         * @returns {boolean}
-         * @private
-         */
-		_isValidFontObject: function(fontObject) {
-			if (!fontObject.family || !fontObject.weight || !fontObject.style) {
-				return false;
-			}
-			return ['normal', 'italic', 'bold', 'oblique'].indexOf(fontObject.style) !== -1;
-		},
-        /**
-         * @param {string} fontString
-         * @returns {Array.<FontDescriptor>}
-         * @private
-         */
-		_convertShorthandToFontObjects: function(fontString) {
-			var fonts = [],
-                parts = fontString.split(':'),
-			    variants,
-			    fontFamily;
-
-            fontFamily = parts[0];
-            variants = parts[1].split(',');
-
-			variants.forEach(function (variant) {
-                var styleAlias,
-                    weightAlias,
-                    weight,
-                    style;
-
-                if (variant.length !== 2) {
-                    throw new Error("Invalid Font Variation Description: '" + variant + "' for font string: '" + fontString + "'");
-                }
-
-                styleAlias = variant[0];
-                weightAlias = variant[1];
-
-                if (styleAlias in FontLoader.fontStyleAliasesMap) {
-                    style = FontLoader.fontStyleAliasesMap[styleAlias];
-                } else {
-                    return;
-                }
-
-                weight = parseInt(weightAlias, 10);
-                if (isNaN(weight)) {
-                    return;
-                } else {
-                    weight *= 100;
-                }
-
-                fonts.push({
-					family: fontFamily,
-					weight: weight,
-					style: style
-				});
-			});
-
-			return fonts;
-		},
-        _addAdobeBlankFontFaceIfNeeded: function() {
-            var adobeBlankFontFaceStyle;
-            if (!this._document.getElementById(FontLoader.adobeBlankFontFaceStyleId)) {
-                adobeBlankFontFaceStyle = this._document.createElement("style");
-                adobeBlankFontFaceStyle.setAttribute("type", "text/css");
-                adobeBlankFontFaceStyle.setAttribute("id", FontLoader.adobeBlankFontFaceStyleId);
-                adobeBlankFontFaceStyle.appendChild(this._document.createTextNode(FontLoader.adobeBlankFontFaceRule));
-                this._document.getElementsByTagName("head")[0].appendChild(adobeBlankFontFaceStyle);
-            }
-        },
-		_checkAdobeBlankSize: function() {
-			var adobeBlankDiv = this._testContainer.firstChild;
-			this._adobeBlankLoaded(adobeBlankDiv);
-		},
-		_adobeBlankLoaded: function(adobeBlankDiv) {
-			// Prevent false size change, for example if AdobeBlank height is higher than fallback font.
-			if (adobeBlankDiv.offsetWidth !== 0) {
-				return;
-			}
-			
-			FontLoader.adobeBlankReferenceSize = new Size(adobeBlankDiv.offsetWidth, adobeBlankDiv.offsetHeight);
-			
-			if (this._adobeBlankSizeWatcher !== null) {
-				// SizeWatcher method
-				this._adobeBlankSizeWatcher.endWatching();
-				this._adobeBlankSizeWatcher.removeScrollWatchers();
-				this._adobeBlankSizeWatcher = null;
-			} else {
-				// Polling method (IE)
-				window.clearInterval(this._intervalId);
-				adobeBlankDiv.parentNode.removeChild(adobeBlankDiv);
-			}
-			
-			this._testContainer.parentNode.removeChild(this._testContainer);
-
-			this._loadFonts();
-		},
-		_cloneNodeSetStyleAndAttributes: function(font, fontKey, referenceFontFamilyIndex) {
-			var clonedDiv = this._testDiv.cloneNode(true);
-            clonedDiv.style.fontWeight = font.weight;
-            clonedDiv.style.fontStyle = font.style;
-            clonedDiv.setAttribute("data-font-map-key", fontKey);
-			clonedDiv.setAttribute("data-ref-font-family-index", String(referenceFontFamilyIndex));
-			return clonedDiv;
-		},
-        _getFontMapKeyFromElement: function(element) {
-            return element.getAttribute("data-font-map-key");
-        },
-        _getFontFromElement: function(element) {
-            var fontKey = this._getFontMapKeyFromElement(element);
-            return this._fontsMap[fontKey];
-        },
-        _getFontFamilyFromElement: function(element) {
-            var font = this._getFontFromElement(element);
-            return font.family;
-        },
-        _getReferenceFontFamilyIndexFromElement: function(element) {
-            return element.getAttribute("data-ref-font-family-index");
-        },
-        _getReferenceFontFamilyFromElement: function(element) {
-            var referenceFontFamilyIndex = this._getReferenceFontFamilyIndexFromElement(element);
-            return FontLoader.referenceFontFamilies[referenceFontFamilyIndex];
-        },
-        _fontVariationKeyForFont: function(font) {
-            return font.weight + font.style;
-        },
-        _fontsMapKeyForFont: function(font) {
-            return font.family + font.weight + font.style
-        },
-		_loadFonts: function() {
-			var i, j, clonedDiv, sizeWatcher,
-                font,
-                fontKey,
-                fontVariationKey,
-                referenceFontSize,
-                sizeWatcherDirection,
-                sizeWatcherDimension,
-				self = this;
-
-			// Add div for each font-family
-			for (i = 0; i < this._numberOfFonts; i++) {
-                font = this._fontsArray[i];
-                fontKey = this._fontsMapKeyForFont(font);
-				this._fontsMap[fontKey] = font;
-
-				for (j = 0; j < FontLoader.referenceFontFamilies.length; j++) {
-                    clonedDiv = this._cloneNodeSetStyleAndAttributes(font, fontKey, j);
-					if (FontLoader.useResizeEvent) {
-                        clonedDiv.style.fontFamily = FontLoader.referenceFontFamilies[j];
-                        this._testContainer.appendChild(clonedDiv);
-					} else if (FontLoader.useIntervalChecking) {
-						clonedDiv.style.fontFamily = "'" + font.family + "', " + FontLoader.referenceFontFamilies[j];
-                        this._testContainer.appendChild(clonedDiv);
-					} else {
-                        clonedDiv.style.fontFamily = FontLoader.referenceFontFamilies[j];
-                        if (FontLoader.useAdobeBlank) {
-                            referenceFontSize = FontLoader.adobeBlankReferenceSize;
-                            sizeWatcherDirection = SizeWatcher.directions.increase;
-                            sizeWatcherDimension = SizeWatcher.dimensions.horizontal;
-                        } else {
-                            fontVariationKey = this._fontVariationKeyForFont(font);
-                            referenceFontSize = FontLoader.referenceFontFamilyVariationSizes[fontVariationKey][j];
-                            sizeWatcherDirection = SizeWatcher.directions.both;
-                            sizeWatcherDimension = SizeWatcher.dimensions.both;
-                        }
-						sizeWatcher = new SizeWatcher(/** @type HTMLElement */clonedDiv, {
-							container: this._testContainer,
-							delegate: this,
-							size: referenceFontSize,
-							direction: sizeWatcherDirection,
-							dimension: sizeWatcherDimension,
-							document: this._document
-						});
-						// The prepareForWatch() and beginWatching() methods will be invoked in separate iterations to
-						// reduce number of browser's CSS recalculations.
-						this._sizeWatchers.push(sizeWatcher);
-					}
-				}
-			}
-
-			// Append the testContainer after all test elements to minimize DOM insertions
-			this._document.body.appendChild(this._testContainer);
-
-			if (FontLoader.useResizeEvent) {
-				for (j = 0; j < this._testContainer.childNodes.length; j++) {
-					clonedDiv = this._testContainer.childNodes[j];
-					// "resize" event works only with attachEvent
-					clonedDiv.attachEvent("onresize", (function(self, clonedDiv) {
-						return function() {
-							self._elementSizeChanged(clonedDiv);
-						}
-					})(this, clonedDiv));
-				}
-				window.setTimeout(function() {
-					for (j = 0; j < self._testContainer.childNodes.length; j++) {
-						clonedDiv = self._testContainer.childNodes[j];
-						clonedDiv.style.fontFamily = "'" + self._getFontFamilyFromElement(clonedDiv) + "', " + self._getReferenceFontFamilyFromElement(clonedDiv);
-					}
-				}, 0);
-			} else if (FontLoader.useIntervalChecking) {
-				// Start polling element sizes but also do first synchronous check in case all fonts where already loaded.
-				this._intervalId = window.setInterval(function intervalFire() {
-					self._checkSizes();
-				}, this._intervalDelay);
-				this._checkSizes();
-			} else {
-				// We are dividing the prepareForWatch() and beginWatching() methods to optimize browser performance by
-				// removing CSS recalculation from each iteration to the end of iterations.
-                for (i = 0; i < this._sizeWatchers.length; i++) {
-                    sizeWatcher = this._sizeWatchers[i];
-                    sizeWatcher.prepareForWatch();
-                }
-                for (i = 0; i < this._sizeWatchers.length; i++) {
-                    sizeWatcher = this._sizeWatchers[i];
-                    sizeWatcher.beginWatching();
-                    // Apply tested font-family
-                    clonedDiv = sizeWatcher.getWatchedElement();
-                    clonedDiv.style.fontFamily = "'" + this._getFontFamilyFromElement(clonedDiv) + "', " + self._getReferenceFontFamilyFromElement(clonedDiv);
-                }
-			}
-		},
-		_checkSizes: function() {
-			var i, testDiv, font, fontVariationKey, currSize, refSize, refFontFamilyIndex;
-
-			for (i = this._testContainer.childNodes.length - 1; i >= 0; i--) {
-				testDiv = this._testContainer.childNodes[i];
-				currSize = new Size(testDiv.offsetWidth, testDiv.offsetHeight);
-                if (FontLoader.useAdobeBlank) {
-                    refSize = FontLoader.adobeBlankReferenceSize;
-                } else {
-                    font = this._getFontFromElement(testDiv);
-                    fontVariationKey = this._fontVariationKeyForFont(font);
-                    refFontFamilyIndex = this._getReferenceFontFamilyIndexFromElement(testDiv);
-                    refSize = FontLoader.referenceFontFamilyVariationSizes[fontVariationKey][refFontFamilyIndex];
-                }
-				if (!refSize.isEqual(currSize)) {
-					// Element dimensions changed, this means its font loaded, remove it from testContainer div
-					testDiv.parentNode.removeChild(testDiv);
-					this._elementSizeChanged(testDiv);
-				}
-			}
-		},
-		_elementSizeChanged: function(element) {
-			var font, fontKey;
-
-			if (this._finished) {
-				return;
-			}
-
-            fontKey = this._getFontMapKeyFromElement(element);
-
-			// Check that the font of this element wasn't already marked as loaded by an element with different reference font family.
-			if (typeof this._fontsMap[fontKey] === "undefined") {
-				return;
-			}
-
-            font = this._fontsMap[fontKey];
-
-			this._numberOfLoadedFonts++;
-			delete this._fontsMap[fontKey];
-
-			if (this.delegate && typeof this.delegate.fontLoaded === "function") {
-				this.delegate.fontLoaded(font);
-			}
-
-			if (this._numberOfLoadedFonts === this._numberOfFonts) {
-				this._finish();
-			}
-		},
-		_finish: function() {
-			var error, i, sizeWatcher,
-                fontKey,
-				notLoadedFonts = [];
-			
-			if (this._finished) {
-				return;
-			}
-			
-			this._finished = true;
-			
-			if (this._adobeBlankSizeWatcher !== null) {
-                if (this._adobeBlankSizeWatcher.getState() === SizeWatcher.states.watchingForSizeChange) {
-                    this._adobeBlankSizeWatcher.endWatching();
-                }
-				this._adobeBlankSizeWatcher = null;
-			}
-
-            for (i = 0; i < this._sizeWatchers.length; i++) {
-                sizeWatcher = this._sizeWatchers[i];
-                if (sizeWatcher.getState() === SizeWatcher.states.watchingForSizeChange) {
-                    sizeWatcher.endWatching();
-                }
-            }
-            this._sizeWatchers = [];
-			
-			if (this._testContainer !== null) {
-				this._testContainer.parentNode.removeChild(this._testContainer);
-			}
-			
-			if (this._timeoutId !== null) {
-				window.clearTimeout(this._timeoutId);
-			}
-			
-			if (this._intervalId !== null) {
-				window.clearInterval(this._intervalId);
-			}
-			
-            if (this.delegate) {
-                if (this._numberOfLoadedFonts < this._numberOfFonts) {
-                    for (fontKey in this._fontsMap) {
-                        if (this._fontsMap.hasOwnProperty(fontKey)) {
-                            notLoadedFonts.push(this._fontsMap[fontKey]);
-                        }
-                    }
-                    error = {
-                        message: "Not all fonts were loaded (" + this._numberOfLoadedFonts + "/" + this._numberOfFonts + ")",
-                        notLoadedFonts: notLoadedFonts
-                    };
-                } else {
-                    error = null;
-                }
-                if (typeof this.delegate.complete === "function") {
-                    this.delegate.complete(error);
-                } else if (typeof this.delegate.fontsLoaded === "function") {
-                    this.delegate.fontsLoaded(error);
-                }
-            }
-		},
-		/**
-		 * SizeWatcher delegate method
-		 * @param {SizeWatcher} sizeWatcher
-		 */
-		sizeWatcherChangedSize: function(sizeWatcher) {
-			var watchedElement = sizeWatcher.getWatchedElement();
-			if (sizeWatcher === this._adobeBlankSizeWatcher) {
-				this._adobeBlankLoaded(watchedElement);
-			} else {
-				this._elementSizeChanged(watchedElement);
-			}
-		}
-	};
-
-	/**
-	 * Size object
-	 *
-	 * @param width
-	 * @param height
-	 * @constructor
-	 */
-	function Size(width, height) {
-		this.width = width;
-		this.height = height;
-	}
-
-    Size.sizeFromString = function(sizeString) {
-        var arr = sizeString.split(",");
-        if (arr.length !== 2) {
-            return null;
-        }
-        return new Size(arr[0], arr[1]);
-    };
-
-	/**
-	 * Compares receiver object to passed in size object.
-	 * 
-	 * @param otherSize
-	 * @returns {boolean}
-	 */
-	Size.prototype.isEqual = function(otherSize) {
-		return (this.width === otherSize.width && this.height === otherSize.height);
-	};
-
-    Size.prototype.toString = function() {
-        return this.width + "," + this.height;
-    };
-
-	/**
-	 * SizeWatcher observes size of an element and notifies when its size is changed. It doesn't use any timeouts
-	 * to check the element size, when change in size occurs a callback method immediately invoked.
-	 * 
-	 * To watch for element's size changes the element, and other required elements are appended to a container element
-	 * you specify, and which must be added to the DOM tree before invoking prepareForWatch() method. Your container
-	 * element should be positioned outside of client's visible area. Therefore you shouldn't use SizeWatcher to watch
-	 * for size changes of elements used for UI.
-	 * Such container element could be a simple <div> that is a child of the <body> element:
-	 * <div style="position:absolute; left:-10000px; top:-10000px;"></div>
-	 * 
-	 * You must invoke SizeWatcher's methods in a specific order to establish size change listeners:
-	 * 
-	 * 1. Create SizeWatcher instance by invoke SizeWatcher constructor passing the element (size of which you want to
-	 *    observe), the container element, the delegate object and optional size parameter of type Size which should be
-	 *    the pre-calculated initial size of your element.
-	 * 4. Invoke prepareForWatch() method. This method will calculate element size if you didn't passed it to the constructor.
-	 * 5. Invoke beginWatching() method. This method will set event listeners and invoke your delegate's method once
-	 *    element size changes. 
-	 * 
-	 * Failing to invoke above methods in their predefined order will throw an exception.
-	 * 
-	 * @param {HTMLElement}   element An element, size of which will be observed for changes.
-	 * @param {Object}        options
-	 * @param {HTMLElement}   options.container An element to which special observing elements will be added. Must be in DOM tree
-	 *                        when prepareForWatch() method is called.
-	 * @param {Object}        options.delegate A delegate object with a sizeWatcherChangedSize method which will be invoked, in
-	 *                        context of the delegate object, when change in size occurs. This method is invoked with single
-	 *                        parameter which is the current SizeWatcher instance.
-	 * @param {Size}          [options.size] The pre-calculated initial size of your element. When passed, the element is not
-	 *                        asked for offsetWidth and offsetHeight, which may be useful to reduce browser's CSS
-	 *                        recalculations. If you will not pass the size parameter then its size calculation will be
-	 *                        deferred to prepareForWatch() method.
-	 * @param {Boolean}       [options.continuous=false] A boolean flag indicating if the SizeWatcher will watch only for
-	 *                        the first size change (default) or will continuously watch for size changes.
-	 * @param {Number}        [options.direction=SizeWatcher.directions.both] The direction of size change that should be
-	 *                        watched: SizeWatcher.directions.increase, SizeWatcher.directions.decrease or
-	 *                        SizeWatcher.directions.both
-	 * @param {Number}        [options.dimension=SizeWatcher.dimensions.both] The dimension of size change that should be
-	 *                        watched: SizeWatcher.dimensions.horizontal, SizeWatcher.dimensions.vertical or
-	 *                        SizeWatcher.dimensions.both
-	 * @param {HTMLDocument}  [options.document] The DOM tree context to use, if none provided then it will be the document.
-	 * @constructor
-	 */
-	function SizeWatcher(element, options) {
-		this._element = element;
-		this._delegate = options.delegate;
-		this._size = null;
-		this._continuous = !!options.continuous;
-		this._direction = options.direction ? options.direction : SizeWatcher.directions.both;
-		this._dimension = options.dimension ? options.dimension : SizeWatcher.dimensions.both;
-		this._sizeIncreaseWatcherContentElm = null;
-		this._sizeDecreaseWatcherElm = null;
-		this._sizeIncreaseWatcherElm = null;
-		this._state = SizeWatcher.states.initialized;
-		this._scrollAmount = 2;
-		this._document = options.document || document;
-
-		this._generateScrollWatchers(options.size);
-		this._appendScrollWatchersToElement(options.container);
-	}
-	
-	SizeWatcher.states = {
-		initialized: 0,
-		generatedScrollWatchers: 1,
-		appendedScrollWatchers: 2,
-		preparedScrollWatchers: 3,
-		watchingForSizeChange: 4
-	};
-
-	SizeWatcher.directions = {
-		decrease: 1,
-		increase: 2,
-		both: 3
-	};
-
-	SizeWatcher.dimensions = {
-		horizontal: 1,
-		vertical: 2,
-		both: 3
-	};
-	
-	//noinspection JSUnusedLocalSymbols
-	SizeWatcher.prototype = {
-		constructor: SizeWatcher,
-		getWatchedElement: function() {
-			return this._element;
-		},
-        getState: function() {
-            return this._state;
-        },
-		setSize: function(size) {
-			this._size = size;
-			//noinspection JSBitwiseOperatorUsage
-			if (this._direction & SizeWatcher.directions.increase) {
-				this._sizeIncreaseWatcherContentElm.style.cssText = "width: " + (size.width + this._scrollAmount) + "px; height: " + (size.height + this._scrollAmount) + "px;";
-			}
-			//noinspection JSBitwiseOperatorUsage
-			if (this._direction & SizeWatcher.directions.decrease) {
-				this._sizeDecreaseWatcherElm.style.cssText = "position:absolute; left: 0px; top: 0px; overflow: hidden; width: " + (size.width - this._scrollAmount) + "px; height: " + (size.height - this._scrollAmount) + "px;";
-			}
-		},
-		_generateScrollWatchers: function(size) {
-
-			this._element.style.position = "absolute";
-			
-			//noinspection JSBitwiseOperatorUsage
-			if (this._direction & SizeWatcher.directions.increase) {
-				this._sizeIncreaseWatcherContentElm = this._document.createElement("div");
-				
-				this._sizeIncreaseWatcherElm = this._document.createElement("div");
-				this._sizeIncreaseWatcherElm.style.cssText = "position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: hidden;";
-				this._sizeIncreaseWatcherElm.appendChild(this._sizeIncreaseWatcherContentElm);
-
-				this._element.appendChild(this._sizeIncreaseWatcherElm);
-			}
-
-			//noinspection JSBitwiseOperatorUsage
-			if (this._direction & SizeWatcher.directions.decrease) {
-				this._sizeDecreaseWatcherElm = this._document.createElement("div");
-				this._sizeDecreaseWatcherElm.appendChild(this._element);
-			}
-			
-			if (size) {
-				this.setSize(size);
-			}
-			
-			this._state = SizeWatcher.states.generatedScrollWatchers;
-		},
-		_appendScrollWatchersToElement: function(container) {
-			if (this._state !== SizeWatcher.states.generatedScrollWatchers) {
-				throw new Error("SizeWatcher._appendScrollWatchersToElement() was invoked before SizeWatcher._generateScrollWatchers()");
-			}
-
-			//noinspection JSBitwiseOperatorUsage
-			if (this._direction & SizeWatcher.directions.decrease) {
-				container.appendChild(this._sizeDecreaseWatcherElm);
-			} else {
-				container.appendChild(this._element);
-			}
-			
-			this._state = SizeWatcher.states.appendedScrollWatchers;
-		},
-		removeScrollWatchers: function() {
-			//noinspection JSBitwiseOperatorUsage
-			if (this._direction & SizeWatcher.directions.decrease) {
-				if (this._sizeDecreaseWatcherElm.parentNode) {
-					this._sizeDecreaseWatcherElm.parentNode.removeChild(this._sizeDecreaseWatcherElm);
-				}
-			} else if (this._element.parentNode) {
-				this._element.parentNode.removeChild(this._element);
-			}
-		},
-		prepareForWatch: function() {
-			var parentNode,
-				sizeDecreaseWatcherElmScrolled = true,
-				sizeIncreaseWatcherElmScrolled = true;
-			
-			if (this._state !== SizeWatcher.states.appendedScrollWatchers) {
-				throw new Error("SizeWatcher.prepareForWatch() invoked before SizeWatcher._appendScrollWatchersToElement()");
-			}
-			
-			if (this._size === null) {
-				this.setSize(new Size(this._element.offsetWidth, this._element.offsetHeight));
-			}
-
-			//noinspection JSBitwiseOperatorUsage
-			if (this._direction & SizeWatcher.directions.decrease) {
-				sizeDecreaseWatcherElmScrolled = this._scrollElementToBottomRight(this._sizeDecreaseWatcherElm);
-			}
-			//noinspection JSBitwiseOperatorUsage
-			if (this._direction & SizeWatcher.directions.increase) {
-				sizeIncreaseWatcherElmScrolled = this._scrollElementToBottomRight(this._sizeIncreaseWatcherElm);
-			}
-			
-			// Check if scroll positions updated.
-			if (!sizeDecreaseWatcherElmScrolled || !sizeIncreaseWatcherElmScrolled) {
-				
-				// Traverse tree to the top node to see if element is in the DOM tree.
-				parentNode = this._element.parentNode;
-				while (parentNode !== this._document && parentNode !== null) {
-					parentNode = parentNode.parentNode;
-				}
-				
-				if (parentNode === null) {
-					throw new Error("Can't set scroll position of scroll watchers. SizeWatcher is not in the DOM tree.");
-				} else if (console && typeof console.warn === "function") {
-					console.warn("SizeWatcher can't set scroll position of scroll watchers.");
-				}
-			}
-			
-			this._state = SizeWatcher.states.preparedScrollWatchers;
-		},
-		_scrollElementToBottomRight: function(element) {
-			var elementScrolled = true;
-			//noinspection JSBitwiseOperatorUsage
-			if (this._dimension & SizeWatcher.dimensions.vertical) {
-				element.scrollTop = this._scrollAmount;
-				elementScrolled = elementScrolled && element.scrollTop > 0;
-			}
-			//noinspection JSBitwiseOperatorUsage
-			if (this._dimension & SizeWatcher.dimensions.horizontal) {
-				element.scrollLeft = this._scrollAmount;
-				elementScrolled = elementScrolled && element.scrollLeft > 0;
-			}
-			return elementScrolled;
-		},
-		beginWatching: function() {
-			if (this._state !== SizeWatcher.states.preparedScrollWatchers) {
-				throw new Error("SizeWatcher.beginWatching() invoked before SizeWatcher.prepareForWatch()");
-			}
-
-			//noinspection JSBitwiseOperatorUsage
-			if (this._direction & SizeWatcher.directions.decrease) {
-				//noinspection JSValidateTypes
-				this._sizeDecreaseWatcherElm.addEventListener("scroll", this, false);
-			}
-			//noinspection JSBitwiseOperatorUsage
-			if (this._direction & SizeWatcher.directions.increase) {
-				//noinspection JSValidateTypes
-				this._sizeIncreaseWatcherElm.addEventListener("scroll", this, false);
-			}
-			
-			this._state = SizeWatcher.states.watchingForSizeChange;
-		},
-		endWatching: function() {
-			if (this._state !== SizeWatcher.states.watchingForSizeChange) {
-				throw new Error("SizeWatcher.endWatching() invoked before SizeWatcher.beginWatching()");
-			}
-
-			//noinspection JSBitwiseOperatorUsage
-			if (this._direction & SizeWatcher.directions.decrease) {
-				//noinspection JSValidateTypes
-				this._sizeDecreaseWatcherElm.removeEventListener("scroll", this, false);
-			}
-			//noinspection JSBitwiseOperatorUsage
-			if (this._direction & SizeWatcher.directions.increase) {
-				//noinspection JSValidateTypes
-				this._sizeIncreaseWatcherElm.removeEventListener("scroll", this, false);
-			}
-			this._state = SizeWatcher.states.appendedScrollWatchers;
-		},
-		/**
-		 * @private
-		 */
-		handleEvent: function(event) {
-			var newSize, oldSize;
-			
-			// This is not suppose to happen because when we run endWatching() we remove scroll listeners.
-			// But some browsers will fire second scroll event which was pushed into event stack before listener was
-			// removed so do this check anyway.
-			if (this._state !== SizeWatcher.states.watchingForSizeChange) {
-				return;
-			}
-			
-			newSize = new Size(this._element.offsetWidth, this._element.offsetHeight);
-			oldSize = this._size;
-
-			// Check if element size is changed. How come that element size isn't changed but scroll event fired?
-			// This can happen in two cases: when double scroll occurs or immediately after calling prepareForWatch()
-			// (event if scroll event listeners attached after it).
-			// The double scroll event happens when one size dimension (e.g.:width) is increased and another
-			// (e.g.:height) is decreased.
-			if (oldSize.isEqual(newSize)) {
-				return;
-			}
-			
-			if (this._delegate && typeof this._delegate.sizeWatcherChangedSize === "function") {
-				this._delegate.sizeWatcherChangedSize(this);
-				
-				// Check that endWatching() wasn't invoked from within the delegate.
-				if (this._state !== SizeWatcher.states.watchingForSizeChange) {
-					return;
-				}
-			}
-
-			if (!this._continuous) {
-				this.endWatching();
-			} else {
-				// Set the new size so in case of double scroll event we won't cause the delegate method to be executed twice
-				// and also to update to the new watched size.
-				this.setSize(newSize);
-				// change state so prepareFowWatch() won't throw exception about wrong order invocation.
-				this._state = SizeWatcher.states.appendedScrollWatchers;
-				// Run prepareForWatch to reset the scroll watchers, we have already set the size
-				this.prepareForWatch();
-				// Set state to listeningForSizeChange, there is no need to invoke beginWatching() method as scroll event
-				// listeners and callback are already set.
-				this._state = SizeWatcher.states.watchingForSizeChange;
-				
-			}
-		}
-	};
-	
-	return FontLoader;
-	
-}));
+/*! Hammer.JS - v2.0.7 - 2016-04-22
+ * http://hammerjs.github.io/
+ *
+ * Copyright (c) 2016 Jorik Tangelder;
+ * Licensed under the MIT license */
+!function(a,b,c,d){"use strict";function e(a,b,c){return setTimeout(j(a,c),b)}function f(a,b,c){return Array.isArray(a)?(g(a,c[b],c),!0):!1}function g(a,b,c){var e;if(a)if(a.forEach)a.forEach(b,c);else if(a.length!==d)for(e=0;e<a.length;)b.call(c,a[e],e,a),e++;else for(e in a)a.hasOwnProperty(e)&&b.call(c,a[e],e,a)}function h(b,c,d){var e="DEPRECATED METHOD: "+c+"\n"+d+" AT \n";return function(){var c=new Error("get-stack-trace"),d=c&&c.stack?c.stack.replace(/^[^\(]+?[\n$]/gm,"").replace(/^\s+at\s+/gm,"").replace(/^Object.<anonymous>\s*\(/gm,"{anonymous}()@"):"Unknown Stack Trace",f=a.console&&(a.console.warn||a.console.log);return f&&f.call(a.console,e,d),b.apply(this,arguments)}}function i(a,b,c){var d,e=b.prototype;d=a.prototype=Object.create(e),d.constructor=a,d._super=e,c&&la(d,c)}function j(a,b){return function(){return a.apply(b,arguments)}}function k(a,b){return typeof a==oa?a.apply(b?b[0]||d:d,b):a}function l(a,b){return a===d?b:a}function m(a,b,c){g(q(b),function(b){a.addEventListener(b,c,!1)})}function n(a,b,c){g(q(b),function(b){a.removeEventListener(b,c,!1)})}function o(a,b){for(;a;){if(a==b)return!0;a=a.parentNode}return!1}function p(a,b){return a.indexOf(b)>-1}function q(a){return a.trim().split(/\s+/g)}function r(a,b,c){if(a.indexOf&&!c)return a.indexOf(b);for(var d=0;d<a.length;){if(c&&a[d][c]==b||!c&&a[d]===b)return d;d++}return-1}function s(a){return Array.prototype.slice.call(a,0)}function t(a,b,c){for(var d=[],e=[],f=0;f<a.length;){var g=b?a[f][b]:a[f];r(e,g)<0&&d.push(a[f]),e[f]=g,f++}return c&&(d=b?d.sort(function(a,c){return a[b]>c[b]}):d.sort()),d}function u(a,b){for(var c,e,f=b[0].toUpperCase()+b.slice(1),g=0;g<ma.length;){if(c=ma[g],e=c?c+f:b,e in a)return e;g++}return d}function v(){return ua++}function w(b){var c=b.ownerDocument||b;return c.defaultView||c.parentWindow||a}function x(a,b){var c=this;this.manager=a,this.callback=b,this.element=a.element,this.target=a.options.inputTarget,this.domHandler=function(b){k(a.options.enable,[a])&&c.handler(b)},this.init()}function y(a){var b,c=a.options.inputClass;return new(b=c?c:xa?M:ya?P:wa?R:L)(a,z)}function z(a,b,c){var d=c.pointers.length,e=c.changedPointers.length,f=b&Ea&&d-e===0,g=b&(Ga|Ha)&&d-e===0;c.isFirst=!!f,c.isFinal=!!g,f&&(a.session={}),c.eventType=b,A(a,c),a.emit("hammer.input",c),a.recognize(c),a.session.prevInput=c}function A(a,b){var c=a.session,d=b.pointers,e=d.length;c.firstInput||(c.firstInput=D(b)),e>1&&!c.firstMultiple?c.firstMultiple=D(b):1===e&&(c.firstMultiple=!1);var f=c.firstInput,g=c.firstMultiple,h=g?g.center:f.center,i=b.center=E(d);b.timeStamp=ra(),b.deltaTime=b.timeStamp-f.timeStamp,b.angle=I(h,i),b.distance=H(h,i),B(c,b),b.offsetDirection=G(b.deltaX,b.deltaY);var j=F(b.deltaTime,b.deltaX,b.deltaY);b.overallVelocityX=j.x,b.overallVelocityY=j.y,b.overallVelocity=qa(j.x)>qa(j.y)?j.x:j.y,b.scale=g?K(g.pointers,d):1,b.rotation=g?J(g.pointers,d):0,b.maxPointers=c.prevInput?b.pointers.length>c.prevInput.maxPointers?b.pointers.length:c.prevInput.maxPointers:b.pointers.length,C(c,b);var k=a.element;o(b.srcEvent.target,k)&&(k=b.srcEvent.target),b.target=k}function B(a,b){var c=b.center,d=a.offsetDelta||{},e=a.prevDelta||{},f=a.prevInput||{};b.eventType!==Ea&&f.eventType!==Ga||(e=a.prevDelta={x:f.deltaX||0,y:f.deltaY||0},d=a.offsetDelta={x:c.x,y:c.y}),b.deltaX=e.x+(c.x-d.x),b.deltaY=e.y+(c.y-d.y)}function C(a,b){var c,e,f,g,h=a.lastInterval||b,i=b.timeStamp-h.timeStamp;if(b.eventType!=Ha&&(i>Da||h.velocity===d)){var j=b.deltaX-h.deltaX,k=b.deltaY-h.deltaY,l=F(i,j,k);e=l.x,f=l.y,c=qa(l.x)>qa(l.y)?l.x:l.y,g=G(j,k),a.lastInterval=b}else c=h.velocity,e=h.velocityX,f=h.velocityY,g=h.direction;b.velocity=c,b.velocityX=e,b.velocityY=f,b.direction=g}function D(a){for(var b=[],c=0;c<a.pointers.length;)b[c]={clientX:pa(a.pointers[c].clientX),clientY:pa(a.pointers[c].clientY)},c++;return{timeStamp:ra(),pointers:b,center:E(b),deltaX:a.deltaX,deltaY:a.deltaY}}function E(a){var b=a.length;if(1===b)return{x:pa(a[0].clientX),y:pa(a[0].clientY)};for(var c=0,d=0,e=0;b>e;)c+=a[e].clientX,d+=a[e].clientY,e++;return{x:pa(c/b),y:pa(d/b)}}function F(a,b,c){return{x:b/a||0,y:c/a||0}}function G(a,b){return a===b?Ia:qa(a)>=qa(b)?0>a?Ja:Ka:0>b?La:Ma}function H(a,b,c){c||(c=Qa);var d=b[c[0]]-a[c[0]],e=b[c[1]]-a[c[1]];return Math.sqrt(d*d+e*e)}function I(a,b,c){c||(c=Qa);var d=b[c[0]]-a[c[0]],e=b[c[1]]-a[c[1]];return 180*Math.atan2(e,d)/Math.PI}function J(a,b){return I(b[1],b[0],Ra)+I(a[1],a[0],Ra)}function K(a,b){return H(b[0],b[1],Ra)/H(a[0],a[1],Ra)}function L(){this.evEl=Ta,this.evWin=Ua,this.pressed=!1,x.apply(this,arguments)}function M(){this.evEl=Xa,this.evWin=Ya,x.apply(this,arguments),this.store=this.manager.session.pointerEvents=[]}function N(){this.evTarget=$a,this.evWin=_a,this.started=!1,x.apply(this,arguments)}function O(a,b){var c=s(a.touches),d=s(a.changedTouches);return b&(Ga|Ha)&&(c=t(c.concat(d),"identifier",!0)),[c,d]}function P(){this.evTarget=bb,this.targetIds={},x.apply(this,arguments)}function Q(a,b){var c=s(a.touches),d=this.targetIds;if(b&(Ea|Fa)&&1===c.length)return d[c[0].identifier]=!0,[c,c];var e,f,g=s(a.changedTouches),h=[],i=this.target;if(f=c.filter(function(a){return o(a.target,i)}),b===Ea)for(e=0;e<f.length;)d[f[e].identifier]=!0,e++;for(e=0;e<g.length;)d[g[e].identifier]&&h.push(g[e]),b&(Ga|Ha)&&delete d[g[e].identifier],e++;return h.length?[t(f.concat(h),"identifier",!0),h]:void 0}function R(){x.apply(this,arguments);var a=j(this.handler,this);this.touch=new P(this.manager,a),this.mouse=new L(this.manager,a),this.primaryTouch=null,this.lastTouches=[]}function S(a,b){a&Ea?(this.primaryTouch=b.changedPointers[0].identifier,T.call(this,b)):a&(Ga|Ha)&&T.call(this,b)}function T(a){var b=a.changedPointers[0];if(b.identifier===this.primaryTouch){var c={x:b.clientX,y:b.clientY};this.lastTouches.push(c);var d=this.lastTouches,e=function(){var a=d.indexOf(c);a>-1&&d.splice(a,1)};setTimeout(e,cb)}}function U(a){for(var b=a.srcEvent.clientX,c=a.srcEvent.clientY,d=0;d<this.lastTouches.length;d++){var e=this.lastTouches[d],f=Math.abs(b-e.x),g=Math.abs(c-e.y);if(db>=f&&db>=g)return!0}return!1}function V(a,b){this.manager=a,this.set(b)}function W(a){if(p(a,jb))return jb;var b=p(a,kb),c=p(a,lb);return b&&c?jb:b||c?b?kb:lb:p(a,ib)?ib:hb}function X(){if(!fb)return!1;var b={},c=a.CSS&&a.CSS.supports;return["auto","manipulation","pan-y","pan-x","pan-x pan-y","none"].forEach(function(d){b[d]=c?a.CSS.supports("touch-action",d):!0}),b}function Y(a){this.options=la({},this.defaults,a||{}),this.id=v(),this.manager=null,this.options.enable=l(this.options.enable,!0),this.state=nb,this.simultaneous={},this.requireFail=[]}function Z(a){return a&sb?"cancel":a&qb?"end":a&pb?"move":a&ob?"start":""}function $(a){return a==Ma?"down":a==La?"up":a==Ja?"left":a==Ka?"right":""}function _(a,b){var c=b.manager;return c?c.get(a):a}function aa(){Y.apply(this,arguments)}function ba(){aa.apply(this,arguments),this.pX=null,this.pY=null}function ca(){aa.apply(this,arguments)}function da(){Y.apply(this,arguments),this._timer=null,this._input=null}function ea(){aa.apply(this,arguments)}function fa(){aa.apply(this,arguments)}function ga(){Y.apply(this,arguments),this.pTime=!1,this.pCenter=!1,this._timer=null,this._input=null,this.count=0}function ha(a,b){return b=b||{},b.recognizers=l(b.recognizers,ha.defaults.preset),new ia(a,b)}function ia(a,b){this.options=la({},ha.defaults,b||{}),this.options.inputTarget=this.options.inputTarget||a,this.handlers={},this.session={},this.recognizers=[],this.oldCssProps={},this.element=a,this.input=y(this),this.touchAction=new V(this,this.options.touchAction),ja(this,!0),g(this.options.recognizers,function(a){var b=this.add(new a[0](a[1]));a[2]&&b.recognizeWith(a[2]),a[3]&&b.requireFailure(a[3])},this)}function ja(a,b){var c=a.element;if(c.style){var d;g(a.options.cssProps,function(e,f){d=u(c.style,f),b?(a.oldCssProps[d]=c.style[d],c.style[d]=e):c.style[d]=a.oldCssProps[d]||""}),b||(a.oldCssProps={})}}function ka(a,c){var d=b.createEvent("Event");d.initEvent(a,!0,!0),d.gesture=c,c.target.dispatchEvent(d)}var la,ma=["","webkit","Moz","MS","ms","o"],na=b.createElement("div"),oa="function",pa=Math.round,qa=Math.abs,ra=Date.now;la="function"!=typeof Object.assign?function(a){if(a===d||null===a)throw new TypeError("Cannot convert undefined or null to object");for(var b=Object(a),c=1;c<arguments.length;c++){var e=arguments[c];if(e!==d&&null!==e)for(var f in e)e.hasOwnProperty(f)&&(b[f]=e[f])}return b}:Object.assign;var sa=h(function(a,b,c){for(var e=Object.keys(b),f=0;f<e.length;)(!c||c&&a[e[f]]===d)&&(a[e[f]]=b[e[f]]),f++;return a},"extend","Use `assign`."),ta=h(function(a,b){return sa(a,b,!0)},"merge","Use `assign`."),ua=1,va=/mobile|tablet|ip(ad|hone|od)|android/i,wa="ontouchstart"in a,xa=u(a,"PointerEvent")!==d,ya=wa&&va.test(navigator.userAgent),za="touch",Aa="pen",Ba="mouse",Ca="kinect",Da=25,Ea=1,Fa=2,Ga=4,Ha=8,Ia=1,Ja=2,Ka=4,La=8,Ma=16,Na=Ja|Ka,Oa=La|Ma,Pa=Na|Oa,Qa=["x","y"],Ra=["clientX","clientY"];x.prototype={handler:function(){},init:function(){this.evEl&&m(this.element,this.evEl,this.domHandler),this.evTarget&&m(this.target,this.evTarget,this.domHandler),this.evWin&&m(w(this.element),this.evWin,this.domHandler)},destroy:function(){this.evEl&&n(this.element,this.evEl,this.domHandler),this.evTarget&&n(this.target,this.evTarget,this.domHandler),this.evWin&&n(w(this.element),this.evWin,this.domHandler)}};var Sa={mousedown:Ea,mousemove:Fa,mouseup:Ga},Ta="mousedown",Ua="mousemove mouseup";i(L,x,{handler:function(a){var b=Sa[a.type];b&Ea&&0===a.button&&(this.pressed=!0),b&Fa&&1!==a.which&&(b=Ga),this.pressed&&(b&Ga&&(this.pressed=!1),this.callback(this.manager,b,{pointers:[a],changedPointers:[a],pointerType:Ba,srcEvent:a}))}});var Va={pointerdown:Ea,pointermove:Fa,pointerup:Ga,pointercancel:Ha,pointerout:Ha},Wa={2:za,3:Aa,4:Ba,5:Ca},Xa="pointerdown",Ya="pointermove pointerup pointercancel";a.MSPointerEvent&&!a.PointerEvent&&(Xa="MSPointerDown",Ya="MSPointerMove MSPointerUp MSPointerCancel"),i(M,x,{handler:function(a){var b=this.store,c=!1,d=a.type.toLowerCase().replace("ms",""),e=Va[d],f=Wa[a.pointerType]||a.pointerType,g=f==za,h=r(b,a.pointerId,"pointerId");e&Ea&&(0===a.button||g)?0>h&&(b.push(a),h=b.length-1):e&(Ga|Ha)&&(c=!0),0>h||(b[h]=a,this.callback(this.manager,e,{pointers:b,changedPointers:[a],pointerType:f,srcEvent:a}),c&&b.splice(h,1))}});var Za={touchstart:Ea,touchmove:Fa,touchend:Ga,touchcancel:Ha},$a="touchstart",_a="touchstart touchmove touchend touchcancel";i(N,x,{handler:function(a){var b=Za[a.type];if(b===Ea&&(this.started=!0),this.started){var c=O.call(this,a,b);b&(Ga|Ha)&&c[0].length-c[1].length===0&&(this.started=!1),this.callback(this.manager,b,{pointers:c[0],changedPointers:c[1],pointerType:za,srcEvent:a})}}});var ab={touchstart:Ea,touchmove:Fa,touchend:Ga,touchcancel:Ha},bb="touchstart touchmove touchend touchcancel";i(P,x,{handler:function(a){var b=ab[a.type],c=Q.call(this,a,b);c&&this.callback(this.manager,b,{pointers:c[0],changedPointers:c[1],pointerType:za,srcEvent:a})}});var cb=2500,db=25;i(R,x,{handler:function(a,b,c){var d=c.pointerType==za,e=c.pointerType==Ba;if(!(e&&c.sourceCapabilities&&c.sourceCapabilities.firesTouchEvents)){if(d)S.call(this,b,c);else if(e&&U.call(this,c))return;this.callback(a,b,c)}},destroy:function(){this.touch.destroy(),this.mouse.destroy()}});var eb=u(na.style,"touchAction"),fb=eb!==d,gb="compute",hb="auto",ib="manipulation",jb="none",kb="pan-x",lb="pan-y",mb=X();V.prototype={set:function(a){a==gb&&(a=this.compute()),fb&&this.manager.element.style&&mb[a]&&(this.manager.element.style[eb]=a),this.actions=a.toLowerCase().trim()},update:function(){this.set(this.manager.options.touchAction)},compute:function(){var a=[];return g(this.manager.recognizers,function(b){k(b.options.enable,[b])&&(a=a.concat(b.getTouchAction()))}),W(a.join(" "))},preventDefaults:function(a){var b=a.srcEvent,c=a.offsetDirection;if(this.manager.session.prevented)return void b.preventDefault();var d=this.actions,e=p(d,jb)&&!mb[jb],f=p(d,lb)&&!mb[lb],g=p(d,kb)&&!mb[kb];if(e){var h=1===a.pointers.length,i=a.distance<2,j=a.deltaTime<250;if(h&&i&&j)return}return g&&f?void 0:e||f&&c&Na||g&&c&Oa?this.preventSrc(b):void 0},preventSrc:function(a){this.manager.session.prevented=!0,a.preventDefault()}};var nb=1,ob=2,pb=4,qb=8,rb=qb,sb=16,tb=32;Y.prototype={defaults:{},set:function(a){return la(this.options,a),this.manager&&this.manager.touchAction.update(),this},recognizeWith:function(a){if(f(a,"recognizeWith",this))return this;var b=this.simultaneous;return a=_(a,this),b[a.id]||(b[a.id]=a,a.recognizeWith(this)),this},dropRecognizeWith:function(a){return f(a,"dropRecognizeWith",this)?this:(a=_(a,this),delete this.simultaneous[a.id],this)},requireFailure:function(a){if(f(a,"requireFailure",this))return this;var b=this.requireFail;return a=_(a,this),-1===r(b,a)&&(b.push(a),a.requireFailure(this)),this},dropRequireFailure:function(a){if(f(a,"dropRequireFailure",this))return this;a=_(a,this);var b=r(this.requireFail,a);return b>-1&&this.requireFail.splice(b,1),this},hasRequireFailures:function(){return this.requireFail.length>0},canRecognizeWith:function(a){return!!this.simultaneous[a.id]},emit:function(a){function b(b){c.manager.emit(b,a)}var c=this,d=this.state;qb>d&&b(c.options.event+Z(d)),b(c.options.event),a.additionalEvent&&b(a.additionalEvent),d>=qb&&b(c.options.event+Z(d))},tryEmit:function(a){return this.canEmit()?this.emit(a):void(this.state=tb)},canEmit:function(){for(var a=0;a<this.requireFail.length;){if(!(this.requireFail[a].state&(tb|nb)))return!1;a++}return!0},recognize:function(a){var b=la({},a);return k(this.options.enable,[this,b])?(this.state&(rb|sb|tb)&&(this.state=nb),this.state=this.process(b),void(this.state&(ob|pb|qb|sb)&&this.tryEmit(b))):(this.reset(),void(this.state=tb))},process:function(a){},getTouchAction:function(){},reset:function(){}},i(aa,Y,{defaults:{pointers:1},attrTest:function(a){var b=this.options.pointers;return 0===b||a.pointers.length===b},process:function(a){var b=this.state,c=a.eventType,d=b&(ob|pb),e=this.attrTest(a);return d&&(c&Ha||!e)?b|sb:d||e?c&Ga?b|qb:b&ob?b|pb:ob:tb}}),i(ba,aa,{defaults:{event:"pan",threshold:10,pointers:1,direction:Pa},getTouchAction:function(){var a=this.options.direction,b=[];return a&Na&&b.push(lb),a&Oa&&b.push(kb),b},directionTest:function(a){var b=this.options,c=!0,d=a.distance,e=a.direction,f=a.deltaX,g=a.deltaY;return e&b.direction||(b.direction&Na?(e=0===f?Ia:0>f?Ja:Ka,c=f!=this.pX,d=Math.abs(a.deltaX)):(e=0===g?Ia:0>g?La:Ma,c=g!=this.pY,d=Math.abs(a.deltaY))),a.direction=e,c&&d>b.threshold&&e&b.direction},attrTest:function(a){return aa.prototype.attrTest.call(this,a)&&(this.state&ob||!(this.state&ob)&&this.directionTest(a))},emit:function(a){this.pX=a.deltaX,this.pY=a.deltaY;var b=$(a.direction);b&&(a.additionalEvent=this.options.event+b),this._super.emit.call(this,a)}}),i(ca,aa,{defaults:{event:"pinch",threshold:0,pointers:2},getTouchAction:function(){return[jb]},attrTest:function(a){return this._super.attrTest.call(this,a)&&(Math.abs(a.scale-1)>this.options.threshold||this.state&ob)},emit:function(a){if(1!==a.scale){var b=a.scale<1?"in":"out";a.additionalEvent=this.options.event+b}this._super.emit.call(this,a)}}),i(da,Y,{defaults:{event:"press",pointers:1,time:251,threshold:9},getTouchAction:function(){return[hb]},process:function(a){var b=this.options,c=a.pointers.length===b.pointers,d=a.distance<b.threshold,f=a.deltaTime>b.time;if(this._input=a,!d||!c||a.eventType&(Ga|Ha)&&!f)this.reset();else if(a.eventType&Ea)this.reset(),this._timer=e(function(){this.state=rb,this.tryEmit()},b.time,this);else if(a.eventType&Ga)return rb;return tb},reset:function(){clearTimeout(this._timer)},emit:function(a){this.state===rb&&(a&&a.eventType&Ga?this.manager.emit(this.options.event+"up",a):(this._input.timeStamp=ra(),this.manager.emit(this.options.event,this._input)))}}),i(ea,aa,{defaults:{event:"rotate",threshold:0,pointers:2},getTouchAction:function(){return[jb]},attrTest:function(a){return this._super.attrTest.call(this,a)&&(Math.abs(a.rotation)>this.options.threshold||this.state&ob)}}),i(fa,aa,{defaults:{event:"swipe",threshold:10,velocity:.3,direction:Na|Oa,pointers:1},getTouchAction:function(){return ba.prototype.getTouchAction.call(this)},attrTest:function(a){var b,c=this.options.direction;return c&(Na|Oa)?b=a.overallVelocity:c&Na?b=a.overallVelocityX:c&Oa&&(b=a.overallVelocityY),this._super.attrTest.call(this,a)&&c&a.offsetDirection&&a.distance>this.options.threshold&&a.maxPointers==this.options.pointers&&qa(b)>this.options.velocity&&a.eventType&Ga},emit:function(a){var b=$(a.offsetDirection);b&&this.manager.emit(this.options.event+b,a),this.manager.emit(this.options.event,a)}}),i(ga,Y,{defaults:{event:"tap",pointers:1,taps:1,interval:300,time:250,threshold:9,posThreshold:10},getTouchAction:function(){return[ib]},process:function(a){var b=this.options,c=a.pointers.length===b.pointers,d=a.distance<b.threshold,f=a.deltaTime<b.time;if(this.reset(),a.eventType&Ea&&0===this.count)return this.failTimeout();if(d&&f&&c){if(a.eventType!=Ga)return this.failTimeout();var g=this.pTime?a.timeStamp-this.pTime<b.interval:!0,h=!this.pCenter||H(this.pCenter,a.center)<b.posThreshold;this.pTime=a.timeStamp,this.pCenter=a.center,h&&g?this.count+=1:this.count=1,this._input=a;var i=this.count%b.taps;if(0===i)return this.hasRequireFailures()?(this._timer=e(function(){this.state=rb,this.tryEmit()},b.interval,this),ob):rb}return tb},failTimeout:function(){return this._timer=e(function(){this.state=tb},this.options.interval,this),tb},reset:function(){clearTimeout(this._timer)},emit:function(){this.state==rb&&(this._input.tapCount=this.count,this.manager.emit(this.options.event,this._input))}}),ha.VERSION="2.0.7",ha.defaults={domEvents:!1,touchAction:gb,enable:!0,inputTarget:null,inputClass:null,preset:[[ea,{enable:!1}],[ca,{enable:!1},["rotate"]],[fa,{direction:Na}],[ba,{direction:Na},["swipe"]],[ga],[ga,{event:"doubletap",taps:2},["tap"]],[da]],cssProps:{userSelect:"none",touchSelect:"none",touchCallout:"none",contentZooming:"none",userDrag:"none",tapHighlightColor:"rgba(0,0,0,0)"}};var ub=1,vb=2;ia.prototype={set:function(a){return la(this.options,a),a.touchAction&&this.touchAction.update(),a.inputTarget&&(this.input.destroy(),this.input.target=a.inputTarget,this.input.init()),this},stop:function(a){this.session.stopped=a?vb:ub},recognize:function(a){var b=this.session;if(!b.stopped){this.touchAction.preventDefaults(a);var c,d=this.recognizers,e=b.curRecognizer;(!e||e&&e.state&rb)&&(e=b.curRecognizer=null);for(var f=0;f<d.length;)c=d[f],b.stopped===vb||e&&c!=e&&!c.canRecognizeWith(e)?c.reset():c.recognize(a),!e&&c.state&(ob|pb|qb)&&(e=b.curRecognizer=c),f++}},get:function(a){if(a instanceof Y)return a;for(var b=this.recognizers,c=0;c<b.length;c++)if(b[c].options.event==a)return b[c];return null},add:function(a){if(f(a,"add",this))return this;var b=this.get(a.options.event);return b&&this.remove(b),this.recognizers.push(a),a.manager=this,this.touchAction.update(),a},remove:function(a){if(f(a,"remove",this))return this;if(a=this.get(a)){var b=this.recognizers,c=r(b,a);-1!==c&&(b.splice(c,1),this.touchAction.update())}return this},on:function(a,b){if(a!==d&&b!==d){var c=this.handlers;return g(q(a),function(a){c[a]=c[a]||[],c[a].push(b)}),this}},off:function(a,b){if(a!==d){var c=this.handlers;return g(q(a),function(a){b?c[a]&&c[a].splice(r(c[a],b),1):delete c[a]}),this}},emit:function(a,b){this.options.domEvents&&ka(a,b);var c=this.handlers[a]&&this.handlers[a].slice();if(c&&c.length){b.type=a,b.preventDefault=function(){b.srcEvent.preventDefault()};for(var d=0;d<c.length;)c[d](b),d++}},destroy:function(){this.element&&ja(this,!1),this.handlers={},this.session={},this.input.destroy(),this.element=null}},la(ha,{INPUT_START:Ea,INPUT_MOVE:Fa,INPUT_END:Ga,INPUT_CANCEL:Ha,STATE_POSSIBLE:nb,STATE_BEGAN:ob,STATE_CHANGED:pb,STATE_ENDED:qb,STATE_RECOGNIZED:rb,STATE_CANCELLED:sb,STATE_FAILED:tb,DIRECTION_NONE:Ia,DIRECTION_LEFT:Ja,DIRECTION_RIGHT:Ka,DIRECTION_UP:La,DIRECTION_DOWN:Ma,DIRECTION_HORIZONTAL:Na,DIRECTION_VERTICAL:Oa,DIRECTION_ALL:Pa,Manager:ia,Input:x,TouchAction:V,TouchInput:P,MouseInput:L,PointerEventInput:M,TouchMouseInput:R,SingleTouchInput:N,Recognizer:Y,AttrRecognizer:aa,Tap:ga,Pan:ba,Swipe:fa,Pinch:ca,Rotate:ea,Press:da,on:m,off:n,each:g,merge:ta,extend:sa,assign:la,inherit:i,bindFn:j,prefixed:u});var wb="undefined"!=typeof a?a:"undefined"!=typeof self?self:{};wb.Hammer=ha,"function"==typeof define&&define.amd?define('hammer',[],function(){return ha}):"undefined"!=typeof module&&module.exports?module.exports=ha:a[c]=ha}(window,document,"Hammer");
 
 
 define("readium-external-libs", function(){});

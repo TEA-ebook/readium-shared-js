@@ -25,13 +25,13 @@
 //  OF THE POSSIBILITY OF SUCH DAMAGE.
 
 define(["../globals", "jquery", "underscore", "eventEmitter", "./fixed_view", "../helpers", "./iframe_loader", "./internal_links_support",
-        "./media_overlay_data_injector", "./media_overlay_player", "../models/package", "../models/page_open_request",
+        "./media_overlay_data_injector", "./media_overlay_player", "../models/package", "../models/metadata", "../models/page_open_request",
         "./reflowable_view", "./scroll_view", "../models/style_collection", "../models/switches", "../models/trigger",
-        "../models/viewer_settings", "../models/bookmark_data", "../models/node_range_info"],
+        "../models/viewer_settings", "../models/bookmark_data", "../models/node_range_info", "./external_agent_support"],
     function (Globals, $, _, EventEmitter, FixedView, Helpers, IFrameLoader, InternalLinksSupport,
-              MediaOverlayDataInjector, MediaOverlayPlayer, Package, PageOpenRequest,
+              MediaOverlayDataInjector, MediaOverlayPlayer, Package, Metadata, PageOpenRequest,
               ReflowableView, ScrollView, StyleCollection, Switches, Trigger,
-              ViewerSettings, BookmarkData, NodeRangeInfo) {
+              ViewerSettings, BookmarkData, NodeRangeInfo, ExternalAgentSupport) {
 /**
  * Options passed on the reader from the readium loader/initializer
  *
@@ -47,12 +47,12 @@ define(["../globals", "jquery", "underscore", "eventEmitter", "./fixed_view", ".
  * @constructor
  */
 var ReaderView = function (options) {
-
     $.extend(this, new EventEmitter());
 
     var self = this;
     var _currentView = undefined;
     var _package = undefined;
+    var _metadata = undefined;
     var _spine = undefined;
     var _viewerSettings = new ViewerSettings({});
     //styles applied to the container divs
@@ -60,6 +60,7 @@ var ReaderView = function (options) {
     //styles applied to the content documents
     var _bookStyles = new StyleCollection();
     var _internalLinksSupport = new InternalLinksSupport(this);
+    var _externalAgentSupport = new ExternalAgentSupport(this);
     var _mediaOverlayPlayer;
     var _mediaOverlayDataInjector;
     var _iframeLoader;
@@ -72,6 +73,9 @@ var ReaderView = function (options) {
         handleViewportResizeEnd, 250, 1000, self);
 
     $(window).on("resize.ReadiumSDK.readerView", lazyResize);
+
+    this.fonts = options.fonts;
+
 
     if (options.el instanceof $) {
         _$el = options.el;
@@ -238,7 +242,8 @@ var ReaderView = function (options) {
         self.emit(Globals.Events.READER_VIEW_CREATED, desiredViewType);
 
         _currentView.on(Globals.Events.CONTENT_DOCUMENT_LOADED, function ($iframe, spineItem) {
-            
+            var contentDoc = $iframe[0].contentDocument;
+
             Globals.logEvent("CONTENT_DOCUMENT_LOADED", "ON", "reader_view.js (current view) [ " + spineItem.href + " ]");
 
             if (!Helpers.isIframeAlive($iframe[0])) return;
@@ -248,7 +253,8 @@ var ReaderView = function (options) {
 
             _internalLinksSupport.processLinkElements($iframe, spineItem);
 
-            var contentDoc = $iframe[0].contentDocument;
+            _externalAgentSupport.bindToContentDocument(contentDoc, spineItem);
+
             Trigger.register(contentDoc);
             Switches.apply(contentDoc);
 
@@ -257,11 +263,14 @@ var ReaderView = function (options) {
         });
 
         _currentView.on(Globals.Events.CONTENT_DOCUMENT_LOAD_START, function ($iframe, spineItem) {
+
             Globals.logEvent("CONTENT_DOCUMENT_LOAD_START", "EMIT", "reader_view.js [ " + spineItem.href + " ]");
             self.emit(Globals.Events.CONTENT_DOCUMENT_LOAD_START, $iframe, spineItem);
         });
 
         _currentView.on(Globals.Events.CONTENT_DOCUMENT_UNLOADED, function ($iframe, spineItem) {
+            
+            Globals.logEvent("CONTENT_DOCUMENT_UNLOADED", "EMIT", "reader_view.js [ " + spineItem.href + " ]");
             self.emit(Globals.Events.CONTENT_DOCUMENT_UNLOADED, $iframe, spineItem);
         });
 
@@ -277,6 +286,11 @@ var ReaderView = function (options) {
             _.defer(function () {
                 Globals.logEvent("PAGINATION_CHANGED", "EMIT", "reader_view.js");
                 self.emit(Globals.Events.PAGINATION_CHANGED, pageChangeData);
+                
+                if (!pageChangeData.spineItem) return;
+                _.defer(function () {
+                    _externalAgentSupport.updateContentDocument(pageChangeData.spineItem);
+                });
             });
         });
 
@@ -286,7 +300,9 @@ var ReaderView = function (options) {
         })
 
         _currentView.render();
-        _currentView.setViewSettings(_viewerSettings);
+
+        var docWillChange = true;
+        _currentView.setViewSettings(_viewerSettings, docWillChange);
 
         // we do this to wait until elements are rendered otherwise book is not able to determine view size.
         setTimeout(function () {
@@ -347,6 +363,15 @@ var ReaderView = function (options) {
     };
 
     /**
+     * Returns a data object based on the package document metadata
+     *
+     * @returns {Models.Metadata}
+     */
+    this.metadata = function () {
+        return _metadata;
+    };
+
+    /**
      * Returns a representation of the spine as a data object, also acts as list of spine items
      *
      * @returns {Models.Spine}
@@ -378,13 +403,14 @@ var ReaderView = function (options) {
     /**
      * Triggers the process of opening the book and requesting resources specified in the packageData
      *
-     * @param {Views.ReaderView.OpenBookData} openBookData - object with open book data
+     * @param {Views.ReaderView.OpenBookData} openBookData Open book data object
      */
     this.openBook = function (openBookData) {
 
         var packageData = openBookData.package ? openBookData.package : openBookData;
 
         _package = new Package(packageData);
+        _metadata = new Metadata(packageData.metadata);
 
         _spine = _package.spine;
         _spine.handleLinear(true);
@@ -410,6 +436,10 @@ var ReaderView = function (options) {
         }
 
         var pageRequestData = undefined;
+
+        if (openBookData.openPageRequest && typeof(openBookData.openPageRequest) === 'function') {
+            openBookData.openPageRequest = openBookData.openPageRequest();
+        }
 
         if (openBookData.openPageRequest) {
 
@@ -466,8 +496,8 @@ var ReaderView = function (options) {
     };
 
     function onMediaPlayerStatusChanged(status) {
+
         Globals.logEvent("MEDIA_OVERLAY_STATUS_CHANGED", "EMIT", "reader_view.js (via MediaOverlayPlayer + AudioPlayer)");
-console.trace(JSON.stringify(status));
         self.emit(Globals.Events.MEDIA_OVERLAY_STATUS_CHANGED, status);
     }
 
@@ -559,7 +589,8 @@ console.trace(JSON.stringify(status));
      *
      * @typedef {object} Globals.Views.ReaderView.SettingsData
      * @property {number} fontSize - Font size as percentage
-     * @property {(string|boolean)} syntheticSpread - "auto"|true|false
+     * @property {number} fontSelection - Font selection as the number in the list of possible fonts, where 0 is special meaning default.
+     * @property {(string|boolean)} syntheticSpread - "auto"|"single"|"double"
      * @property {(string|boolean)} scroll - "auto"|true|false
      * @property {boolean} doNotUpdateView - Indicates whether the view should be updated after the settings are applied
      * @property {boolean} mediaOverlaysEnableClick - Indicates whether media overlays are interactive on mouse clicks
@@ -600,8 +631,15 @@ console.trace(JSON.stringify(status));
                 initViewForItem(spineItem, function (isViewChanged) {
 
                     if (!isViewChanged) {
-                        _currentView.setViewSettings(_viewerSettings);
+                        var docWillChange = false;
+                        _currentView.setViewSettings(_viewerSettings, docWillChange);
                     }
+
+                    self.once(ReadiumSDK.Events.PAGINATION_CHANGED, function (pageChangeData)
+                    {
+                        var cfi = new BookmarkData(bookMark.idref, bookMark.contentCFI);
+                        self.debugBookmarkData(cfi);
+                    });
 
                     self.openSpineItemElementCfi(bookMark.idref, bookMark.contentCFI, self);
 
@@ -803,7 +841,8 @@ console.trace(JSON.stringify(status));
         initViewForItem(pageRequest.spineItem, function (isViewChanged) {
 
             if (!isViewChanged) {
-                _currentView.setViewSettings(_viewerSettings);
+                var docWillChange = true;
+                _currentView.setViewSettings(_viewerSettings, docWillChange);
             }
 
             _currentView.openPage(pageRequest, dir);
@@ -869,7 +908,12 @@ console.trace(JSON.stringify(status));
         var count = styles.length;
 
         for (var i = 0; i < count; i++) {
-            _bookStyles.addStyle(styles[i].selector, styles[i].declarations);
+            if (styles[i].declarations) {
+                _bookStyles.addStyle(styles[i].selector, styles[i].declarations);
+            }
+            else {
+                _bookStyles.removeStyle(styles[i].selector);
+            }
         }
 
         if (_currentView) {
@@ -1022,6 +1066,54 @@ console.trace(JSON.stringify(status));
         openPage(pageData, 0);
 
         return true;
+    };
+
+    //var cfi = new BookmarkData(bookmark.idref, bookmark.contentCFI);
+    this.debugBookmarkData = function(cfi) {
+
+        if (!ReadiumSDK) return;
+
+        var DEBUG = true; // change this to visualize the CFI range
+        if (!DEBUG) return;
+            
+        var paginationInfo = this.getPaginationInfo();
+        console.log(JSON.stringify(paginationInfo));
+        
+        if (paginationInfo.isFixedLayout) return;
+    
+        try {
+            ReadiumSDK._DEBUG_CfiNavigationLogic.clearDebugOverlays();
+            
+        } catch (error) {
+            //ignore
+        }
+        
+        try {
+            console.log(cfi);
+            
+            var range = this.getDomRangeFromRangeCfi(cfi);
+            console.log(range);
+            
+            var res = ReadiumSDK._DEBUG_CfiNavigationLogic.drawDebugOverlayFromDomRange(range);
+            console.log(res);
+        
+            var cfiFirst = ReadiumSDK.reader.getFirstVisibleCfi();
+            console.log(cfiFirst);
+            
+            var cfiLast  = ReadiumSDK.reader.getLastVisibleCfi();
+            console.log(cfiLast);
+            
+        } catch (error) {
+            //ignore
+        }
+        
+        setTimeout(function() {
+            try {
+                ReadiumSDK._DEBUG_CfiNavigationLogic.clearDebugOverlays();
+            } catch (error) {
+                //ignore
+            }
+        }, 2000);
     };
 
     /**
@@ -1226,19 +1318,7 @@ console.trace(JSON.stringify(status));
     this.handleViewportResize = function (bookmarkToRestore) {
         if (!_currentView) return;
 
-        var bookMark = bookmarkToRestore || _currentView.bookmarkCurrentPage(); // not self! (JSON string)
-
-        if (_currentView.isReflowable && _currentView.isReflowable() && bookMark && bookMark.idref) {
-            var spineItem = _spine.getItemById(bookMark.idref);
-
-            initViewForItem(spineItem, function (isViewChanged) {
-                self.openSpineItemElementCfi(bookMark.idref, bookMark.contentCFI, self);
-                return;
-            });
-        }
-        else {
-            _currentView.onViewportResize();
-        }
+        _currentView.onViewportResize();
     };
 
     /**
@@ -1251,13 +1331,6 @@ console.trace(JSON.stringify(status));
      */
     this.addIFrameEventListener = function (eventName, callback, context) {
         _iframeLoader.addIFrameEventListener(eventName, callback, context);
-    };
-
-    this.isElementCfiVisible = function (spineIdRef, contentCfi) {
-        if (!_currentView) {
-            return false;
-        }
-        return _currentView.isElementCfiVisible(spineIdRef, contentCfi);
     };
 
     var BackgroundAudioTrackManager = function (readerView) {
@@ -1567,7 +1640,7 @@ console.trace(JSON.stringify(status));
      * Resolve a range CFI into an object containing info about it.
      * @param {string} spineIdRef    The spine item idref associated with the content document
      * @param {string} partialCfi    The partial CFI that is the range CFI to resolve
-     * @returns {ReadiumSDK.Models.NodeRangeInfo}
+     * @returns {Models.NodeRangeInfo}
      */
     this.getNodeRangeInfoFromCfi = function (spineIdRef, partialCfi) {
         if (_currentView && spineIdRef && partialCfi) {
@@ -1610,6 +1683,29 @@ console.trace(JSON.stringify(status));
         }
         return undefined;
     };
+
+    /**
+     * Get CFI of the first element from the base of the document
+     * @returns {ReadiumSDK.Models.BookmarkData}
+     */
+    this.getStartCfi = function() {
+        if (_currentView) {
+            return _currentView.getStartCfi();
+        }
+        return undefined;
+    };
+
+    /**
+     * Get CFI of the last element from the base of the document
+     * @returns {ReadiumSDK.Models.BookmarkData}
+     */
+    this.getEndCfi = function() {
+        if (_currentView) {
+            return _currentView.getEndCfi();
+        }
+        return undefined;
+    };
+
     /**
      *
      * @param {string} rangeCfi
@@ -1715,6 +1811,19 @@ console.trace(JSON.stringify(status));
         }
         return undefined;
     };
+       
+    /**
+     * Useful for getting a CFI that's as close as possible to an invisible (not rendered, zero client rects) element
+     * @param {HTMLElement} element
+     * @returns {*}
+     */
+    this.getNearestCfiFromElement = function(element) {
+        if (_currentView) {
+            return _currentView.getNearestCfiFromElement(element);
+        }
+        return undefined;
+    };
+    
 };
 
 /**

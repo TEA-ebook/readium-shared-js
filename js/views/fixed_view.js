@@ -83,6 +83,9 @@ var FixedView = function(options, reader){
 
         pageView.on(Globals.Events.CONTENT_DOCUMENT_UNLOADED, function($iframe, spineItem) {
 
+            Globals.logEvent("CONTENT_DOCUMENT_UNLOADED", "ON", "fixed_view.js [ " + spineItem.href + " ]");
+
+            Globals.logEvent("CONTENT_DOCUMENT_UNLOADED", "EMIT", "fixed_view.js [ " + spineItem.href + " ]");
             self.emit(Globals.Events.CONTENT_DOCUMENT_UNLOADED, $iframe, spineItem);
         });
 
@@ -135,7 +138,7 @@ var FixedView = function(options, reader){
     };
 
 
-    this.setViewSettings = function(settings) {
+    this.setViewSettings = function(settings, docWillChange) {
         
         _viewSettings = settings;
         
@@ -143,7 +146,7 @@ var FixedView = function(options, reader){
 
         var views = getDisplayingViews();
         for(var i = 0, count = views.length; i < count; i++) {
-            views[i].setViewSettings(settings);
+            views[i].setViewSettings(settings, docWillChange);
         }
     };
 
@@ -604,10 +607,12 @@ var FixedView = function(options, reader){
     this.bookmarkCurrentPage = function() {
 
         var views = getDisplayingViews();
+        var loadedSpineItems = this.getLoadedSpineItems();
 
-        if(views.length > 0) {
-
+        if (views.length > 0) {
             return views[0].getFirstVisibleCfi();
+        } else if (loadedSpineItems.length > 0) {
+            return new BookmarkData(this.getLoadedSpineItems()[0].idref, null);
         }
 
         return undefined;
@@ -870,6 +875,27 @@ var FixedView = function(options, reader){
         return callOnPageView(spineItemIdref, function (view) {
             return view.getElementFromPoint(x,y);
         });
+    };
+
+    this.getStartCfi = function () {
+        return getDisplayingViews()[0].getStartCfi();
+    };
+
+    this.getEndCfi = function () {
+        return getDisplayingViews()[0].getEndCfi();
+    };
+
+    this.getNearestCfiFromElement = function(element) {
+        var views = getDisplayingViews();
+
+        for (var i = 0, count = views.length; i < count; i++) {
+
+            var view = views[i];
+            if (view.getLoadedContentFrames()[0].$iframe[0].contentDocument === element.ownerDocument) {
+                return view.getNearestCfiFromElement(element);
+            }
+        }
+
     };
 
 };

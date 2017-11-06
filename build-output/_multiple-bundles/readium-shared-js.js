@@ -27,7 +27,7 @@
 
 define('readium_shared_js/globals',['jquery','eventEmitter'], function($, EventEmitter) {
     
-    var DEBUG = true;
+    var DEBUG = false;
     
 /**
  * Top level ReadiumSDK namespace
@@ -60,6 +60,30 @@ var Globals = {
      * @namespace
      */
     Events: {
+        READER_INITIALIZED: "ReaderInitialized",
+        // PAGINATION_CHANGED gets triggered on every page turnover. it includes spine information and such.
+        PAGINATION_CHANGED: "PaginationChanged",
+        SETTINGS_APPLIED: "SettingsApplied",
+        FXL_VIEW_RESIZED: "FXLViewResized",
+        READER_VIEW_CREATED: "ReaderViewCreated",
+        READER_VIEW_DESTROYED: "ReaderViewDestroyed",
+        CONTENT_DOCUMENT_LOAD_START: "ContentDocumentLoadStart",
+        CONTENT_DOCUMENT_LOADED: "ContentDocumentLoaded",
+        MEDIA_OVERLAY_STATUS_CHANGED: "MediaOverlayStatusChanged",
+        MEDIA_OVERLAY_TTS_SPEAK: "MediaOverlayTTSSpeak",
+        MEDIA_OVERLAY_TTS_STOP: "MediaOverlayTTSStop",
+        GESTURE_PINCH: "GesturePinch",
+        GESTURE_PINCH_MOVE: "GesturePinchMove",
+        GESTURE_TAP: "GestureTap",
+        GESTURE_SWIPE_LEFT: "GestureSwipeLeft",
+        GESTURE_SWIPE_RIGHT: "GestureSwipeRight",
+        GESTURE_PRESS: "GesturePress",
+        SCRIPT_NAVIGATION_DETECTED: "ScriptNavigationDetected",
+        MOUSE_MOVE: "MouseMove",
+        TEXT_SELECTED: "TextSelected"
+    },
+
+    InternalEvents: {
         /**
          * @event
          */
@@ -124,7 +148,7 @@ var Globals = {
         /**
          * @event
          */
-        CURRENT_VIEW_PAGINATION_CHANGED: "CurrentViewPaginationChanged",
+        CURRENT_VIEW_PAGINATION_CHANGED: "CurrentViewPaginationChanged"
     },
     
     logEvent: function(eventName, eventType, eventSource) {
@@ -644,6 +668,10 @@ define('readium_shared_js/globalsSetup',['./globals', 'jquery', 'console_shim', 
 
         window.URL = window.webkitURL;
     }
+
+    // polyfill to support old versions of some browsers
+    window.BlobBuilder = window.BlobBuilder || window.WebKitBlobBuilder || window.MozBlobBuilder || window.MSBlobBuilder;
+
     // Plugins bootstrapping begins
     Globals.Plugins = PluginsController;
     Globals.on(Globals.Events.READER_INITIALIZED, function(reader) {
@@ -722,6 +750,7 @@ var BookmarkData = function(idref, contentCFI) {
      * @property idref
      * @type {string}
      */
+
     this.idref = idref;
 
     /**
@@ -729,12 +758,14 @@ var BookmarkData = function(idref, contentCFI) {
      * @property contentCFI
      * @type {string}
      */
+    
     this.contentCFI = contentCFI;
 
     /**
      * serialize to string
      * @return JSON string representation
      */
+    
     this.toString = function(){
         return JSON.stringify(self);
     }
@@ -788,14 +819,57 @@ define('readium_shared_js/models/current_pages_info',[],function() {
  *
  * @param {Models.Spine} spine
  * @param {boolean} isFixedLayout is fixed or reflowable spine item
+ * @return CurrentPagesInfo
 */
+
 var CurrentPagesInfo = function(spine, isFixedLayout) {
 
 
+    /**
+     * The reading direction
+     *
+     * @property isRightToLeft
+     * @type bool
+     */
+
     this.isRightToLeft = spine.isRightToLeft();
+    
+    /**
+     * Is the ebook fixed layout or not?
+     *
+     * @property isFixedLayout
+     * @type bool
+     */
+
     this.isFixedLayout = isFixedLayout;
+    
+    /**
+     * Counts the number of spine items
+     *
+     * @property spineItemCount
+     * @type number
+     */    
+
     this.spineItemCount = spine.items.length
+    
+    /**
+     * returns an array of open pages, each array item is a data structure (plain JavaScript object) with the following fields: spineItemPageIndex, spineItemPageCount, idref, spineItemIndex (as per the parameters of the addOpenPage() function below)
+     *
+     * @property openPages
+     * @type array
+     */
+
     this.openPages = [];
+
+    /**
+     * Adds an page item to the openPages array
+     *
+     * @method     addOpenPage
+     * @param      {number} spineItemPageIndex
+     * @param      {number} spineItemPageCount
+     * @param      {string} idref
+     * @param      {number} spineItemIndex   
+     */
 
     this.addOpenPage = function(spineItemPageIndex, spineItemPageCount, idref, spineItemIndex) {
         this.openPages.push({spineItemPageIndex: spineItemPageIndex, spineItemPageCount: spineItemPageCount, idref: idref, spineItemIndex: spineItemIndex});
@@ -803,13 +877,34 @@ var CurrentPagesInfo = function(spine, isFixedLayout) {
         this.sort();
     };
 
+    /**
+     * Checks if navigation to the page on the left is possible (depending on page-progression-direction: previous page in LTR mode, next page in RTL mode)
+     *
+     * @method     canGoLeft
+     * @return bool true if turning to the left page is possible 
+     */
+
     this.canGoLeft = function () {
         return this.isRightToLeft ? this.canGoNext() : this.canGoPrev();
     };
 
+    /**
+     * Checks if navigation to the page on the right is possible (depending on page-progression-direction: next page in LTR mode, previous page in RTL mode)
+     *
+     * @method     canGoRight
+     * @return bool true if turning to the right page is possible 
+     */
+
     this.canGoRight = function () {
         return this.isRightToLeft ? this.canGoPrev() : this.canGoNext();
     };
+
+    /**
+     * Checks if navigation to the next page is possible (depending on page-progression-direction: right page in LTR mode, left page in RTL mode)
+     *
+     * @method     canGoNext
+     * @return bool true if turning to the next page is possible 
+     */
 
     this.canGoNext = function() {
 
@@ -829,6 +924,13 @@ var CurrentPagesInfo = function(spine, isFixedLayout) {
         return lastOpenPage.spineItemIndex < spine.last().index || lastOpenPage.spineItemPageIndex < lastOpenPage.spineItemPageCount - 1;
     };
 
+    /**
+     * Checks if navigation to the previous page is possible (depending on page-progression-direction: left page in LTR mode, right page in RTL mode)
+     *
+     * @method     canGoPrev
+     * @return bool true if turning to the previous page is possible 
+     */
+
     this.canGoPrev = function() {
 
         if(this.openPages.length == 0)
@@ -847,6 +949,12 @@ var CurrentPagesInfo = function(spine, isFixedLayout) {
         return spine.first().index < firstOpenPage.spineItemIndex || 0 < firstOpenPage.spineItemPageIndex;
     };
 
+    /**
+     * Sorts the openPages array based on spineItemIndex and spineItemPageIndex
+     *
+     * @method     sort
+     */
+
     this.sort = function() {
 
         this.openPages.sort(function(a, b) {
@@ -855,7 +963,7 @@ var CurrentPagesInfo = function(spine, isFixedLayout) {
                 return a.spineItemIndex - b.spineItemIndex;
             }
 
-            return a.pageIndex - b.pageIndex;
+            return a.spineItemPageIndex - b.spineItemPageIndex;
 
         });
 
@@ -865,7 +973,7 @@ var CurrentPagesInfo = function(spine, isFixedLayout) {
 
 return CurrentPagesInfo;
 });
-//  Created by Boris Schneiderman.
+  //  Created by Boris Schneiderman.
 //  Copyright (c) 2014 Readium Foundation and/or its licensees. All rights reserved.
 //  
 //  Redistribution and use in source and binary forms, with or without modification, 
@@ -892,29 +1000,53 @@ return CurrentPagesInfo;
 
 define('readium_shared_js/models/fixed_page_spread',[],function() {
 /**
+ * Spread the page 
  *
- * @param {Models.Spine} spine
+ * @class  Models.Spread
  * @constructor
+ * @param spine 
+ * @param {Boolean} isSyntheticSpread 
+ *
  */
 var Spread = function(spine, isSyntheticSpread) {
 
     var self = this;
 
     this.spine = spine;
-
+    
     this.leftItem = undefined;
     this.rightItem = undefined;
     this.centerItem = undefined;
 
     var _isSyntheticSpread = isSyntheticSpread;
 
+    /**
+     * Sets whether or not this is a synthetic spread
+     *
+     * @method     setSyntheticSpread
+     * @param      {Bool} isSyntheticSpread
+     */
+
     this.setSyntheticSpread = function(isSyntheticSpread) {
         _isSyntheticSpread = isSyntheticSpread;
     };
 
+    /**
+     * Checks out if the spread is synthetic
+     *
+     * @method     isSyntheticSpread
+     * @return     {Bool} true if this is a 2-page synthetic spread
+     */
+
     this.isSyntheticSpread = function() {
         return _isSyntheticSpread;
     };
+
+    /**
+     * Opens the first spine item (FXL page)
+     *
+     * @method     openFirst
+     */
 
     this.openFirst = function() {
 
@@ -926,6 +1058,12 @@ var Spread = function(spine, isSyntheticSpread) {
         }
     };
 
+    /**
+     * Opens the last spine item (FXL page)
+     *
+     * @method     openLast
+     */
+
     this.openLast = function() {
 
         if( this.spine.items.length == 0 ) {
@@ -935,6 +1073,13 @@ var Spread = function(spine, isSyntheticSpread) {
             this.openItem(this.spine.last());
         }
     };
+
+    /**
+     * Opens a spine item (FXL page)
+     *
+     * @method     openItem
+     * @param      {Models.SpineItem} item
+     */
 
     this.openItem = function(item) {
 
@@ -957,12 +1102,26 @@ var Spread = function(spine, isSyntheticSpread) {
         }
     };
 
+    /**
+     * Resets the spine items (FXL pages, left + right + center) to undefined
+     *
+     * @method     resetItems
+     */
+
     function resetItems() {
 
         self.leftItem = undefined;
         self.rightItem = undefined;
         self.centerItem = undefined;
     }
+
+    /**
+     * Sets the spine item (FXL page) to a position (left, right or center)
+     *
+     * @method     setItemToPosition
+     * @param      {Models.SpineItem} item
+     * @param      {Spread.POSITION_CENTER | Spread.POSITION_LEFT | Spread.POSITION_RIGHT} position
+     */
 
     function setItemToPosition(item, position) {
 
@@ -982,6 +1141,14 @@ var Spread = function(spine, isSyntheticSpread) {
         }
     }
 
+    /**
+     * Returns the position of a spine item / FXL page (left, center or right)
+     *
+     * @method     getItemPosition
+     * @param      {Models.SpineItem} item
+     * @return     {Spread.POSITION_CENTER | Spread.POSITION_LEFT | Spread.POSITION_RIGHT}
+     */
+
     function getItemPosition(item) {
         
         // includes !item.isRenditionSpreadAllowed() ("rendition:spread-none") ==> force center position
@@ -999,6 +1166,12 @@ var Spread = function(spine, isSyntheticSpread) {
 
         return Spread.POSITION_CENTER;
     }
+
+    /**
+     * Opens the next item
+     *
+     * @method     openNext
+     */ 
 
     this.openNext = function() {
 
@@ -1018,6 +1191,12 @@ var Spread = function(spine, isSyntheticSpread) {
         }
     };
 
+    /**
+     * Opens the previous item
+     *
+     * @method     openPrev
+     */ 
+
     this.openPrev = function() {
 
         var items = this.validItems();
@@ -1036,6 +1215,13 @@ var Spread = function(spine, isSyntheticSpread) {
         }
     };
 
+    /**
+     * Returns an sorrted array of spine items (as per their order in the spine) that are currently in the FXL page layout
+     *
+     * @method     validItems
+     * @return     {array} 
+     */ 
+
     this.validItems = function() {
 
         var arr = [];
@@ -1050,6 +1236,14 @@ var Spread = function(spine, isSyntheticSpread) {
 
         return arr;
     };
+
+    /**
+     * Gets the neighbour spine item in the FXL page layout (on left or right of the current item)
+     *
+     * @method     getNeighbourItem
+     * @param      {Models.SpineItem} item
+     * @return     {Models.SpineItem} item
+     */ 
 
     function getNeighbourItem(item) {
 
@@ -1073,7 +1267,7 @@ Spread.POSITION_CENTER = "center";
 return Spread;
 });
 //  Created by Boris Schneiderman.
-//  Copyright (c) 2014 Readium Foundation and/or its licensees. All rights reserved.
+//  Copyright (c) 2016 Readium Foundation and/or its licensees. All rights reserved.
 //  
 //  Redistribution and use in source and binary forms, with or without modification, 
 //  are permitted provided that the following conditions are met:
@@ -1102,58 +1296,159 @@ define('readium_shared_js/models/spine_item',[], function() {
 /**
  * Wrapper of the SpineItem object received from the host application
  *
- * @class Models.SpineItem
- *
- * @param itemData spine item properties container
- * @param {Number} index
- * @param {Models.Spine} spine
+ * @class  Models.SpineItem
+ * @constructor
+ * @param itemData container for spine item properties
+ * @param {Number} index index of this spine item in the parent spine 
+ * @param {Models.Spine} spine parent spine
  *
  */
 var SpineItem = function(itemData, index, spine){
 
     var self = this;
 
+    /**
+     * The idref of the spine item, i.e. the ID-based pointer to the actual 
+     * manifest item that the spine item references
+     *
+     * @property idref
+     * @type String
+     * @default  None
+     */
     this.idref = itemData.idref;
+
+    /**
+     * The href of the spine item, i.e. the URI to the resource in the EPUB
+     * which the spineitem will render
+     *
+     * @property href
+     * @type String
+     * @default  None
+     */
     this.href = itemData.href;
 
+    /**
+     * A flag indicating whether the spineItem has the attribute linear, which 
+     * is either yes or no.  Default is yes.
+     *
+     * @property linear
+     * @type String
+     * @default  yes
+     */
     this.linear = itemData.linear ? itemData.linear.toLowerCase() : itemData.linear;
 
+    /**
+     * A variable indicating the type of synthetic spread for this specific
+     * spine item, where page:spread-* can be left, right or center or auto
+     *
+     * @property page_spread
+     * @type String
+     * @default  auto
+     */
     this.page_spread = itemData.page_spread;
     
+    /**
+     * A string specifying the height and width from the rendition:viewport tag.
+     * Note: This is deprecated in EPUB 3.1
+     *
+     * @property rendition_viewport
+     * @type     String
+     * @default  None
+     */
     this.rendition_viewport = itemData.rendition_viewport;
     
+    /**
+     * A string specifying the type of synthetic spread for ALL spine items, where
+     * where rendtion:spread-* can be left, right or center or auto
+     *
+     * @property rendition_spread
+     * @type     String
+     * @default  auto
+     */
     this.rendition_spread = itemData.rendition_spread;
-    
-    //TODO: unused yet!
+
+    /**
+     * A string specifying desired orientation for ALL spine items. Possible values are
+     * rendition-orientation-*, which can be none, landscape, portrait, both or auto
+     *
+     * Note: Not yet implemented.
+     *
+     * @property rendition_orientation
+     * @type     String
+     * @default  auto
+     */
     this.rendition_orientation = itemData.rendition_orientation;
 
+    /**
+     * A string indicating the type of document layout, either prepaginated or reflowable
+     *
+     * @property rendition_layout
+     * @type     String
+     * @default  reflowable
+     */
     this.rendition_layout = itemData.rendition_layout;
     
+    /**
+     * A string specifying how "overflow" content that exceeds the current viewport should
+     * be laid out.  Possible values are paginated, scrolled-continuous, scrolled-doc or auto
+     *
+     * @property rendition_flow
+     * @type     String
+     * @default  auto
+     */
     this.rendition_flow = itemData.rendition_flow;
     
-    
-    
+    /**
+     * The ID, if any, of the root SMIL element of the media overlay for the document.
+     *
+     * @property media_overlay_id
+     * @type     String
+     * @default  None
+     */
     this.media_overlay_id = itemData.media_overlay_id;
 
+    /**
+     * The mimetype of this specific spine item.
+     *
+     * @property media_type
+     * @type     String
+     * @default  None
+     */
     this.media_type = itemData.media_type;
 
+    /**
+     * The index of this spine item in the parent spine .
+     * 
+     * @property index
+     * @type     String
+     * @default  None
+     */
     this.index = index;
+
+    /**
+     * The object which is the actual spine of which this spineItem is a child.
+     *
+     * @property spine
+     * @type     Models.Spine
+     * @default  None
+     */
     this.spine = spine;
 
     validateSpread();
 
+    /**
+     * Sets a new page spread and checks its validity
+     *
+     * @method     setSpread
+     * @param      {String} spread  the new page spread 
+     */
     this.setSpread = function(spread) {
         this.page_spread = spread;
 
         validateSpread();
     };
 
-    this.isRenditionSpreadAllowed = function() {
-        
-        var rendition_spread = self.getRenditionSpread();
-        return !rendition_spread || rendition_spread != SpineItem.RENDITION_SPREAD_NONE;
-    };
-
+    /* private method (validateSpread) */
     function validateSpread() {
 
         if(!self.page_spread) {
@@ -1166,25 +1461,68 @@ var SpineItem = function(itemData, index, spine){
 
             console.error(self.page_spread + " is not a recognized spread type");
         }
+    };
 
-    }
+    /**
+     * Checks to see if the manifest has specified a spread property of "none"
+     *
+     * @method     isRenditionSpreadAllowed
+     * @return     {Boolean} TRUE if spread=none has NOT been specified, else FALSE
+     */
+    this.isRenditionSpreadAllowed = function() {
+        
+        var rendition_spread = self.getRenditionSpread();
+        return !rendition_spread || rendition_spread != SpineItem.RENDITION_SPREAD_NONE;
+    };
 
+    /**
+     * Checks to see if this spineItem explicitly specifies SPREAD_LEFT
+     *
+     * @method     isLeftPage
+     * @return     {Boolean} 
+     */
     this.isLeftPage = function() {
         return self.page_spread == SpineItem.SPREAD_LEFT;
     };
 
+    /**
+     * Checks to see if this spineItem explicitly specifies SPREAD_RIGHT
+     *
+     * @method     isRightPage
+     * @return     {Boolean} 
+     */
     this.isRightPage = function() {
         return self.page_spread == SpineItem.SPREAD_RIGHT;
     };
 
+    /**
+     * Checks to see if this spineItem explicitly specifies SPREAD_CENTER
+     *
+     * @method     isCenterPage
+     * @return     {Boolean} 
+     */
     this.isCenterPage = function() {
         return self.page_spread == SpineItem.SPREAD_CENTER;
     };
 
+    /**
+     * Checks to see if the parent package of this spineIem is
+     * reflowable
+     *
+     * @method     isReflowable
+     * @return     {Boolean} 
+     */
     this.isReflowable = function() {
         return !self.isFixedLayout();
     };
 
+    /**
+     * Checks to see if the parent package of to this spineIem is
+     * fixed layout
+     *
+     * @method     isFixedLayout
+     * @return     {Boolean} 
+     */
     this.isFixedLayout = function() {
         
         // cannot use isPropertyValueSetForItemOrPackage() here!
@@ -1204,10 +1542,18 @@ var SpineItem = function(itemData, index, spine){
 
         // if image or svg use fixed layout
         return self.media_type.indexOf("image/") >= 0;
-
     };
 
-    this.getRenditionFlow = function() {
+    /**
+     * Returns a string indicating the type of layout for viewport overflow, 
+     * i.e. scrolldoc, scroll-continuous, paginated or auto.  Note that if the spineItem 
+     * has an override (local value) that is returned, else the package's 
+     * value is returned
+     *
+     * @method     getRenditionFlow
+     * @return     {String} 
+     */
+   this.getRenditionFlow = function() {
 
         if(self.rendition_flow) {
             return self.rendition_flow;
@@ -1216,7 +1562,16 @@ var SpineItem = function(itemData, index, spine){
         return self.spine.package.rendition_flow;
     };
     
-    this.getRenditionViewport = function() {
+    /**
+     * Returns the rendition:viewport, if any. Note that if the spineItem 
+     * has an override (local value) that is returned, else the package's 
+     * value is returned.
+     * Note that this attribute is deprecated in EPUB 3.1
+     *
+     * @method     getRenditionViewport
+     * @return     {Boolean} 
+     */
+     this.getRenditionViewport = function() {
 
         if(self.rendition_viewport) {
             return self.rendition_viewport;
@@ -1225,6 +1580,14 @@ var SpineItem = function(itemData, index, spine){
         return self.spine.package.rendition_viewport;
     };
 
+    /**
+     * Returns the rendition:spread, if any. Note that if the spineItem 
+     * has an override (local value) that is returned, else the package's 
+     * value is returned.
+     *
+     * @method     getRenditionSpread
+     * @return     {Boolean} 
+     */
     this.getRenditionSpread = function() {
 
         if(self.rendition_spread) {
@@ -1234,6 +1597,14 @@ var SpineItem = function(itemData, index, spine){
         return self.spine.package.rendition_spread;
     };
 
+    /**
+     * Returns the rendition:orientation, if any. Note that if the spineItem 
+     * has an override (local value) that is returned, else the package's 
+     * value is returned.
+     *
+     * @method     getRenditionOrientation
+     * @return     {Boolean} 
+     */
     this.getRenditionOrientation = function() {
 
         if(self.rendition_orientation) {
@@ -1243,6 +1614,14 @@ var SpineItem = function(itemData, index, spine){
         return self.spine.package.rendition_orientation;
     };
 
+    /**
+     * Returns the rendition:layout, if any. Note that if the spineItem 
+     * has an override (local value) that is returned, else the package's 
+     * value is returned.
+     *
+     * @method     getRenditionLayout
+     * @return     {String} 
+     */
     this.getRenditionLayout = function() {
 
         if(self.rendition_layout) {
@@ -1252,6 +1631,17 @@ var SpineItem = function(itemData, index, spine){
         return self.spine.package.rendition_layout;
     };
 
+    /**
+     * Checks to see if the specified property is set in this spineItem and
+     * matches the supplied value.  If the property is NOT set in the spineItem
+     * then the the package is checked. If not set in either place then 
+     * the function returns FALSE.
+     *
+     * @method     isPropertyValueSetForItemOrPackage
+     * @param      {String} propName  The name of the property to be checked
+     * @param      {String} propValue The value of the property to be checked
+     * @return     {Boolean} 
+     */
     function isPropertyValueSetForItemOrPackage(propName, propValue) {
 
         if(self[propName]) {
@@ -1265,39 +1655,157 @@ var SpineItem = function(itemData, index, spine){
         return false;
     }
 
+    /**
+     * Checks if this spineItem or its parent package has its overflow content 
+     * layout specified as scrolled-continuous.
+     *
+     * @method     isFlowScrolledContinuous
+     * @return     {Boolean} 
+     */
     this.isFlowScrolledContinuous = function() {
 
         return isPropertyValueSetForItemOrPackage("rendition_flow", SpineItem.RENDITION_FLOW_SCROLLED_CONTINUOUS);
     };
 
+    /**
+     * Checks if this spineItem or its parent package has its overflow content 
+     * layout specified as scrolled-doc.
+     *
+     * @method     isFlowScrolledDoc
+     * @return     {Boolean} 
+     */
     this.isFlowScrolledDoc = function() {
 
         return isPropertyValueSetForItemOrPackage("rendition_flow", SpineItem.RENDITION_FLOW_SCROLLED_DOC);
     };
 };
 
+/** 
+ * @property RENDITION_LAYOUT_REFLOWABLE 
+ * @type {String}
+ * @static 
+ */
 SpineItem.RENDITION_LAYOUT_REFLOWABLE = "reflowable";
+
+/** 
+ * @property RENDITION_LAYOUT_PREPAGINATED 
+ * @type {String}
+ * @static 
+ */
 SpineItem.RENDITION_LAYOUT_PREPAGINATED = "pre-paginated";
 
+/** 
+ * @property RENDITION_ORIENTATION_LANDSCAPE 
+ * @type {String}
+ * @static 
+ */
 SpineItem.RENDITION_ORIENTATION_LANDSCAPE = "landscape";
+
+/** 
+ * @property RENDITION_ORIENTATION_PORTRAIT 
+ * @type {String}
+ * @static 
+ */
 SpineItem.RENDITION_ORIENTATION_PORTRAIT = "portrait";
+/** 
+ * @property RENDITION_ORIENTATION_AUTO
+ * @type {String}
+ * @static 
+ */
 SpineItem.RENDITION_ORIENTATION_AUTO = "auto";
 
+/** 
+ * @property SPREAD_LEFT 
+ * @type {String}
+ * @static 
+ */
 SpineItem.SPREAD_LEFT = "page-spread-left";
+
+/** 
+ * @property SPREAD_RIGHT 
+ * @type {String}
+ * @static 
+ */
 SpineItem.SPREAD_RIGHT = "page-spread-right";
+
+/** 
+ * @property SPREAD_CENTER 
+ * @type {String}
+ * @static 
+ */
 SpineItem.SPREAD_CENTER = "page-spread-center";
 
+/** 
+ * @property RENDITION_SPREAD_NONE 
+ * @type {String}
+ * @static 
+ */
 SpineItem.RENDITION_SPREAD_NONE = "none";
+
+/** 
+ * @property RENDITION_SPREAD_LANDSCAPE 
+ * @type {String}
+ * @static 
+ */
 SpineItem.RENDITION_SPREAD_LANDSCAPE = "landscape";
+
+/** 
+ * @property RENDITION_SPREAD_PORTRAIT 
+ * @type {String}
+ * @static 
+ */
 SpineItem.RENDITION_SPREAD_PORTRAIT = "portrait";
+
+/** 
+ * @property RENDITION_SPREAD_BOTH 
+ * @type {String}
+ * @static 
+ */
 SpineItem.RENDITION_SPREAD_BOTH = "both";
+
+/** 
+ * @property RENDITION_SPREAD_AUTO 
+ * @type {String}
+ * @static 
+ */
 SpineItem.RENDITION_SPREAD_AUTO = "auto";
 
+/** 
+ * @property RENDITION_FLOW_PAGINATED 
+ * @type {String}
+ * @static 
+ */
 SpineItem.RENDITION_FLOW_PAGINATED = "paginated";
+
+/** 
+ * @property RENDITION_FLOW_SCROLLED_CONTINUOUS 
+ * @type {String}
+ * @static 
+ */
 SpineItem.RENDITION_FLOW_SCROLLED_CONTINUOUS = "scrolled-continuous";
+
+/** 
+ * @property RENDITION_FLOW_SCROLLED_DOC 
+ * @type {String}
+ * @static 
+ */
 SpineItem.RENDITION_FLOW_SCROLLED_DOC = "scrolled-doc";
+
+/** 
+ * @property RENDITION_FLOW_AUTO 
+ * @type {String}
+ * @static 
+ */
 SpineItem.RENDITION_FLOW_AUTO = "auto";
 
+/**
+ * Returns the inversion of the spineItem's SPREAD property. i.e
+ * if the page-spread is right it returns LEFT and vice versa.  If 
+ * the spread is center then it returns CENTER
+ *
+ * @method     alternateSpread
+ * @return     {String} 
+ */
 SpineItem.alternateSpread = function(spread) {
 
     if(spread === SpineItem.SPREAD_LEFT) {
@@ -1556,79 +2064,214 @@ Helpers.Rect.fromElement = function ($element) {
 
     return new Helpers.Rect(offsetLeft, offsetTop, offsetWidth, offsetHeight);
 };
+/**
+ *
+ * @param $epubHtml: The html that is to have font attributes added.
+ * @param fontSize: The font size that is to be added to the element at all locations.
+ * @param fontObj: The font Object containing at minimum the URL, and fontFamilyName (In fields url and fontFamily) respectively. Pass in null's on the object's fields to signal no font.
+ * @param callback: function invoked when "done", which means that if there are asynchronous operations such as font-face loading via injected stylesheets, then the UpdateHtmlFontAttributes() function returns immediately but the caller should wait for the callback function call if fully-loaded font-face *stylesheets* are required on the caller's side (note that the caller's side may still need to detect *actual font loading*, via the FontLoader API or some sort of ResizeSensor to indicate that the updated font-family has been used to render the document). 
+ */
 
-Helpers.UpdateHtmlFontSize = function ($epubHtml, fontSize) {
-
-    var perf = false;
-
-    // TODO: very slow on Firefox!
-    // See https://github.com/readium/readium-shared-js/issues/274
-    if (perf) var time1 = window.performance.now();
-
-    var factor = fontSize / 100;
-    var win = $epubHtml[0].ownerDocument.defaultView;
-    var $textblocks = $('p, div, span, h1, h2, h3, h4, h5, h6, li, blockquote, td, pre', $epubHtml);
-    var originalLineHeight;
+Helpers.UpdateHtmlFontAttributes = function ($epubHtml, fontSize, fontObj, callback) {
 
 
-    // need to do two passes because it is possible to have nested text blocks.
-    // If you change the font size of the parent this will then create an inaccurate
-    // font size for any children.
-    for (var i = 0; i < $textblocks.length; i++) {
-        var ele = $textblocks[i],
-            fontSizeAttr = ele.getAttribute('data-original-font-size');
+    var FONT_FAMILY_ID = "readium_font_family_link";
 
-        if (!fontSizeAttr) {
+    var docHead = $("head", $epubHtml);
+    var link = $("#" + FONT_FAMILY_ID, docHead);
+
+    const NOTHING = 0, ADD = 1, REMOVE = 2; //Types for css font family.
+    var changeFontFamily = NOTHING;
+
+    var fontLoadCallback = function() {
+            
+        var perf = false;
+
+        // TODO: very slow on Firefox!
+        // See https://github.com/readium/readium-shared-js/issues/274
+        if (perf) var time1 = window.performance.now();
+
+
+
+        if (changeFontFamily != NOTHING) {
+            var fontFamilyStyle = $("style#readium-fontFamily", docHead);
+
+            if (fontFamilyStyle && fontFamilyStyle[0]) {
+                // REMOVE, or ADD (because we remove before re-adding from scratch)
+                docHead[0].removeChild(fontFamilyStyle[0]);
+            }
+            if (changeFontFamily == ADD) {
+                var style = $epubHtml[0].ownerDocument.createElement('style');
+                style.setAttribute("id", "readium-fontFamily");
+                style.appendChild($epubHtml[0].ownerDocument.createTextNode('html * { font-family: "'+fontObj.fontFamily+'" !important; }')); // this technique works for text-align too (e.g. text-align: justify !important;)
+
+                docHead[0].appendChild(style);
+
+                //fontFamilyStyle = $(style);
+            }
+        }
+        
+        // The code below does not work because jQuery $element.css() on html.body somehow "resets" the font: CSS directive by removing it entirely (font-family: works with !important, but unfortunately further deep inside the DOM there may be CSS applied with the font: directive, which somehow seems to take precedence! ... as shown in Chrome's developer tools)
+        // ...thus why we use the above routine instead, to insert a new head>style element
+        // // var doc = $epubHtml[0].ownerDocument;
+        // // var body = doc.body;
+        // var $body = $("body", $epubHtml);
+        // // $body.css({
+        // //     "font-size" : fontSize + "%",
+        // //     "font-family" : ""
+        // // });
+        // $body.css("font-family", "");
+        // if (changeFontFamily == ADD) {
+            
+        //     var existing = $body.attr("style");
+        //     $body[0].setAttribute("style",
+        //         existing + " ; font-family: '" + fontObj.fontFamily + "' !important ;" + " ; font: regular 100% '" + fontObj.fontFamily + "' !important ;");
+        // }
+
+
+        var factor = fontSize / 100;
+        var win = $epubHtml[0].ownerDocument.defaultView;
+        if (!win) {
+            console.log("NIL $epubHtml[0].ownerDocument.defaultView");
+            return;
+        }
+
+        // TODO: is this a complete list? Is there a better way to do this?
+        //https://github.com/readium/readium-shared-js/issues/336
+        // Note that font-family is handled differently, using an injected stylesheet with a catch-all selector that pushes an "!important" CSS value in the document's cascade.
+        var $textblocks = $('p, div, span, h1, h2, h3, h4, h5, h6, li, blockquote, td, pre, dt, dd, code, a', $epubHtml); // excludes section, body etc.
+
+        // need to do two passes because it is possible to have nested text blocks.
+        // If you change the font size of the parent this will then create an inaccurate
+        // font size for any children.
+        for (var i = 0; i < $textblocks.length; i++) {
+
+            var ele = $textblocks[i];
+            
+            var fontSizeAttr = ele.getAttribute('data-original-font-size');
+            if (fontSizeAttr) {
+                // early exit, original values already set.
+                break;
+            }
+
             var style = win.getComputedStyle(ele);
+            
             var originalFontSize = parseInt(style.fontSize);
-            originalLineHeight = parseInt(style.lineHeight);
-
             ele.setAttribute('data-original-font-size', originalFontSize);
+
+            var originalLineHeight = parseInt(style.lineHeight);
             // getComputedStyle will not calculate the line-height if the value is 'normal'. In this case parseInt will return NaN
             if (originalLineHeight) {
                 ele.setAttribute('data-original-line-height', originalLineHeight);
             }
+            
+            // var fontFamilyAttr = ele.getAttribute('data-original-font-family');
+            // if (!fontFamilyAttr) {
+            //     var originalFontFamily = style.fontFamily;
+            //     if (originalFontFamily) {
+            //         ele.setAttribute('data-original-font-family', originalFontFamily);
+            //     }
+            // }
+        }
+
+        for (var i = 0; i < $textblocks.length; i++) {
+            var ele = $textblocks[i];
+
+            // TODO: group the 3x potential $(ele).css() calls below to avoid multiple jQuery style mutations 
+
+            var fontSizeAttr = ele.getAttribute('data-original-font-size');
+            var originalFontSize = Number(fontSizeAttr);
+            $(ele).css("font-size", (originalFontSize * factor) + 'px');
+
+            var lineHeightAttr = ele.getAttribute('data-original-line-height');
+            var originalLineHeight = lineHeightAttr ? Number(lineHeightAttr) : 0;
+            if (originalLineHeight) {
+                $(ele).css("line-height", (originalLineHeight * factor) + 'px');
+            }
+            
+            // var fontFamilyAttr = ele.getAttribute('data-original-font-family');
+            // switch(changeFontFamily){
+            //     case NOTHING:
+            //         break;
+            //     case ADD:
+            //         $(ele).css("font-family", fontObj.fontFamily);
+            //         break;
+            //     case REMOVE:
+            //         $(ele).css("font-family", fontFamilyAttr);
+            //         break;
+            // }
+        }
+
+        $epubHtml.css("font-size", fontSize + "%");
+
+        
+        
+        if (perf) {
+            var time2 = window.performance.now();
+        
+            // Firefox: 80+
+            // Chrome: 4-10
+            // Edge: 15-34
+            // IE: 10-15
+            // https://readium.firebase.com/?epub=..%2Fepub_content%2Faccessible_epub_3&goto=%7B%22idref%22%3A%22id-id2635343%22%2C%22elementCfi%22%3A%22%2F4%2F2%5Bbuilding_a_better_epub%5D%2F10%2F44%2F6%2C%2F1%3A334%2C%2F1%3A335%22%7D
+            
+            var diff = time2-time1;
+            console.log(diff);
+            
+            // setTimeout(function(){
+            //     alert(diff);
+            // }, 2000);
+        }
+
+        callback();
+    };
+    var fontLoadCallback_ = _.once(fontLoadCallback);
+
+    if(fontObj.fontFamily && fontObj.url){
+        var dataFontFamily = link.length ? link.attr("data-fontfamily") : undefined;
+
+        if(!link.length){
+            changeFontFamily = ADD;
+
+            setTimeout(function(){
+                
+                link = $("<link/>", {
+                    "id" : FONT_FAMILY_ID,
+                    "data-fontfamily" : fontObj.fontFamily,
+                    "rel" : "stylesheet",
+                    "type" : "text/css"
+                });
+                docHead.append(link);
+                    
+                link.attr({
+                    "href" : fontObj.url
+                });
+            }, 0);
+        }
+        else if(dataFontFamily != fontObj.fontFamily){
+            changeFontFamily = ADD;
+        
+            link.attr({
+                "data-fontfamily" : fontObj.fontFamily,
+                "href" : fontObj.url
+            });
+        } else {
+            changeFontFamily = NOTHING;
         }
     }
-
-    // reset variable so the below logic works. All variables in JS are function scoped.
-    originalLineHeight = 0;
-    for (var i = 0; i < $textblocks.length; i++) {
-        var ele = $textblocks[i],
-            fontSizeAttr = ele.getAttribute('data-original-font-size'),
-            lineHeightAttr = ele.getAttribute('data-original-line-height'),
-            originalFontSize = Number(fontSizeAttr);
-
-        if (lineHeightAttr) {
-            originalLineHeight = Number(lineHeightAttr);
-        }
-        else {
-            originalLineHeight = 0;
-        }
-
-        $(ele).css("font-size", (originalFontSize * factor) + 'px');
-        if (originalLineHeight) {
-            $(ele).css("line-height", (originalLineHeight * factor) + 'px');
-        }
-
+    else{
+        changeFontFamily = REMOVE;
+        if(link.length) link.remove();
     }
-    $epubHtml.css("font-size", fontSize + "%");
-    
-    if (perf) {
-        var time2 = window.performance.now();
-    
-        // Firefox: 80+
-        // Chrome: 4-10
-        // Edge: 15-34
-        // IE: 10-15
-        // https://readium.firebase.com/?epub=..%2Fepub_content%2Faccessible_epub_3&goto=%7B%22idref%22%3A%22id-id2635343%22%2C%22elementCfi%22%3A%22%2F4%2F2%5Bbuilding_a_better_epub%5D%2F10%2F44%2F6%2C%2F1%3A334%2C%2F1%3A335%22%7D
-        
-        var diff = time2-time1;
-        console.log(diff);
-        
-        // setTimeout(function(){
-        //     alert(diff);
-        // }, 2000);
+
+    if (changeFontFamily == ADD) {
+        // just in case the link@onload does not trigger, we set a timeout
+        setTimeout(function(){
+            fontLoadCallback_();
+        }, 100);
+    }
+    else { // REMOVE, NOTHING
+        fontLoadCallback_();
     }
 };
 
@@ -1898,14 +2541,19 @@ Helpers.loadTemplate = function (name, params) {
  * @type {{fixed_book_frame: string, single_page_frame: string, scrolled_book_frame: string, reflowable_book_frame: string, reflowable_book_page_frame: string}}
  */
 Helpers.loadTemplate.cache = {
-    "fixed_book_frame": '<div id="fixed-book-frame" class="clearfix book-frame fixed-book-frame"></div>',
+  "fixed_book_frame": '<div id="fixed-book-frame" class="clearfix book-frame fixed-book-frame"></div>',
+  "single_page_frame": '<div><div id="scaler"><iframe enable-annotation="enable-annotation" allowfullscreen="allowfullscreen" scrolling="no" class="iframe-fixed"></iframe></div></div>',
+  //"single_page_frame" : '<div><iframe scrolling="no" class="iframe-fixed" id="scaler"></iframe></div>',
 
-    "single_page_frame": '<div><div id="scaler"><iframe scrolling="no" class="iframe-fixed"></iframe></div></div>',
-    //"single_page_frame" : '<div><iframe scrolling="no" class="iframe-fixed" id="scaler"></iframe></div>',
-
-    "scrolled_book_frame": '<div id="reflowable-book-frame" class="clearfix book-frame reflowable-book-frame"><div id="scrolled-content-frame"></div></div>',
-    "reflowable_book_frame": '<div id="reflowable-book-frame" class="clearfix book-frame reflowable-book-frame"></div>',
-    "reflowable_book_page_frame": '<div id="reflowable-content-frame" class="reflowable-content-frame"><iframe scrolling="no" id="epubContentIframe"></iframe></div>'
+  "scrolled_book_frame": '<div id="reflowable-book-frame" class="clearfix book-frame reflowable-book-frame"><div id="scrolled-content-frame"></div></div>',
+  "reflowable_book_frame": '<div id="reflowable-book-frame" class="clearfix book-frame reflowable-book-frame"></div>',
+  "reflowable_book_page_frame": '<div id="reflowable-content-frame" class="reflowable-content-frame"><iframe enable-annotation="enable-annotation" allowfullscreen="allowfullscreen" scrolling="no" id="epubContentIframe"></iframe></div>'
+  /***
+   * The `enable-annotation` attribute on an iframe helps detect the content frames for annotating tools such as Hypothesis
+   * See here for more details:
+   * https://h.readthedocs.io/projects/client/en/latest/publishers/embedding/
+   * https://github.com/hypothesis/client/pull/533
+   ***/
 };
 
 /**
@@ -1921,16 +2569,85 @@ Helpers.setStyles = function (styles, $element) {
         return;
     }
 
+    var stylingGlobal = "";
+    var stylings = [];
+    var elementIsDocument = ($element && $element.createTextNode) ? true : false;
+
     for (var i = 0; i < count; i++) {
         var style = styles[i];
-        if (style.selector) {
-            $(style.selector, $element).css(style.declarations);
-        }
-        else {
-            $element.css(style.declarations);
+
+        if (elementIsDocument) {
+            if (!style.selector || style.selector == "" || style.selector == "html" || style.selector == "body" || style.selector == "*") {
+                for (var prop in style.declarations) {
+                    if (style.declarations.hasOwnProperty(prop)) {
+                        // backgroundColor => background-color
+                        var prop_ = prop.replace(/[A-Z]/g, function(a) {return '-' + a.toLowerCase()});
+
+                        stylingGlobal += prop_ + ": " + style.declarations[prop] + " !important; ";
+                    }
+                }
+            } else {
+                //$(style.selector, $($element.doumentElement)).css(style.declarations);
+
+                var cssProperties = "";
+
+                for (var prop in style.declarations) {
+                    if (style.declarations.hasOwnProperty(prop)) {
+                        // backgroundColor => background-color
+                        var prop_ = prop.replace(/[A-Z]/g, function(a) {return '-' + a.toLowerCase()});
+                        cssProperties += prop_ + ": " + style.declarations[prop] + " !important; ";
+                    }
+                }
+
+                stylings.push({selector: style.selector, cssProps: cssProperties});
+            }
+            
+        } else { // HTML element
+            if (style.selector) {
+                $(style.selector, $element).css(style.declarations);
+            }
+            else {
+                $element.css(style.declarations);
+            }
         }
     }
 
+    if (elementIsDocument) { // HTML document
+
+        var doc = $element;
+
+        var bookStyleElement = $("style#readium-bookStyles", doc.head);
+
+        if (bookStyleElement && bookStyleElement[0]) {
+            // we remove before re-adding from scratch
+            doc.head.removeChild(bookStyleElement[0]);
+        }
+        
+        var cssStylesheet = "";
+
+        if (stylingGlobal.length > 0) {
+            cssStylesheet += ' body, body::after, body::before, body *, body *::after, body *::before { ' + stylingGlobal + ' } ';
+        }
+
+        if (stylings.length > 0) {
+            for (var i = 0; i < stylings.length; i++) {
+                var styling = stylings[i];
+
+                cssStylesheet += ' ' + styling.selector + ' { ' + styling.cssProps + ' } ';
+            }
+        }
+
+        if (cssStylesheet.length > 0) {
+
+            var styleElement = doc.createElement('style');
+            styleElement.setAttribute("id", "readium-bookStyles");
+            styleElement.appendChild(doc.createTextNode(cssStylesheet));
+
+            doc.head.appendChild(styleElement);
+
+            //bookStyleElement = $(styleElement);
+        }
+    }
 };
 
 /**
@@ -2216,36 +2933,61 @@ return Helpers;
 //  OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /**
- * CFI navigation helper class
- *
- * @param options Additional settings for NavigationLogic object
- *      - paginationInfo            Layout details, used by clientRect-based geometry
- *      - visibleContentOffsets     Function that returns offsets. If supplied it is used instead of the inferred offsets
- *      - frameDimensions           Function that returns an object with width and height properties. Needs to be set.
- *      - $iframe                   Iframe reference, and needs to be set.
- * @constructor
- */
+* CFI navigation helper class
+*
+* @param options Additional settings for NavigationLogic object
+*      - paginationInfo            Layout details, used by clientRect-based geometry
+*      - visibleContentOffsets     Function that returns offsets. If supplied it is used instead of the inferred offsets
+*      - frameDimensions           Function that returns an object with width and height properties. Needs to be set.
+*      - $iframe                   Iframe reference, and needs to be set.
+* @constructor
+*/
 define('readium_shared_js/views/cfi_navigation_logic',["jquery", "underscore", "../helpers", 'readium_cfi_js'], function($, _, Helpers, epubCfi) {
 
-var CfiNavigationLogic = function(options) {
-
+var CfiNavigationLogic = function (options) {
     var self = this;
     options = options || {};
 
-    var debugMode = ReadiumSDK.DEBUG_MODE;
+    var _DEBUG = ReadiumSDK.DEBUG_MODE;
+    if (_DEBUG) {
+        window.top._DEBUG_visibleTextRangeOffsetsRuns = window.top._DEBUG_visibleTextRangeOffsetsRuns || [];
+    }
 
-    this.getRootElement = function() {
+    this.getRootElement = function () {
+        if (!options.$iframe) {
+            return null;
+        }
 
         return options.$iframe[0].contentDocument.documentElement;
     };
-    
+
     this.getBodyElement = function () {
-        
-        // In SVG documents the root element can be considered the body.
-        return this.getRootDocument().body || this.getRootElement();
+        var rootDocument = this.getRootDocument();
+        if (rootDocument && rootDocument.body) {
+            return rootDocument.body;
+        } else {
+            // In SVG documents the root element can be considered the body.
+            return this.getRootElement();
+        }
+    };
+
+    this.getClassBlacklist = function () {
+        return options.classBlacklist || [];
+    };
+
+    this.getIdBlacklist = function () {
+        return options.idBlacklist || [];
+    };
+
+    this.getElementBlacklist = function () {
+        return options.elementBlacklist || [];
     };
 
     this.getRootDocument = function () {
+        if (!options.$iframe) {
+            return null;
+        }
+
         return options.$iframe[0].contentDocument;
     };
 
@@ -2253,21 +2995,23 @@ var CfiNavigationLogic = function(options) {
         return self.getRootDocument().createRange();
     }
 
-    function getNodeClientRect(node) {
-        var range = createRange();
-        range.selectNode(node);
-        return normalizeRectangle(range.getBoundingClientRect(),0,0);
+    function createRangeFromNode(textnode) {
+        var documentRange = createRange();
+        documentRange.selectNodeContents(textnode);
+        return documentRange;
     }
+
+    function getNodeClientRect(node) {
+            var range = createRange();
+            range.selectNode(node);
+            return normalizeRectangle(range.getBoundingClientRect(), 0, 0);
+        }
 
     function getNodeContentsClientRect(node) {
-        var range = createRange();
-        range.selectNodeContents(node);
-        return normalizeRectangle(range.getBoundingClientRect(),0,0);
-    }
-
-    function getElementClientRect($element) {
-        return normalizeRectangle($element[0].getBoundingClientRect(),0,0);
-    }
+            var range = createRange();
+            range.selectNodeContents(node);
+            return normalizeRectangle(range.getBoundingClientRect(), 0, 0);
+        }
 
     function getNodeRangeClientRect(startNode, startOffset, endNode, endOffset) {
         var range = createRange();
@@ -2277,24 +3021,42 @@ var CfiNavigationLogic = function(options) {
         } else if (endNode.nodeType === Node.TEXT_NODE) {
             range.setEnd(endNode, endOffset ? endOffset : 0);
         }
-        return normalizeRectangle(range.getBoundingClientRect(),0,0);
+
+        // Webkit has a bug where collapsed ranges provide an empty rect with getBoundingClientRect()
+        // https://bugs.webkit.org/show_bug.cgi?id=138949
+        // Thankfully it implements getClientRects() properly...
+        // A collapsed text range may still have geometry!
+        if (range.collapsed) {
+            return normalizeRectangle(range.getClientRects()[0], 0, 0);
+        } else {
+            return normalizeRectangle(range.getBoundingClientRect(), 0, 0);
+        }
     }
 
     function getNodeClientRectList(node, visibleContentOffsets) {
         visibleContentOffsets = visibleContentOffsets || getVisibleContentOffsets();
-        
+
         var range = createRange();
         range.selectNode(node);
+        return getRangeClientRectList(range, visibleContentOffsets);
+    }
+
+    function getRangeClientRectList(range, visibleContentOffsets) {
+        visibleContentOffsets = visibleContentOffsets || getVisibleContentOffsets();
+
+        //noinspection JSUnresolvedFunction
+
         return _.map(range.getClientRects(), function (rect) {
+
             return normalizeRectangle(rect, visibleContentOffsets.left, visibleContentOffsets.top);
         });
     }
 
     function getFrameDimensions() {
-        if (options.frameDimensions) {
-            return options.frameDimensions();
+        if (options.frameDimensionsGetter) {
+            return options.frameDimensionsGetter();
         }
-        
+
         console.error('CfiNavigationLogic: No frame dimensions specified!');
         return null;
     }
@@ -2332,17 +3094,16 @@ var CfiNavigationLogic = function(options) {
 
     /**
      * @private
-     * Checks whether or not a (fully adjusted) rectangle is at least partly visible
+     * Checks whether or not a (fully adjusted) rectangle is visible
      *
      * @param {Object} rect
+     * @param {boolean} [ignorePartiallyVisible]
      * @param {Object} [frameDimensions]
-     * @param {boolean} [isVwm]           isVerticalWritingMode
      * @returns {boolean}
      */
-    function isRectVisible(rect, ignorePartiallyVisible, frameDimensions, isVwm) {
+    function isRectVisible(rect, ignorePartiallyVisible, frameDimensions) {
 
         frameDimensions = frameDimensions || getFrameDimensions();
-        isVwm = isVwm || isVerticalWritingMode();
 
         //Text nodes without printable text dont have client rectangles
         if (!rect) {
@@ -2353,1357 +3114,1289 @@ var CfiNavigationLogic = function(options) {
             return false;
         }
 
-        if (isPaginatedView()) {
-            return (rect.left >= 0 && rect.left < frameDimensions.width) || 
-                (!ignorePartiallyVisible && rect.left < 0 && rect.right >= 0);
+        if (isPaginatedView() && !isVerticalWritingMode()) {
+            return (rect.left >= 0 && rect.left < frameDimensions.width) ||
+                (!ignorePartiallyVisible && rect.left < 0 && rect.right > 0);
         } else {
-            return (rect.top >= 0 && rect.top < frameDimensions.height) || 
-                (!ignorePartiallyVisible && rect.top < 0 && rect.bottom >= 0);
+            return (rect.top >= 0 && rect.top < frameDimensions.height) ||
+                (!ignorePartiallyVisible && rect.top < 0 && rect.bottom > 0);
         }
 
     }
 
-    /**
-     * @private
-     * Retrieves _current_ full width of a column (including its gap)
-     *
-     * @returns {number} Full width of a column in pixels
-     */
-    function getColumnFullWidth() {
+        /**
+         * @private
+         * Retrieves _current_ full width of a column (including its gap)
+         *
+         * @returns {number} Full width of a column in pixels
+         */
+        function getColumnFullWidth() {
 
-        if (!options.paginationInfo || isVerticalWritingMode())
-        {
-            return options.$iframe.width();
+            if (!options.paginationInfo || isVerticalWritingMode()) {
+                return options.$iframe.width();
+            }
+
+            return options.paginationInfo.columnWidth + options.paginationInfo.columnGap;
         }
 
-        return options.paginationInfo.columnWidth + options.paginationInfo.columnGap;
-    }
+        /**
+         * @private
+         *
+         * Retrieves _current_ offset of a viewport
+         * (relational to the beginning of the chapter)
+         *
+         * @returns {Object}
+         */
+        function getVisibleContentOffsets() {
+            if (options.visibleContentOffsetsGetter) {
+                return options.visibleContentOffsetsGetter();
+            }
 
-    /**
-     * @private
-     *
-     * Retrieves _current_ offset of a viewport
-     * (related to the beginning of the chapter)
-     *
-     * @returns {Object}
-     */
-    function getVisibleContentOffsets() {
-        if (options.visibleContentOffsets) {
-            return options.visibleContentOffsets();
-        }
+            if (isVerticalWritingMode() && options.paginationOffsetsGetter) {
+                return options.paginationOffsetsGetter();
+            }
 
-        if (isVerticalWritingMode()) {
             return {
-                top: (options.paginationInfo ? options.paginationInfo.pageOffset : 0),
+                top: 0,
                 left: 0
             };
         }
 
-        return {
-            top: 0,
-            left: 0
-        };
-    }
+        function getPaginationOffsets() {
+            if (options.paginationOffsetsGetter) {
+                return options.paginationOffsetsGetter();
+            }
 
-    /**
-     * New (rectangle-based) algorithm, useful in multi-column layouts
-     *
-     * Note: the second param (props) is ignored intentionally
-     * (no need to use those in normalization)
-     *
-     * @param {jQuery} $element
-     * @param {Object} _props
-     * @param {boolean} shouldCalculateVisibilityPercentage
-     * @param {Object} [frameDimensions]
-     * @returns {number|null}
-     *      0 for non-visible elements,
-     *      0 < n <= 100 for visible elements
-     *      (will just give 100, if `shouldCalculateVisibilityPercentage` => false)
-     *      null for elements with display:none
-     */
-    function checkVisibilityByRectangles($element, shouldCalculateVisibilityPercentage, visibleContentOffsets, frameDimensions) {
-        visibleContentOffsets = visibleContentOffsets || getVisibleContentOffsets();
-        frameDimensions = frameDimensions || getFrameDimensions();
-
-        var clientRectangles = getNormalizedRectangles($element, visibleContentOffsets);
-        if (clientRectangles.length === 0) { // elements with display:none, etc.
-            return null;
+            return {
+                top: 0,
+                left: 0
+            };
         }
 
-        var visibilityPercentage = 0;
+        /**
+         * New (rectangle-based) algorithm, useful in multi-column layouts
+         *
+         * Note: the second param (props) is ignored intentionally
+         * (no need to use those in normalization)
+         *
+         * @param {jQuery} $element
+         * @param {boolean} shouldCalculateVisibilityPercentage
+         * @param {Object} [visibleContentOffsets]
+         * @param {Object} [frameDimensions]
+         * @returns {number|null}
+         *      0 for non-visible elements,
+         *      0 < n <= 100 for visible elements
+         *      (will just give 100, if `shouldCalculateVisibilityPercentage` => false)
+         *      null for elements with display:none
+         */
+        function checkVisibilityByRectangles($element, shouldCalculateVisibilityPercentage, visibleContentOffsets, frameDimensions) {
+            visibleContentOffsets = visibleContentOffsets || getVisibleContentOffsets();
+            frameDimensions = frameDimensions || getFrameDimensions();
 
-        if (clientRectangles.length === 1) {
-            var adjustedRect = clientRectangles[0];
-            
-            if (isPaginatedView()) {
-                if (adjustedRect.bottom > frameDimensions.height || adjustedRect.top < 0) {
-                    // because of webkit inconsistency, that single rectangle should be adjusted
-                    // until it hits the end OR will be based on the FIRST column that is visible
-                    adjustRectangle(adjustedRect, true, frameDimensions);
+            var clientRectangles = getNormalizedRectangles($element, visibleContentOffsets);
+            if (clientRectangles.length === 0) { // elements with display:none, etc.
+                return null;
+            }
+
+            var visibilityPercentage = 0;
+
+            if (clientRectangles.length === 1) {
+                var adjustedRect = clientRectangles[0];
+
+                if (isPaginatedView()) {
+                    if (adjustedRect.bottom > frameDimensions.height || adjustedRect.top < 0) {
+                        // because of webkit inconsistency, that single rectangle should be adjusted
+                        // until it hits the end OR will be based on the FIRST column that is visible
+                        adjustRectangle(adjustedRect, true, frameDimensions);
+                    }
+                }
+
+                if (isRectVisible(adjustedRect, false, frameDimensions)) {
+                    if (shouldCalculateVisibilityPercentage && adjustedRect.top < 0) {
+                        visibilityPercentage =
+                            Math.floor(100 * (adjustedRect.height + adjustedRect.top) / adjustedRect.height);
+                    } else if (shouldCalculateVisibilityPercentage && adjustedRect.bottom > frameDimensions.height) {
+                        visibilityPercentage =
+                            Math.floor(100 * (frameDimensions.height - adjustedRect.top) / adjustedRect.height);
+                    } else if (shouldCalculateVisibilityPercentage && adjustedRect.left < 0 && adjustedRect.right > 0) {
+                        visibilityPercentage =
+                            Math.floor(100 * adjustedRect.right / adjustedRect.width);
+                    } else if (shouldCalculateVisibilityPercentage && adjustedRect.left < 0 && adjustedRect.right > 0) {
+                        visibilityPercentage =
+                            Math.floor(100 * adjustedRect.right / adjustedRect.width);
+                    } else {
+                        visibilityPercentage = 100;
+                    }
+                }
+            } else {
+                // for an element split between several CSS columns,z
+                // both Firefox and IE produce as many client rectangles;
+                // each of those should be checked
+                for (var i = 0, l = clientRectangles.length; i < l; ++i) {
+                    if (isRectVisible(clientRectangles[i], false, frameDimensions)) {
+                        visibilityPercentage = shouldCalculateVisibilityPercentage
+                            ? measureVisibilityPercentageByRectangles(clientRectangles, i)
+                            : 100;
+                        break;
+                    }
                 }
             }
 
-            if (isRectVisible(adjustedRect, false, frameDimensions)) {
-                //it might still be partially visible in webkit
-                if (shouldCalculateVisibilityPercentage && adjustedRect.top < 0) {
-                    visibilityPercentage =
-                        Math.floor(100 * (adjustedRect.height + adjustedRect.top) / adjustedRect.height);
-                } else {
-                    visibilityPercentage = 100;
+            return visibilityPercentage;
+        }
+
+        /**
+         * Finds a page index (0-based) delta for a specific element.
+         * Calculations are based on rectangles retrieved with getClientRects() method.
+         *
+         * @param {jQuery} $element
+         * @returns {number|null}
+         */
+        function findPageIndexDeltaByRectangles($element) {
+
+            var visibleContentOffsets = getVisibleContentOffsets();
+
+            var clientRectangles = getNormalizedRectangles($element, visibleContentOffsets);
+            if (clientRectangles.length === 0) { // elements with display:none, etc.
+                return null;
+            }
+
+            return calculatePageIndexDeltaByRectangles(clientRectangles);
+        }
+
+        /**
+         * @private
+         * Calculate a page index (0-based) delta for given client rectangles.
+         *
+         * @param {object[]} clientRectangles
+         * @param {object} [frameDimensions]
+         * @param {number} [columnFullWidth]
+         * @returns {number|null}
+         */
+        function calculatePageIndexDeltaByRectangles(clientRectangles, frameDimensions, columnFullWidth) {
+            var isRtl = isPageProgressionRightToLeft();
+            var isVwm = isVerticalWritingMode();
+            columnFullWidth = columnFullWidth || getColumnFullWidth();
+            frameDimensions = frameDimensions || getFrameDimensions();
+
+            var firstRectangle = _.first(clientRectangles);
+            if (clientRectangles.length === 1) {
+                adjustRectangle(firstRectangle, false, frameDimensions, columnFullWidth, isRtl, isVwm);
+            }
+
+            var pageIndex;
+
+            if (isVwm) {
+                var topOffset = firstRectangle.top;
+                pageIndex = Math.round(topOffset / frameDimensions.height);
+            } else {
+                var leftOffset = firstRectangle.left;
+                if (isRtl) {
+                    leftOffset = (columnFullWidth * (options.paginationInfo ? options.paginationInfo.visibleColumnCount : 1)) - leftOffset;
+                }
+                pageIndex = Math.round(leftOffset / columnFullWidth);
+            }
+
+            return pageIndex;
+        }
+
+        /**
+         * Finds a page index (0-based) delta for a specific client rectangle.
+         * Calculations are based on viewport dimensions, offsets, and rectangle coordinates
+         *
+         * @param {ClientRect} clientRectangle
+         * @param {Object} [visibleContentOffsets]
+         * @param {Object} [frameDimensions]
+         * @returns {number|null}
+         */
+        function findPageIndexDeltaBySingleRectangle(clientRectangle, visibleContentOffsets, frameDimensions) {
+            visibleContentOffsets = visibleContentOffsets || getVisibleContentOffsets();
+            frameDimensions = frameDimensions || getFrameDimensions();
+
+            var normalizedRectangle = normalizeRectangle(
+                clientRectangle, visibleContentOffsets.left, visibleContentOffsets.top);
+
+            return calculatePageIndexDeltaByRectangles([normalizedRectangle], frameDimensions);
+        }
+
+        /**
+         * @private
+         * Calculates the visibility offset percentage based on ClientRect dimensions
+         *
+         * @param {Array} clientRectangles (should already be normalized)
+         * @param {number} firstVisibleRectIndex
+         * @returns {number} - visibility percentage (0 < n <= 100)
+         */
+        function measureVisibilityPercentageByRectangles(clientRectangles, firstVisibleRectIndex) {
+
+            var heightTotal = 0;
+            var heightVisible = 0;
+
+            if (clientRectangles.length > 1) {
+                _.each(clientRectangles, function (rect, index) {
+                    heightTotal += rect.height;
+                    if (index >= firstVisibleRectIndex) {
+                        // in this case, all the rectangles after the first visible
+                        // should be counted as visible
+                        heightVisible += rect.height;
+                    }
+                });
+            }
+            else {
+                // should already be normalized and adjusted
+                heightTotal = clientRectangles[0].height;
+                heightVisible = clientRectangles[0].height - Math.max(
+                    0, -clientRectangles[0].top);
+            }
+            return heightVisible === heightTotal
+                ? 100 // trivial case: element is 100% visible
+                : Math.floor(100 * heightVisible / heightTotal);
+        }
+
+        /**
+         * @private
+         * Retrieves the position of $element in multi-column layout
+         *
+         * @param {jQuery} $el
+         * @param {Object} [visibleContentOffsets]
+         * @returns {Object[]}
+         */
+        function getNormalizedRectangles($el, visibleContentOffsets) {
+
+            visibleContentOffsets = visibleContentOffsets || {};
+            var leftOffset = visibleContentOffsets.left || 0;
+            var topOffset = visibleContentOffsets.top || 0;
+
+            var isTextNode = ($el[0].nodeType === Node.TEXT_NODE);
+            var clientRectList;
+
+            if (isTextNode) {
+                var range = createRange();
+                range.selectNode($el[0]);
+                //noinspection JSUnresolvedFunction
+                clientRectList = range.getClientRects();
+            } else {
+                //noinspection JSUnresolvedFunction
+                clientRectList = $el[0].getClientRects();
+            }
+
+            // all the separate rectangles (for detecting position of the element
+            // split between several columns)
+            var clientRectangles = [];
+            for (var i = 0, l = clientRectList.length; i < l; ++i) {
+                if (clientRectList[i].height > 0 || clientRectList.length === 1) {
+                    // Firefox sometimes gets it wrong,
+                    // adding literally empty (height = 0) client rectangle preceding the real one,
+                    // that empty client rectanle shouldn't be retrieved
+                    clientRectangles.push(
+                        normalizeRectangle(clientRectList[i], leftOffset, topOffset));
                 }
             }
-        } else {
-            // for an element split between several CSS columns,z
-            // both Firefox and IE produce as many client rectangles;
-            // each of those should be checked
-            for (var i = 0, l = clientRectangles.length; i < l; ++i) {
-                if (isRectVisible(clientRectangles[i], false, frameDimensions)) {
-                    visibilityPercentage = shouldCalculateVisibilityPercentage
-                        ? measureVisibilityPercentageByRectangles(clientRectangles, i)
-                        : 100;
-                    break;
-                }
+
+            return clientRectangles;
+        }
+
+        function getNormalizedBoundingRect($el, visibleContentOffsets) {
+            visibleContentOffsets = visibleContentOffsets || {};
+            var leftOffset = visibleContentOffsets.left || 0;
+            var topOffset = visibleContentOffsets.top || 0;
+
+            var isTextNode = ($el[0].nodeType === Node.TEXT_NODE);
+            var boundingClientRect;
+
+            if (isTextNode) {
+                var range = createRange();
+                range.selectNode($el[0]);
+                boundingClientRect = range.getBoundingClientRect();
+            } else {
+                boundingClientRect = $el[0].getBoundingClientRect();
             }
+
+            // union of all rectangles wrapping the element
+            return normalizeRectangle(boundingClientRect, leftOffset, topOffset);
         }
 
-        return visibilityPercentage;
-    }
+        /**
+         * @private
+         * Converts TextRectangle object into a plain object,
+         * taking content offsets (=scrolls, position shifts etc.) into account
+         *
+         * @param {Object} textRect
+         * @param {number} leftOffset
+         * @param {number} topOffset
+         * @returns {Object}
+         */
+        function normalizeRectangle(textRect, leftOffset, topOffset) {
 
-    /**
-     * Finds a page index (0-based) for a specific element.
-     * Calculations are based on rectangles retrieved with getClientRects() method.
-     *
-     * @param {jQuery} $element
-     * @param {number} spatialVerticalOffset
-     * @returns {number|null}
-     */
-    function findPageByRectangles($element, spatialVerticalOffset) {
-
-        var visibleContentOffsets = getVisibleContentOffsets();
-
-        var clientRectangles = getNormalizedRectangles($element, visibleContentOffsets);
-        if (clientRectangles.length === 0) { // elements with display:none, etc.
-            return null;
+            var plainRectObject = {
+                left: textRect.left,
+                right: textRect.right,
+                top: textRect.top,
+                bottom: textRect.bottom,
+                width: textRect.right - textRect.left,
+                height: textRect.bottom - textRect.top
+            };
+            leftOffset = leftOffset || 0;
+            topOffset = topOffset || 0;
+            offsetRectangle(plainRectObject, leftOffset, topOffset);
+            return plainRectObject;
         }
 
-        return calculatePageIndexByRectangles(clientRectangles, spatialVerticalOffset);
-    }
+        /**
+         * @private
+         * Offsets plain object (which represents a TextRectangle).
+         *
+         * @param {Object} rect
+         * @param {number} leftOffset
+         * @param {number} topOffset
+         */
+        function offsetRectangle(rect, leftOffset, topOffset) {
 
-    /**
-     * @private
-     * Calculate a page index (0-based) for given client rectangles.
-     *
-     * @param {object} clientRectangles
-     * @param {number} [spatialVerticalOffset]
-     * @param {object} [frameDimensions]
-     * @param {object} [columnFullWidth]
-     * @returns {number|null}
-     */
-    function calculatePageIndexByRectangles(clientRectangles, spatialVerticalOffset, frameDimensions, columnFullWidth) {
-        var isRtl = isPageProgressionRightToLeft();
-        var isVwm = isVerticalWritingMode();
-        columnFullWidth = columnFullWidth || getColumnFullWidth();
-        frameDimensions = frameDimensions || getFrameDimensions();
-
-        if (spatialVerticalOffset) {
-            trimRectanglesByVertOffset(clientRectangles, spatialVerticalOffset,
-                frameDimensions, columnFullWidth, isRtl, isVwm);
+            rect.left += leftOffset;
+            rect.right += leftOffset;
+            rect.top += topOffset;
+            rect.bottom += topOffset;
         }
 
-        var firstRectangle = _.first(clientRectangles);
-        if (clientRectangles.length === 1) {
-            adjustRectangle(firstRectangle, false, frameDimensions, columnFullWidth, isRtl, isVwm);
-        }
+        /**
+         * @private
+         *
+         * When element is spilled over two or more columns,
+         * most of the time Webkit-based browsers
+         * still assign a single clientRectangle to it, setting its `top` property to negative value
+         * (so it looks like it's rendered based on the second column)
+         * Alas, sometimes they decide to continue the leftmost column - from _below_ its real height.
+         * In this case, `bottom` property is actually greater than element's height and had to be adjusted accordingly.
+         *
+         * Ugh.
+         *
+         * @param {Object} rect
+         * @param {boolean} [shouldLookForFirstVisibleColumn]
+         *      If set, there'll be two-phase adjustment
+         *      (to align a rectangle with a viewport)
+         * @param {Object} [frameDimensions]
+         * @param {number} [columnFullWidth]
+         * @param {boolean} [isRtl]
+         * @param {boolean} [isVwm]               isVerticalWritingMode
+         */
+        function adjustRectangle(rect, shouldLookForFirstVisibleColumn, frameDimensions, columnFullWidth, isRtl, isVwm) {
 
-        var pageIndex;
+            frameDimensions = frameDimensions || getFrameDimensions();
+            columnFullWidth = columnFullWidth || getColumnFullWidth();
+            isRtl = isRtl || isPageProgressionRightToLeft();
+            isVwm = isVwm || isVerticalWritingMode();
 
-        if (isVwm) {
-            var topOffset = firstRectangle.top;
-            pageIndex = Math.floor(topOffset / frameDimensions.height);
-        } else {
-            var leftOffset = firstRectangle.left;
+            // Rectangle adjustment is not needed in VWM since it does not deal with columns
+            if (isVwm) {
+                return;
+            }
+
             if (isRtl) {
-                leftOffset = (columnFullWidth * (options.paginationInfo ? options.paginationInfo.visibleColumnCount : 1)) - leftOffset;
+                columnFullWidth *= -1; // horizontal shifts are reverted in RTL mode
             }
-            pageIndex = Math.floor(leftOffset / columnFullWidth);
+
+            // first we go left/right (rebasing onto the very first column available)
+            while (rect.top < 0) {
+                offsetRectangle(rect, -columnFullWidth, frameDimensions.height);
+            }
+
+            // ... then, if necessary (for visibility offset checks),
+            // each column is tried again (now in reverse order)
+            // the loop will be stopped when the column is aligned with a viewport
+            // (i.e., is the first visible one).
+            if (shouldLookForFirstVisibleColumn) {
+                while (rect.bottom >= frameDimensions.height) {
+                    if (isRectVisible(rect, false, frameDimensions)) {
+                        break;
+                    }
+                    offsetRectangle(rect, columnFullWidth, -frameDimensions.height);
+                }
+            }
         }
 
-        if (pageIndex < 0) {
-            pageIndex = 0;
+        this.getCfiForElement = function (element) {
+
+            var cfi = EPUBcfi.Generator.generateElementCFIComponent(element,
+                this.getClassBlacklist(),
+                this.getElementBlacklist(),
+                this.getIdBlacklist());
+
+            if (cfi[0] == "!") {
+                cfi = cfi.substring(1);
+            }
+            return cfi;
+        };
+
+        this.getVisibleCfiFromPoint = function (x, y, precisePoint) {
+            var document = self.getRootDocument();
+            var firstVisibleCaretRange = getCaretRangeFromPoint(x, y, document);
+            var elementFromPoint = document.elementFromPoint(x, y);
+            var invalidElementFromPoint = !elementFromPoint || elementFromPoint === document.documentElement;
+
+            if (precisePoint) {
+                if (!elementFromPoint || invalidElementFromPoint) {
+                    return null;
+                }
+                var testRect = getNodeContentsClientRect(elementFromPoint);
+                if (!isRectVisible(testRect, false)) {
+                    return null;
+                }
+                if ((x < testRect.left || x > testRect.right) || (y < testRect.top || y > testRect.bottom)) {
+                    return null;
+                }
+            }
+
+            if (!firstVisibleCaretRange) {
+                if (invalidElementFromPoint) {
+                    console.error("Could not generate CFI no visible element on page");
+                    return null;
+                }
+                firstVisibleCaretRange = createRange();
+                firstVisibleCaretRange.selectNode(elementFromPoint);
+            }
+
+            var range = firstVisibleCaretRange;
+            var cfi;
+            //if we get a text node we need to get an approximate range for the first visible character offsets.
+            var node = range.startContainer;
+            var startOffset, endOffset;
+            if (node.nodeType === Node.TEXT_NODE) {
+                if (precisePoint && node.parentNode !== elementFromPoint) {
+                    return null;
+                }
+                if (node.length === 1 && range.startOffset === 1) {
+                    startOffset = 0;
+                    endOffset = 1;
+                } else if (range.startOffset === node.length) {
+                    startOffset = range.startOffset - 1;
+                    endOffset = range.startOffset;
+                } else {
+                    startOffset = range.startOffset;
+                    endOffset = range.startOffset + 1;
+                }
+                var wrappedRange = {
+                    startContainer: node,
+                    endContainer: node,
+                    startOffset: startOffset,
+                    endOffset: endOffset,
+                    commonAncestorContainer: range.commonAncestorContainer
+                };
+
+                if (_DEBUG) {
+                    drawDebugOverlayFromDomRange(wrappedRange);
+                }
+
+                cfi = generateCfiFromDomRange(wrappedRange);
+            } else if (node.nodeType === Node.ELEMENT_NODE) {
+                node =
+                    range.startContainer.childNodes[range.startOffset] ||
+                    range.startContainer.childNodes[0] ||
+                    range.startContainer;
+                if (precisePoint && node !== elementFromPoint) {
+                    return null;
+                }
+
+                if (node.nodeType !== Node.ELEMENT_NODE) {
+                    cfi = generateCfiFromDomRange(range);
+                } else {
+                    cfi = self.getCfiForElement(node);
+                }
+            } else {
+                if (precisePoint && node !== elementFromPoint) {
+                    return null;
+                }
+
+                cfi = self.getCfiForElement(elementFromPoint);
+            }
+
+            //This should not happen but if it does print some output, just in case
+            if (cfi && cfi.indexOf('NaN') !== -1) {
+                console.log('Did not generate a valid CFI:' + cfi);
+                return undefined;
+            }
+            return cfi;
+        };
+
+        this.getRangeCfiFromPoints = function (startX, startY, endX, endY) {
+            var document = self.getRootDocument();
+            var start = getCaretRangeFromPoint(startX, startY, document),
+                end = getCaretRangeFromPoint(endX, endY, document),
+                range = createRange();
+            range.setStart(start.startContainer, start.startOffset);
+            range.setEnd(end.startContainer, end.startOffset);
+            // if we're looking at a text node create a nice range (n, n+1)
+            if (start.startContainer === start.endContainer && start.startContainer.nodeType === Node.TEXT_NODE && end.startContainer.length > end.startOffset + 1) {
+                range.setEnd(end.startContainer, end.startOffset + 1);
+            }
+            return generateCfiFromDomRange(range);
+        };
+
+        function determineSplit(range, division) {
+            var percent = division / 100;
+            return Math.round((range.endOffset - range.startOffset ) * percent);
         }
-        else if (pageIndex >= (options.paginationInfo ? options.paginationInfo.columnCount : 1)) {
-            pageIndex = (options.paginationInfo ? (options.paginationInfo.columnCount - 1) : 0);
+
+        function splitRange(range, division) {
+            if (range.endOffset - range.startOffset === 1) {
+                return [range];
+            }
+            var length = determineSplit(range, division);
+            var textNode = range.startContainer;
+            var leftNodeRange = range.cloneRange();
+            leftNodeRange.setStart(textNode, range.startOffset);
+            leftNodeRange.setEnd(textNode, range.startOffset + length);
+            var rightNodeRange = range.cloneRange();
+            rightNodeRange.setStart(textNode, range.startOffset + length);
+            rightNodeRange.setEnd(textNode, range.endOffset);
+
+            return [leftNodeRange, rightNodeRange];
+
         }
 
-        return pageIndex;
-    }
+        // create Range from target node and search for visibleOutput Range
+        function getVisibleTextRangeOffsets(textNode, pickerFunc, visibleContentOffsets, frameDimensions) {
+            visibleContentOffsets = visibleContentOffsets || getVisibleContentOffsets();
 
-    /**
-     * Finds a page index (0-based) for a specific client rectangle.
-     * Calculations are based on viewport dimensions, offsets, and rectangle coordinates
-     *
-     * @param {ClientRect} clientRectangle
-     * @param {Object} [visibleContentOffsets]
-     * @param {Object} [frameDimensions]
-     * @returns {number|null}
-     */
-    function findPageBySingleRectangle(clientRectangle, visibleContentOffsets, frameDimensions) {
-        visibleContentOffsets = visibleContentOffsets || getVisibleContentOffsets();
-        frameDimensions = frameDimensions || getFrameDimensions();
-        
-        var normalizedRectangle = normalizeRectangle(
-            clientRectangle, visibleContentOffsets.left, visibleContentOffsets.top);
+            var nodeRange = createRangeFromNode(textNode);
+            var nodeClientRects = getRangeClientRectList(nodeRange, visibleContentOffsets);
+            var splitRatio = deterministicSplit(nodeClientRects, pickerFunc([0, 1]));
+            return getTextRangeOffset(splitRange(nodeRange, splitRatio), visibleContentOffsets,
+                pickerFunc([0, 1]), splitRatio,
+                function (rect) {
+                    return (isVerticalWritingMode() ? rect.height : rect.width) && isRectVisible(rect, false, frameDimensions);
+                });
+        }
 
-        return calculatePageIndexByRectangles([normalizedRectangle], frameDimensions);
-    }
+        function deterministicSplit(rectList, directionBit) {
+            var split = 0;
+            // Calculate total cumulative Height for both visible portions and invisible portions and find the split
+            var visibleRects = _.filter(rectList, function (rect) {
+                return (isVerticalWritingMode() ? rect.height : rect.width) && isRectVisible(rect, false, getFrameDimensions());
+            });
+            var visibleRectHeight = calculateCumulativeHeight(visibleRects);
+            var invisibleRectHeight = totalHeight - visibleRectHeight;
+            var totalHeight = calculateCumulativeHeight(rectList);
 
-    /**
-     * @private
-     * Calculates the visibility offset percentage based on ClientRect dimensions
-     *
-     * @param {Array} clientRectangles (should already be normalized)
-     * @param {number} firstVisibleRectIndex
-     * @returns {number} - visibility percentage (0 < n <= 100)
-     */
-    function measureVisibilityPercentageByRectangles(clientRectangles, firstVisibleRectIndex) {
+            if (visibleRectHeight === totalHeight) {
+                // either all visible or split
+                // heuristic: slight bias to increase likelihood of hits
+                return directionBit ? 55 : 45;
+            } else {
+                split = 100 * (visibleRectHeight / totalHeight);
+                return invisibleRectHeight > visibleRectHeight ? split + 5 : split - 5;
+            }
+        }
 
-        var heightTotal = 0;
-        var heightVisible = 0;
-
-        if (clientRectangles.length > 1) {
-            _.each(clientRectangles, function (rect, index) {
-                heightTotal += rect.height;
-                if (index >= firstVisibleRectIndex) {
-                    // in this case, all the rectangles after the first visible
-                    // should be counted as visible
-                    heightVisible += rect.height;
+        function rectTopHash (rectList) {
+            // sort the rectangles by top value
+            var sortedList = rectList.sort(function (a, b) {
+                return a.top < b.top;
+            });
+            var lineMap = [];
+            _.each(sortedList, function (rect) {
+                var key = rect.top;
+                if (!lineMap[key]) {
+                    lineMap[key] = [rect.height];
+                } else {
+                    var currentLine = lineMap[key];
+                    currentLine.push(rect.height);
+                    lineMap[key] = currentLine;
                 }
             });
         }
-        else {
-            // should already be normalized and adjusted
-            heightTotal = clientRectangles[0].height;
-            heightVisible = clientRectangles[0].height - Math.max(
-                0, -clientRectangles[0].top);
-        }
-        return heightVisible === heightTotal
-            ? 100 // trivial case: element is 100% visible
-            : Math.floor(100 * heightVisible / heightTotal);
-    }
 
-    /**
-     * @private
-     * Retrieves the position of $element in multi-column layout
-     *
-     * @param {jQuery} $el
-     * @param {Object} [visibleContentOffsets]
-     * @returns {Object}
-     */
-    function getNormalizedRectangles($el, visibleContentOffsets) {
-
-        visibleContentOffsets = visibleContentOffsets || {};
-        var leftOffset = visibleContentOffsets.left || 0;
-        var topOffset = visibleContentOffsets.top || 0;
-
-        var isTextNode = ($el[0].nodeType === Node.TEXT_NODE);
-        var clientRectList;
-
-        if (isTextNode) {
-            var range = createRange();
-            range.selectNode($el[0]);
-            clientRectList = range.getClientRects();
-        } else {
-            clientRectList = $el[0].getClientRects();
+        function calculateCumulativeHeight (rectList) {
+            var lineMap = rectTopHash(rectList);
+            var height = 0;
+            _.each(lineMap, function (line) {
+                height = height + Math.max.apply(null, line);
+            });
+            return height;
         }
 
-        // all the separate rectangles (for detecting position of the element
-        // split between several columns)
-        var clientRectangles = [];
-        for (var i = 0, l = clientRectList.length; i < l; ++i) {
-            if (clientRectList[i].height > 0) {
-                // Firefox sometimes gets it wrong,
-                // adding literally empty (height = 0) client rectangle preceding the real one,
-                // that empty client rectanle shouldn't be retrieved
-                clientRectangles.push(
-                    normalizeRectangle(clientRectList[i], leftOffset, topOffset));
+        function getTextRangeOffset(startingSet, visibleContentOffsets, directionBit, splitRatio, filterFunc) {
+            var runCount = 0;
+            var currRange = startingSet;
+            //begin iterative binary search, each iteration will check Range length and visibility
+            while (currRange.length !== 1) {
+                runCount++;
+                var currTextNodeFragments = getRangeClientRectList(currRange[directionBit], visibleContentOffsets);
+                if (hasVisibleFragments(currTextNodeFragments, filterFunc)) {
+                    currRange = splitRange(currRange[directionBit], splitRatio);
+                }
+                // No visible fragment Look in other half
+                else {
+                    currRange = splitRange(currRange[directionBit ? 0 : 1], splitRatio);
+                }
+            }
+            if (_DEBUG) {
+                console.debug('getVisibleTextRangeOffsets:getTextRangeOffset:runCount', runCount);
+                window.top._DEBUG_visibleTextRangeOffsetsRuns.push(runCount);
+            }
+            var resultRange = currRange[0];
+            if (resultRange) {
+                resultRange.collapse(!directionBit);
+            }
+            return resultRange;
+        }
+
+        function hasVisibleFragments(fragments, filterFunc) {
+            var visibleFragments = _.filter(fragments, filterFunc);
+            return !!visibleFragments.length;
+        }
+
+        function findVisibleLeafNodeCfi(visibleLeafNode, pickerFunc, visibleContentOffsets, frameDimensions) {
+            if (!visibleLeafNode) {
+                return null;
+            }
+
+            var element = visibleLeafNode.element;
+            var textNode = visibleLeafNode.textNode;
+
+            //if a valid text node is found, try to generate a CFI with range offsets
+            if (textNode && isValidTextNode(textNode)) {
+                var visibleRange = getVisibleTextRangeOffsets(textNode, pickerFunc, visibleContentOffsets, frameDimensions);
+                if (!visibleRange) {
+                    if (_DEBUG) console.warn("findVisibleLeafNodeCfi: failed to find text range offset");
+                    return null;
+                }
+                return generateCfiFromDomRange(visibleRange);
+            } else {
+                //if not then generate a CFI for the element
+                return self.getCfiForElement(element);
             }
         }
 
-        return clientRectangles;
-    }
-
-    function getNormalizedBoundingRect($el, visibleContentOffsets) {
-        visibleContentOffsets = visibleContentOffsets || {};
-        var leftOffset = visibleContentOffsets.left || 0;
-        var topOffset = visibleContentOffsets.top || 0;
-
-        var isTextNode = ($el[0].nodeType === Node.TEXT_NODE);
-        var boundingClientRect;
-
-        if (isTextNode) {
-            var range = createRange();
-            range.selectNode($el[0]);
-            boundingClientRect = range.getBoundingClientRect();
-        } else {
-            boundingClientRect = $el[0].getBoundingClientRect();
+        function getLastVisibleTextRangeCfi(visibleContentOffsets, frameDimensions) {
+            var visibleLeafNode = self.findLastVisibleElement(visibleContentOffsets, frameDimensions);
+            return findVisibleLeafNodeCfi(visibleLeafNode, _.last, visibleContentOffsets, frameDimensions);
         }
 
-        // union of all rectangles wrapping the element
-        return normalizeRectangle(boundingClientRect, leftOffset, topOffset);
-    }
+        function getFirstVisibleTextRangeCfi(visibleContentOffsets, frameDimensions) {
+            var visibleLeafNode = self.findFirstVisibleElement(visibleContentOffsets, frameDimensions);
+            return findVisibleLeafNodeCfi(visibleLeafNode, _.first, visibleContentOffsets, frameDimensions);
+        }
 
-    /**
-     * @private
-     * Converts TextRectangle object into a plain object,
-     * taking content offsets (=scrolls, position shifts etc.) into account
-     *
-     * @param {TextRectangle} textRect
-     * @param {number} leftOffset
-     * @param {number} topOffset
-     * @returns {Object}
-     */
-    function normalizeRectangle(textRect, leftOffset, topOffset) {
-
-        var plainRectObject = {
-            left: textRect.left,
-            right: textRect.right,
-            top: textRect.top,
-            bottom: textRect.bottom,
-            width: textRect.right - textRect.left,
-            height: textRect.bottom - textRect.top
+        this.getFirstVisibleCfi = function (visibleContentOffsets, frameDimensions) {
+            return getFirstVisibleTextRangeCfi(visibleContentOffsets, frameDimensions);
         };
-        offsetRectangle(plainRectObject, leftOffset, topOffset);
-        return plainRectObject;
-    }
 
-    /**
-     * @private
-     * Offsets plain object (which represents a TextRectangle).
-     *
-     * @param {Object} rect
-     * @param {number} leftOffset
-     * @param {number} topOffset
-     */
-    function offsetRectangle(rect, leftOffset, topOffset) {
+        this.getLastVisibleCfi = function (visibleContentOffsets, frameDimensions) {
+            return getLastVisibleTextRangeCfi(visibleContentOffsets, frameDimensions);
+        };
 
-        rect.left += leftOffset;
-        rect.right += leftOffset;
-        rect.top += topOffset;
-        rect.bottom += topOffset;
-    }
-
-    /**
-     * @private
-     *
-     * When element is spilled over two or more columns,
-     * most of the time Webkit-based browsers
-     * still assign a single clientRectangle to it, setting its `top` property to negative value
-     * (so it looks like it's rendered based on the second column)
-     * Alas, sometimes they decide to continue the leftmost column - from _below_ its real height.
-     * In this case, `bottom` property is actually greater than element's height and had to be adjusted accordingly.
-     *
-     * Ugh.
-     *
-     * @param {Object} rect
-     * @param {boolean} [shouldLookForFirstVisibleColumn]
-     *      If set, there'll be two-phase adjustment
-     *      (to align a rectangle with a viewport)
-     * @param {Object} [frameDimensions]
-     * @param {number} [columnFullWidth]
-     * @param {boolean} [isRtl]
-     * @param {boolean} [isVwm]               isVerticalWritingMode
-     */
-    function adjustRectangle(rect, shouldLookForFirstVisibleColumn, frameDimensions, columnFullWidth, isRtl, isVwm) {
-
-        frameDimensions = frameDimensions || getFrameDimensions();
-        columnFullWidth = columnFullWidth || getColumnFullWidth();
-        isRtl = isRtl || isPageProgressionRightToLeft();
-        isVwm = isVwm || isVerticalWritingMode();
-
-        // Rectangle adjustment is not needed in VWM since it does not deal with columns
-        if (isVwm) {
-            return;
-        }
-
-        if (isRtl) {
-            columnFullWidth *= -1; // horizontal shifts are reverted in RTL mode
-        }
-
-        // first we go left/right (rebasing onto the very first column available)
-        while (rect.top < 0) {
-            offsetRectangle(rect, -columnFullWidth, frameDimensions.height);
-        }
-
-        // ... then, if necessary (for visibility offset checks),
-        // each column is tried again (now in reverse order)
-        // the loop will be stopped when the column is aligned with a viewport
-        // (i.e., is the first visible one).
-        if (shouldLookForFirstVisibleColumn) {
-            while (rect.bottom >= frameDimensions.height) {
-                if (isRectVisible(rect, false, frameDimensions, isVwm)) {
-                    break;
-                }
-                offsetRectangle(rect, columnFullWidth, -frameDimensions.height);
-            }
-        }
-    }
-
-    /**
-     * @private
-     * Trims the rectangle(s) representing the given element.
-     *
-     * @param {Array} rects
-     * @param {number} verticalOffset
-     * @param {number} frameDimensions
-     * @param {number} columnFullWidth
-     * @param {boolean} isRtl
-     * @param {boolean} isVwm               isVerticalWritingMode
-     */
-    function trimRectanglesByVertOffset(
-            rects, verticalOffset, frameDimensions, columnFullWidth, isRtl, isVwm) {
-
-        frameDimensions = frameDimensions || getFrameDimensions();
-        columnFullWidth = columnFullWidth || getColumnFullWidth();
-        isRtl = isRtl || isPageProgressionRightToLeft();
-        isVwm = isVwm || isVerticalWritingMode();
-
-        //TODO: Support vertical writing mode
-        if (isVwm) {
-            return;
-        }
-
-        var totalHeight = _.reduce(rects, function(prev, cur) {
-            return prev + cur.height;
-        }, 0);
-
-        var heightToHide = totalHeight * verticalOffset / 100;
-        if (rects.length > 1) {
-            var heightAccum = 0;
-            do {
-                heightAccum += rects[0].height;
-                if (heightAccum > heightToHide) {
-                    break;
-                }
-                rects.shift();
-            } while (rects.length > 1);
-        }
-        else {
-            // rebase to the last possible column
-            // (so that adding to top will be properly processed later)
-            if (isRtl) {
-                columnFullWidth *= -1;
-            }
-            while (rects[0].bottom >= frameDimensions.height) {
-                offsetRectangle(rects[0], columnFullWidth, -frameDimensions.height);
-            }
-
-            rects[0].top += heightToHide;
-            rects[0].height -= heightToHide;
-        }
-    }
-
-    this.getCfiForElement = function (element) {
-        var cfi = EPUBcfi.Generator.generateElementCFIComponent(element,
-            ["cfi-marker"],
-            [],
-            ["MathJax_Message", "MathJax_SVG_Hidden"]);
-
-        if (cfi[0] == "!") {
-            cfi = cfi.substring(1);
-        }
-        return cfi;
-    };
-
-    this.getVisibleCfiFromPoint = function (x, y, precisePoint) {
-        var document = self.getRootDocument();
-        var firstVisibleCaretRange = getCaretRangeFromPoint(x, y, document);
-        var elementFromPoint = document.elementFromPoint(x, y);
-        var invalidElementFromPoint = !elementFromPoint || elementFromPoint === document.documentElement;
-
-        if (precisePoint) {
-            if (!elementFromPoint || invalidElementFromPoint) {
-                return null;
-            }
-            var testRect = getNodeContentsClientRect(elementFromPoint);
-            if (!isRectVisible(testRect, false)) {
-                return null;
-            }
-            if ((x < testRect.left || x > testRect.right) || (y < testRect.top || y > testRect.bottom)) {
-                return null;
-            }
-        }
-
-        if (!firstVisibleCaretRange) {
-            if (invalidElementFromPoint) {
-                console.error("Could not generate CFI no visible element on page");
-                return null;
-            }
-            firstVisibleCaretRange = createRange();
-            firstVisibleCaretRange.selectNode(elementFromPoint);
-        }
-
-        var range = firstVisibleCaretRange;
-        var cfi;
-        //if we get a text node we need to get an approximate range for the first visible character offsets.
-        var node = range.startContainer;
-        var startOffset, endOffset;
-        if (node.nodeType === Node.TEXT_NODE) {
-            if (precisePoint && node.parentNode !== elementFromPoint) {
-                return null;
-            }
-            if (node.length === 1 && range.startOffset === 1) {
-                startOffset = 0;
-                endOffset = 1;
-            } else if (range.startOffset === node.length) {
-                startOffset = range.startOffset - 1;
-                endOffset = range.startOffset;
+        function generateCfiFromDomRange(range) {
+            if (range.collapsed && range.startContainer.nodeType === Node.TEXT_NODE) {
+                return EPUBcfi.generateCharacterOffsetCFIComponent(
+                    range.startContainer, range.startOffset,
+                    ['cfi-marker'], [], ["MathJax_Message", "MathJax_SVG_Hidden"]);
+            } else if (range.collapsed) {
+                return self.getCfiForElement(range.startContainer);
             } else {
-                startOffset = range.startOffset;
-                endOffset = range.startOffset + 1;
-            }
-            var wrappedRange = {
-                startContainer: node,
-                endContainer: node,
-                startOffset: startOffset,
-                endOffset: endOffset,
-                commonAncestorContainer: range.commonAncestorContainer
-            };
-
-            if (debugMode) {
-                drawDebugOverlayFromDomRange(wrappedRange);
-            }
-
-            cfi = generateCfiFromDomRange(wrappedRange);
-        } else if (node.nodeType === Node.ELEMENT_NODE) {
-            node =
-                range.startContainer.childNodes[range.startOffset] ||
-                range.startContainer.childNodes[0] ||
-                range.startContainer;
-            if (precisePoint && node !== elementFromPoint) {
-                return null;
-            }
-
-            if (node.nodeType !== Node.ELEMENT_NODE) {
-                cfi = generateCfiFromDomRange(range);
-            } else {
-                cfi = self.getCfiForElement(node);
-            }
-        } else {
-            if (precisePoint && node !== elementFromPoint) {
-                return null;
-            }
-
-            cfi = self.getCfiForElement(elementFromPoint);
-        }
-
-        //This should not happen but if it does print some output, just in case
-        if (cfi && cfi.indexOf('NaN') !== -1) {
-            console.log('Did not generate a valid CFI:' + cfi);
-            return undefined;
-        }
-
-        return cfi;
-    };
-
-    this.getRangeCfiFromPoints = function(startX, startY, endX, endY) {
-        var document = self.getRootDocument();
-        var start = getCaretRangeFromPoint(startX, startY, document),
-            end = getCaretRangeFromPoint(endX, endY, document),
-            range = createRange();
-        range.setStart(start.startContainer, start.startOffset);
-        range.setEnd(end.startContainer, end.startOffset);
-        // if we're looking at a text node create a nice range (n, n+1)
-        if (start.startContainer === start.endContainer && start.startContainer.nodeType === Node.TEXT_NODE && end.startContainer.length > end.startOffset+1) {
-            range.setEnd(end.startContainer, end.startOffset+1);
-        }
-        return generateCfiFromDomRange(range);
-    };
-
-    function getTextNodeRectCornerPairs(rect) {
-        //
-        //    top left             top right
-        //    ╲                   ╱
-        //  ── ▒T▒E▒X▒T▒ ▒R▒E▒C▒T▒ ──
-        //
-        // top left corner & top right corner
-        // but for y coord use the mid point between top and bottom
-
-        if (isVerticalWritingMode()) {
-            var x = rect.right - (rect.width / 2);
-            return [{x: x, y: rect.top}, {x: x, y: rect.bottom}];
-        } else {
-            var y = rect.top + (rect.height / 2);
-            var result = [{x: rect.left, y: y}, {x: rect.right, y: y}]
-            return isPageProgressionRightToLeft() ? result.reverse() : result;
-        }
-    }
-
-    var DEBUG = true;
-
-    function getVisibleTextRangeOffsetsSelectedByFunc(textNode, pickerFunc, visibleContentOffsets, frameDimensions) {
-        visibleContentOffsets = visibleContentOffsets || getVisibleContentOffsets();
-        
-        var textNodeFragments = getNodeClientRectList(textNode, visibleContentOffsets);
-
-        var visibleFragments = _.filter(textNodeFragments, function (rect) {
-            return isRectVisible(rect, false, frameDimensions);
-        });
-
-        var fragment = pickerFunc(visibleFragments);
-        if (!fragment) {
-            //no visible fragment, empty text node?
-            return null;
-        }
-        var fragmentCorner = pickerFunc(getTextNodeRectCornerPairs(fragment));
-        // Reverse taking into account of visible content offsets
-        fragmentCorner.x -= visibleContentOffsets.left;
-        fragmentCorner.y -= visibleContentOffsets.top;
-        
-        var caretRange = getCaretRangeFromPoint(fragmentCorner.x, fragmentCorner.y);
-
-        // Workaround for inconsistencies with the caretRangeFromPoint IE TextRange based shim.
-        if (caretRange && caretRange.startContainer !== textNode && caretRange.startContainer === textNode.parentNode) {
-            if (DEBUG) console.log('ieTextRangeWorkaround needed');
-            var startOrEnd = pickerFunc([0, 1]);
-
-            // #1
-            if (caretRange.startOffset === caretRange.endOffset) {
-                var checkNode = caretRange.startContainer.childNodes[Math.max(caretRange.startOffset - 1, 0)];
-                if (checkNode === textNode) {
-                    caretRange = {
-                        startContainer: textNode,
-                        endContainer: textNode,
-                        startOffset: startOrEnd === 0 ? 0 : textNode.nodeValue.length,
-                        startOffset: startOrEnd === 0 ? 0 : textNode.nodeValue.length
-                    };
-                    if (DEBUG) console.log('ieTextRangeWorkaround #1:', caretRange);
-                }
-            }
-
-            // Failed
-            else if (DEBUG) {
-                console.log('ieTextRangeWorkaround didn\'t work :(');
+                return EPUBcfi.generateRangeComponent(
+                    range.startContainer, range.startOffset,
+                    range.endContainer, range.endOffset,
+                    self.getClassBlacklist(), self.getElementBlacklist(), self.getIdBlacklist());
             }
         }
 
-        if (DEBUG)
-        console.log('getVisibleTextRangeOffsetsSelectedByFunc: ', 'a0');
-        
-        // Desperately try to find it from all angles! Darn sub pixeling..
-        //TODO: remove the need for this brute-force method, since it's making the result non-deterministic
-        if (!caretRange || caretRange.startContainer !== textNode) {
-            caretRange = getCaretRangeFromPoint(fragmentCorner.x - 1, fragmentCorner.y);
-            
-            if (DEBUG)
-            console.log('getVisibleTextRangeOffsetsSelectedByFunc: ', 'a1');
-        }
-        if (!caretRange || caretRange.startContainer !== textNode) {
-            caretRange = getCaretRangeFromPoint(fragmentCorner.x, fragmentCorner.y - 1);
-            
-            if (DEBUG)
-            console.log('getVisibleTextRangeOffsetsSelectedByFunc: ', 'a2');
-        }
-        if (!caretRange || caretRange.startContainer !== textNode) {
-            caretRange = getCaretRangeFromPoint(fragmentCorner.x - 1, fragmentCorner.y - 1);
-            
-            if (DEBUG)
-            console.log('getVisibleTextRangeOffsetsSelectedByFunc: ', 'a3');
-        }
-        if (!caretRange || caretRange.startContainer !== textNode) {
-            fragmentCorner.x = Math.floor(fragmentCorner.x);
-            fragmentCorner.y = Math.floor(fragmentCorner.y);
-            caretRange = getCaretRangeFromPoint(fragmentCorner.x, fragmentCorner.y);
-            
-            if (DEBUG)
-            console.log('getVisibleTextRangeOffsetsSelectedByFunc: ', 'b0');
-        }
-        // Desperately try to find it from all angles! Darn sub pixeling..
-        if (!caretRange || caretRange.startContainer !== textNode) {
-            caretRange = getCaretRangeFromPoint(fragmentCorner.x - 1, fragmentCorner.y);
-            
-            if (DEBUG)
-            console.log('getVisibleTextRangeOffsetsSelectedByFunc: ', 'b1');
-        }
-        if (!caretRange || caretRange.startContainer !== textNode) {
-            caretRange = getCaretRangeFromPoint(fragmentCorner.x, fragmentCorner.y - 1);
-            
-            if (DEBUG)
-            console.log('getVisibleTextRangeOffsetsSelectedByFunc: ', 'b2');
-        }
-        if (!caretRange || caretRange.startContainer !== textNode) {
-            caretRange = getCaretRangeFromPoint(fragmentCorner.x - 1, fragmentCorner.y - 1);
-            
-            if (DEBUG)
-            console.log('getVisibleTextRangeOffsetsSelectedByFunc: ', 'b3');
-        }
-
-        // Still nothing? fall through..
-        if (!caretRange) {
-            
-            if (DEBUG)
-            console.warn('getVisibleTextRangeOffsetsSelectedByFunc: no caret range result');
-            
-            return null;
-        }
-
-        if (caretRange.startContainer === textNode) {
-            return pickerFunc(
-                [{start: caretRange.startOffset, end: caretRange.startOffset + 1},
-                {start: caretRange.startOffset - 1, end: caretRange.startOffset}]
-            );
-        } else {
-            
-            if (DEBUG)
-            console.warn('getVisibleTextRangeOffsetsSelectedByFunc: incorrect caret range result');
-            
-            return null;
-        }
-    }
-
-    function findVisibleLeafNodeCfi(leafNodeList, pickerFunc, targetLeafNode, visibleContentOffsets, frameDimensions, startingParent) {
-        var index = 0;
-        if (!targetLeafNode) {
-            index = leafNodeList.indexOf(pickerFunc(leafNodeList));
-            var leafNode = leafNodeList[index];
-            if (leafNode) {
-                startingParent = leafNode.element;
-            }
-        } else {
-            index = leafNodeList.indexOf(targetLeafNode);
-            if (index === -1) {
-                //target leaf node not the right type? not in list?
-                return null;
-            }
-            // use the next leaf node in the list
-            index += pickerFunc([1, -1]);
-        }
-        var visibleLeafNode = leafNodeList[index];
-
-        if (!visibleLeafNode) {
-            return null;
-        }
-
-        var element = visibleLeafNode.element;
-        var textNode = visibleLeafNode.textNode;
-
-        if (targetLeafNode && element !== startingParent && !_.contains($(textNode || element).parents(), startingParent)) {
-            if (DEBUG) console.warn("findVisibleLeafNodeCfi: stopped recursion early");
-            return null;
-        }
-
-        //if a valid text node is found, try to generate a CFI with range offsets
-        if (textNode && isValidTextNode(textNode)) {
-            var visibleRange = getVisibleTextRangeOffsetsSelectedByFunc(textNode, pickerFunc, visibleContentOffsets, frameDimensions);
-            if (!visibleRange) {
-                //the text node is valid, but not visible..
-                //let's try again with the next node in the list
-                return findVisibleLeafNodeCfi(leafNodeList, pickerFunc, visibleLeafNode, visibleContentOffsets, frameDimensions, startingParent);
-            }
+        this.getDomRangeFromRangeCfi = function (rangeCfi, rangeCfi2, inclusive) {
             var range = createRange();
-            range.setStart(textNode, visibleRange.start);
-            range.setEnd(textNode, visibleRange.end);
-            return generateCfiFromDomRange(range);
-        } else {
-            //if not then generate a CFI for the element
-            return self.getCfiForElement(element);
-        }
-    }
 
-    // get an array of visible text elements and then select one based on the func supplied
-    // and generate a CFI for the first visible text subrange.
-    function getVisibleTextRangeCfiForTextElementSelectedByFunc(pickerFunc, visibleContentOffsets, frameDimensions) {        
-        var visibleLeafNodeList = self.getVisibleLeafNodes(visibleContentOffsets, frameDimensions);
-        return findVisibleLeafNodeCfi(visibleLeafNodeList, pickerFunc, null, visibleContentOffsets, frameDimensions);
-    }
-
-    function getLastVisibleTextRangeCfi(visibleContentOffsets, frameDimensions) {
-        return getVisibleTextRangeCfiForTextElementSelectedByFunc(_.last, visibleContentOffsets, frameDimensions);
-    }
-
-    function getFirstVisibleTextRangeCfi(visibleContentOffsets, frameDimensions) {
-        return getVisibleTextRangeCfiForTextElementSelectedByFunc(_.first, visibleContentOffsets, frameDimensions);
-    }
-
-    this.getFirstVisibleCfi = function (visibleContentOffsets, frameDimensions) {
-        return getFirstVisibleTextRangeCfi(visibleContentOffsets, frameDimensions);
-    };
-
-    this.getLastVisibleCfi = function (visibleContentOffsets, frameDimensions) {
-        return getLastVisibleTextRangeCfi(visibleContentOffsets, frameDimensions);
-    };
-
-    function generateCfiFromDomRange(range) {
-        return EPUBcfi.generateRangeComponent(
-            range.startContainer, range.startOffset,
-            range.endContainer, range.endOffset,
-            ['cfi-marker'], [], ["MathJax_Message", "MathJax_SVG_Hidden"]);
-    }
-
-    function getRangeTargetNodes(rangeCfi) {
-        return EPUBcfi.getRangeTargetElements(
-            getWrappedCfiRelativeToContent(rangeCfi),
-            self.getRootDocument(),
-            ['cfi-marker'], [], ["MathJax_Message", "MathJax_SVG_Hidden"]);
-    }
-
-    this.getDomRangeFromRangeCfi = function(rangeCfi, rangeCfi2, inclusive) {
-        var range = createRange();
-
-        if (!rangeCfi2) {
-            if (self.isRangeCfi(rangeCfi)) {
-                var rangeInfo = getRangeTargetNodes(rangeCfi);
-                range.setStart(rangeInfo.startElement, rangeInfo.startOffset);
-                range.setEnd(rangeInfo.endElement, rangeInfo.endOffset);
-            } else {
-                var element = self.getElementByCfi(rangeCfi,
-                    ['cfi-marker'], [], ["MathJax_Message", "MathJax_SVG_Hidden"])[0];
-                range.selectNode(element);
-            }
-        } else {
-            if (self.isRangeCfi(rangeCfi)) {
-                var rangeInfo1 = getRangeTargetNodes(rangeCfi);
-                range.setStart(rangeInfo1.startElement, rangeInfo1.startOffset);
-            } else {
-                var startElement = self.getElementByCfi(rangeCfi,
-                    ['cfi-marker'], [], ["MathJax_Message", "MathJax_SVG_Hidden"])[0];
-                range.setStart(startElement, 0);
-            }
-
-            if (self.isRangeCfi(rangeCfi2)) {
-                var rangeInfo2 = getRangeTargetNodes(rangeCfi2);
-                if (inclusive) {
-                    range.setEnd(rangeInfo2.endElement, rangeInfo2.endOffset);
+            if (!rangeCfi2) {
+                if (self.isRangeCfi(rangeCfi)) {
+                    var rangeInfo = self.getNodeRangeInfoFromCfi(rangeCfi);
+                    range.setStart(rangeInfo.startInfo.node, rangeInfo.startInfo.offset);
+                    range.setEnd(rangeInfo.endInfo.node, rangeInfo.endInfo.offset);
                 } else {
-                    range.setEnd(rangeInfo2.startElement, rangeInfo2.startOffset);
+                    var element = self.getElementByCfi(rangeCfi,
+                        this.getClassBlacklist(), this.getElementBlacklist(), this.getIdBlacklist())[0];
+                    range.selectNode(element);
                 }
             } else {
-                var endElement = self.getElementByCfi(rangeCfi2,
-                    ['cfi-marker'], [], ["MathJax_Message", "MathJax_SVG_Hidden"])[0];
-                range.setEnd(endElement, endElement.childNodes.length);
+                if (self.isRangeCfi(rangeCfi)) {
+                    var rangeInfo1 = self.getNodeRangeInfoFromCfi(rangeCfi);
+                    range.setStart(rangeInfo1.startInfo.node, rangeInfo1.startInfo.offset);
+                } else {
+                    var startElement = self.getElementByCfi(rangeCfi,
+                        this.getClassBlacklist(), this.getElementBlacklist(), this.getIdBlacklist())[0];
+                    range.setStart(startElement, 0);
+                }
+
+                if (self.isRangeCfi(rangeCfi2)) {
+                    var rangeInfo2 = self.getNodeRangeInfoFromCfi(rangeCfi2);
+                    if (inclusive) {
+                        range.setEnd(rangeInfo2.endInfo.node, rangeInfo2.endInfo.offset);
+                    } else {
+                        range.setEnd(rangeInfo2.startInfo.node, rangeInfo2.startInfo.offset);
+                    }
+                } else {
+                    var endElement = self.getElementByCfi(rangeCfi2,
+                        this.getClassBlacklist(), this.getElementBlacklist(), this.getIdBlacklist())[0];
+                    range.setEnd(endElement, endElement.childNodes.length);
+                }
             }
-        }
-        return range;
-    };
+            return range;
+        };
 
-    this.getRangeCfiFromDomRange = function(domRange) {
-        return generateCfiFromDomRange(domRange);
-    };
+        this.getRangeCfiFromDomRange = function (domRange) {
+            return generateCfiFromDomRange(domRange);
+        };
 
-    function getWrappedCfi(partialCfi) {
-        return "epubcfi(" + partialCfi + ")";
-    }
-
-    function getWrappedCfiRelativeToContent(partialCfi) {
-        return "epubcfi(/99!" + partialCfi + ")";
-    }
-
-    this.isRangeCfi = function (partialCfi) {
-        return EPUBcfi.Interpreter.isRangeCfi(getWrappedCfi(partialCfi)) || EPUBcfi.Interpreter.isRangeCfi(getWrappedCfiRelativeToContent(partialCfi));
-    };
-
-    this.getPageForElementCfi = function (cfi, classBlacklist, elementBlacklist, idBlacklist) {
-
-        var cfiParts = splitCfi(cfi);
-        var partialCfi = cfiParts.cfi;
-
-        if (this.isRangeCfi(partialCfi)) {
-            //if given a range cfi the exact page index needs to be calculated by getting node info from the range cfi
-            var nodeRangeInfoFromCfi = this.getNodeRangeInfoFromCfi(partialCfi);
-            //the page index is calculated from the node's client rectangle
-            return findPageBySingleRectangle(nodeRangeInfoFromCfi.clientRect);
+        function getWrappedCfi(partialCfi) {
+            return "epubcfi(/99!" + partialCfi + ")";
         }
 
-        var $element = getElementByPartialCfi(cfiParts.cfi, classBlacklist, elementBlacklist, idBlacklist);
+        this.isRangeCfi = function (partialCfi) {
+            return _isRangeCfi(partialCfi) || _hasTextTerminus(partialCfi);
+        };
 
-        if (!$element) {
-            return -1;
+        function _isRangeCfi(partialCfi) {
+            return EPUBcfi.Interpreter.isRangeCfi(getWrappedCfi(partialCfi));
         }
 
-        var pageIndex = this.getPageForPointOnElement($element, cfiParts.x, cfiParts.y);
-
-        return pageIndex;
-
-    };
-
-    function getElementByPartialCfi(cfi, classBlacklist, elementBlacklist, idBlacklist) {
-
-        var contentDoc = self.getRootDocument();
-
-        var wrappedCfi = getWrappedCfi(cfi);
-
-        try {
-            //noinspection JSUnresolvedVariable
-            var $element = EPUBcfi.getTargetElementWithPartialCFI(wrappedCfi, contentDoc, classBlacklist, elementBlacklist, idBlacklist);
-
-        } catch (ex) {
-            //EPUBcfi.Interpreter can throw a SyntaxError
+        function _hasTextTerminus(partialCfi) {
+            return EPUBcfi.Interpreter.hasTextTerminus(getWrappedCfi(partialCfi));
         }
 
-        if (!$element || $element.length == 0) {
-            console.log("Can't find element for CFI: " + cfi);
-            return undefined;
-        }
+        this.getPageIndexDeltaForCfi = function (partialCfi, classBlacklist, elementBlacklist, idBlacklist) {
 
-        return $element;
-    }
+            if (this.isRangeCfi(partialCfi)) {
+                //if given a range cfi the exact page index needs to be calculated by getting node info from the range cfi
+                var nodeRangeInfoFromCfi = this.getNodeRangeInfoFromCfi(partialCfi);
+                //the page index is calculated from the node's client rectangle
+                return findPageIndexDeltaBySingleRectangle(nodeRangeInfoFromCfi.clientRect);
+            }
 
-    this.getElementFromPoint = function (x, y) {
+            var $element = getElementByPartialCfi(partialCfi, classBlacklist, elementBlacklist, idBlacklist);
 
-        var document = self.getRootDocument();
-        return document.elementFromPoint(x, y);
-    };
+            if (!$element) {
+                return -1;
+            }
 
-    this.getNodeRangeInfoFromCfi = function (cfi) {
-        var contentDoc = self.getRootDocument();
-        if (self.isRangeCfi(cfi)) {
-            var wrappedCfi = getWrappedCfiRelativeToContent(cfi);
+            return this.getPageIndexDeltaForElement($element);
+        };
+
+        function getElementByPartialCfi(cfi, classBlacklist, elementBlacklist, idBlacklist) {
+
+            var contentDoc = self.getRootDocument();
+
+            var wrappedCfi = getWrappedCfi(cfi);
 
             try {
                 //noinspection JSUnresolvedVariable
-                var nodeResult = EPUBcfi.Interpreter.getRangeTargetElements(wrappedCfi, contentDoc,
-                    ["cfi-marker"],
-                    [],
-                    ["MathJax_Message", "MathJax_SVG_Hidden"]);
+                var $element = EPUBcfi.getTargetElement(wrappedCfi, contentDoc, classBlacklist, elementBlacklist, idBlacklist);
 
-                if (debugMode) {
-                    console.log(nodeResult);
-                }
             } catch (ex) {
                 //EPUBcfi.Interpreter can throw a SyntaxError
             }
 
-            if (!nodeResult) {
-                console.log("Can't find nodes for range CFI: " + cfi);
+            if (!$element || $element.length == 0) {
+                console.log("Can't find element for CFI: " + cfi);
                 return undefined;
             }
 
-            var startRangeInfo = {node: nodeResult.startElement, offset: nodeResult.startOffset};
-            var endRangeInfo = {node: nodeResult.endElement, offset: nodeResult.endOffset};
-            var nodeRangeClientRect =
-                startRangeInfo && endRangeInfo ?
-                    getNodeRangeClientRect(
-                        startRangeInfo.node,
-                        startRangeInfo.offset,
-                        endRangeInfo.node,
-                        endRangeInfo.offset)
-                    : null;
-
-            if (debugMode) {
-                console.log(nodeRangeClientRect);
-                addOverlayRect(nodeRangeClientRect, 'purple', contentDoc);
-            }
-
-            return {startInfo: startRangeInfo, endInfo: endRangeInfo, clientRect: nodeRangeClientRect}
-        } else {
-            var $element = self.getElementByCfi(cfi,
-                ["cfi-marker"],
-                [],
-                ["MathJax_Message", "MathJax_SVG_Hidden"]);
-
-            var visibleContentOffsets = getVisibleContentOffsets();
-            return {startInfo: null, endInfo: null, clientRect: getNormalizedBoundingRect($element, visibleContentOffsets)};
-        }
-    };
-
-    this.isNodeFromRangeCfiVisible = function (cfi) {
-        var nodeRangeInfo = this.getNodeRangeInfoFromCfi(cfi);
-        if (nodeRangeInfo) {
-            return isRectVisible(nodeRangeInfo.clientRect, false);
-        } else {
-            return undefined;
-        }
-    };
-
-    this.getElementByCfi = function (cfi, classBlacklist, elementBlacklist, idBlacklist) {
-
-        var cfiParts = splitCfi(cfi);
-        return getElementByPartialCfi(cfiParts.cfi, classBlacklist, elementBlacklist, idBlacklist);
-    };
-
-    this.getPageForElement = function ($element) {
-
-        return this.getPageForPointOnElement($element, 0, 0);
-    };
-
-    this.getPageForPointOnElement = function ($element, x, y) {
-
-        var pageIndex = findPageByRectangles($element, y);
-        if (pageIndex === null) {
-            console.warn('Impossible to locate a hidden element: ', $element);
-            return 0;
-        }
-        return pageIndex;
-    };
-
-    this.getElementById = function (id) {
-
-        var contentDoc = this.getRootDocument();
-
-        var $element = $(contentDoc.getElementById(id));
-        //$("#" + Helpers.escapeJQuerySelector(id), contentDoc);
-
-        if($element.length == 0) {
-            return undefined;
-        }
-
-        return $element;
-    };
-
-    this.getPageForElementId = function (id) {
-
-        var $element = this.getElementById(id);
-        if (!$element) {
-            return -1;
-        }
-
-        return this.getPageForElement($element);
-    };
-
-    function splitCfi(cfi) {
-
-        var ret = {
-            cfi: "",
-            x: 0,
-            y: 0
-        };
-
-        var ix = cfi.indexOf("@");
-
-        if (ix != -1) {
-            var terminus = cfi.substring(ix + 1);
-
-            var colIx = terminus.indexOf(":");
-            if (colIx != -1) {
-                ret.x = parseInt(terminus.substr(0, colIx));
-                ret.y = parseInt(terminus.substr(colIx + 1));
-            }
-            else {
-                console.log("Unexpected terminating step format");
-            }
-
-            ret.cfi = cfi.substring(0, ix);
-        }
-        else {
-
-            ret.cfi = cfi;
-        }
-
-        return ret;
-    }
-
-    // returns raw DOM element (not $ jQuery-wrapped)
-    this.getFirstVisibleMediaOverlayElement = function(visibleContentOffsets) {
-        var $root = $(this.getBodyElement());
-        if (!$root || !$root.length || !$root[0]) return undefined;
-
-        var that = this;
-
-        var firstPartial = undefined;
-
-        function traverseArray(arr) {
-            if (!arr || !arr.length) return undefined;
-
-            for (var i = 0, count = arr.length; i < count; i++) {
-                var item = arr[i];
-                if (!item) continue;
-
-                var $item = $(item);
-
-                if ($item.data("mediaOverlayData")) {
-                    var visible = that.getElementVisibility($item, visibleContentOffsets);
-                    if (visible) {
-                        if (!firstPartial) firstPartial = item;
-
-                        if (visible == 100) return item;
-                    }
-                }
-                else {
-                    var elem = traverseArray(item.children);
-                    if (elem) return elem;
-                }
-            }
-
-            return undefined;
-        }
-
-        var el = traverseArray([$root[0]]);
-        if (!el) el = firstPartial;
-        return el;
-
-        // var $elements = this.getMediaOverlayElements($root);
-        // return this.getVisibleElements($elements, visibleContentOffsets);
-    };
-
-    this.getElementVisibility = function ($element, visibleContentOffsets) {
-        return checkVisibilityByRectangles($element, true, visibleContentOffsets);
-    };
-
-
-    this.isElementVisible = checkVisibilityByRectangles;
-
-    this.getVisibleElementsWithFilter = function (visibleContentOffsets, filterFunction) {
-        var $elements = this.getElementsWithFilter($(this.getBodyElement()), filterFunction);
-        return this.getVisibleElements($elements, visibleContentOffsets);
-    };
-
-    this.getAllElementsWithFilter = function (filterFunction) {
-        var $elements = this.getElementsWithFilter($(this.getBodyElement()), filterFunction);
-        return $elements;
-    };
-
-    this.getAllVisibleElementsWithSelector = function (selector, visibleContentOffset) {
-        var elements = $(selector, this.getRootElement());
-        var $newElements = [];
-        $.each(elements, function () {
-            $newElements.push($(this));
-        });
-        var visibleElements = this.getVisibleElements($newElements, visibleContentOffset);
-        return visibleElements;
-    };
-
-    this.getVisibleElements = function ($elements, visibleContentOffsets, frameDimensions) {
-
-        var visibleElements = [];
-
-        _.each($elements, function ($node) {
-            var isTextNode = ($node[0].nodeType === Node.TEXT_NODE);
-            var $element = isTextNode ? $node.parent() : $node;
-            var visibilityPercentage = checkVisibilityByRectangles(
-                $node, true, visibleContentOffsets, frameDimensions);
-
-            if (visibilityPercentage) {
-                visibleElements.push({
-                    element: $element[0], // DOM Element is pushed
-                    textNode: isTextNode ? $node[0] : null,
-                    percentVisible: visibilityPercentage
-                });
-            }
-        });
-
-        return visibleElements;
-    };
-
-    this.getVisibleLeafNodes = function (visibleContentOffsets, frameDimensions) {
-
-        if (_cacheEnabled) {
-            var cacheKey = (options.paginationInfo || {}).currentSpreadIndex || 0;
-            var fromCache = _cache.visibleLeafNodes.get(cacheKey);
-            if (fromCache) {
-                return fromCache;
-            }
-        }
-
-        var $elements = this.getLeafNodeElements($(this.getBodyElement()));
-
-        var visibleElements = this.getVisibleElements($elements, visibleContentOffsets, frameDimensions);
-
-        if (_cacheEnabled) {
-            _cache.visibleLeafNodes.set(cacheKey, visibleElements);
-        }
-
-        return visibleElements;
-    };
-
-    this.getElementsWithFilter = function ($root, filterFunction) {
-
-        var $elements = [];
-
-        function traverseCollection(elements) {
-
-            if (elements == undefined) return;
-
-            for (var i = 0, count = elements.length; i < count; i++) {
-
-                var $element = $(elements[i]);
-
-                if (filterFunction($element)) {
-                    $elements.push($element);
-                }
-                else {
-                    traverseCollection($element[0].children);
-                }
-
-            }
-        }
-
-        traverseCollection([$root[0]]);
-
-        return $elements;
-    };
-
-    function isElementBlacklisted($element) {
-        //TODO: Ok we really need to have a single point of reference for this blacklist
-        var blacklist = {
-            classes: ["cfi-marker", "mo-cfi-highlight"],
-            elements: [], //not looked at
-            ids: ["MathJax_Message", "MathJax_SVG_Hidden"]
-        };
-
-        var isBlacklisted = false;
-
-        _.some(blacklist.classes, function (value) {
-            if ($element.hasClass(value)) {
-                isBlacklisted = true;
-            }
-            return isBlacklisted;
-        });
-
-        _.some(blacklist.ids, function (value) {
-            if ($element.attr("id") === value) {
-                isBlacklisted = true;
-            }
-            return isBlacklisted;
-        });
-
-
-        return isBlacklisted;
-    }
-
-    this.getLeafNodeElements = function ($root) {
-
-        if (_cacheEnabled) {
-            var fromCache = _cache.leafNodeElements.get($root);
-            if (fromCache) {
-                return fromCache;
-            }
-        }
-
-        var nodeIterator = document.createNodeIterator(
-            $root[0],
-            NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
-            function() {
-                return NodeFilter.FILTER_ACCEPT;
-            },
-            false
-        );
-
-        var $leafNodeElements = [];
-
-        var node;
-        while ((node = nodeIterator.nextNode())) {
-            var isLeafNode = node.nodeType === Node.ELEMENT_NODE && !node.childElementCount && !isValidTextNodeContent(node.textContent);
-            if (isLeafNode || isValidTextNode(node)){
-                var $node = $(node);
-                var $element = (node.nodeType === Node.TEXT_NODE) ? $node.parent() : $node;
-                if (!isElementBlacklisted($element)) {
-                    $leafNodeElements.push($node);
-                }
-            }
-        }
-
-        if (_cacheEnabled) {
-            _cache.leafNodeElements.set($root, $leafNodeElements);
-        }
-
-        return $leafNodeElements;
-    };
-
-    function isValidTextNode(node) {
-
-        if (node.nodeType === Node.TEXT_NODE) {
-
-            return isValidTextNodeContent(node.nodeValue);
-        }
-
-        return false;
-
-    }
-
-    function isValidTextNodeContent(text) {
-        // Heuristic to find a text node with actual text
-        // If we don't do this, we may get a reference to a node that doesn't get rendered
-        // (such as for example a node that has tab character and a bunch of spaces)
-        // this is would be bad! ask me why.
-        return text.replace(/[\s\n\r\t]/g, "").length > 0;
-    }
-
-    this.getElements = function (selector) {
-        if (!selector) {
-            return $(this.getRootElement()).children();
-        }
-        return $(selector, this.getRootElement());
-    };
-
-    this.getElement = function (selector) {
-
-        var $element = this.getElements(selector);
-
-        if($element.length > 0) {
             return $element;
         }
 
-        return undefined;
-    };
+        this.getElementFromPoint = function (x, y) {
 
-    function Cache() {
-        var that = this;
-
-        //true = survives invalidation
-        var props = {
-            leafNodeElements: true,
-            visibleLeafNodes: false
+            var document = self.getRootDocument();
+            return document.elementFromPoint(x, y);
         };
 
-        _.each(props, function (val, key) {
-            that[key] = new Map();
-        });
+        this.getNodeRangeInfoFromCfi = function (cfi) {
+            var contentDoc = self.getRootDocument();
 
-        this._invalidate = function () {
-            _.each(props, function (val, key) {
-                if (!val) {
-                    that[key] = new Map();
+            var wrappedCfi = getWrappedCfi(cfi);
+            if (_isRangeCfi(cfi)) {
+
+                try {
+                    //noinspection JSUnresolvedVariable
+                    var nodeResult = EPUBcfi.Interpreter.getRangeTargetElements(wrappedCfi, contentDoc,
+                        this.getClassBlacklist(),
+                        this.getElementBlacklist(),
+                        this.getIdBlacklist());
+
+                    if (_DEBUG) {
+                        console.log(nodeResult);
+                    }
+                } catch (ex) {
+                    //EPUBcfi.Interpreter can throw a SyntaxError
                 }
-            });
-        }
-    }
 
-    var _cache = new Cache();
+                if (!nodeResult) {
+                    console.log("Can't find nodes for range CFI: " + cfi);
+                    return undefined;
+                }
 
-    var _cacheEnabled = false;
+                var startRangeInfo = {node: nodeResult.startElement, offset: nodeResult.startOffset};
+                var endRangeInfo = {node: nodeResult.endElement, offset: nodeResult.endOffset};
+                var nodeRangeClientRect =
+                    startRangeInfo && endRangeInfo ?
+                        getNodeRangeClientRect(
+                            startRangeInfo.node,
+                            startRangeInfo.offset,
+                            endRangeInfo.node,
+                            endRangeInfo.offset)
+                        : null;
 
-    this.invalidateCache = function () {
-        _cache._invalidate();
-    };
+                if (_DEBUG) {
+                    console.log(nodeRangeClientRect);
+                    addOverlayRect(nodeRangeClientRect, 'purple', contentDoc);
+                }
 
+                return {startInfo: startRangeInfo, endInfo: endRangeInfo, clientRect: nodeRangeClientRect};
+            } else if (_hasTextTerminus(cfi)) {
 
-    // dmitry debug
-    // dmitry debug
-    // dmitry debug
-    // dmitry debug
-    // dmitry debug
-    // dmitry debug
+                try {
+                    //noinspection JSUnresolvedVariable
+                    var textTerminusResult = EPUBcfi.Interpreter.getTextTerminusInfo(wrappedCfi, contentDoc,
+                        this.getClassBlacklist(),
+                        this.getElementBlacklist(),
+                        this.getIdBlacklist());
 
-    var parseContentCfi = function(cont) {
-        return cont.replace(/\[(.*?)\]/, "").split(/[\/,:]/).map(function(n) { return parseInt(n); }).filter(Boolean);
-    };
+                    if (_DEBUG) {
+                        console.log(textTerminusResult);
+                    }
+                } catch (ex) {
+                    //EPUBcfi.Interpreter can throw a SyntaxError
+                }
 
-    var contentCfiComparator = function(cont1, cont2) {
-        cont1 = this.parseContentCfi(cont1);
-        cont2 = this.parseContentCfi(cont2);
+                if (!textTerminusResult) {
+                    console.log("Can't find node for text term CFI: " + cfi);
+                    return undefined;
+                }
 
-        //compare cont arrays looking for differences
-        for (var i=0; i<cont1.length; i++) {
-            if (cont1[i] > cont2[i]) {
-                return 1;
+                var textTermRangeInfo = {node: textTerminusResult.textNode, offset: textTerminusResult.textOffset};
+                var textTermClientRect =
+                    getNodeRangeClientRect(
+                        textTermRangeInfo.node,
+                        textTermRangeInfo.offset,
+                        textTermRangeInfo.node,
+                        textTermRangeInfo.offset);
+                if (_DEBUG) {
+                    console.log(textTermClientRect);
+                    addOverlayRect(textTermClientRect, 'purple', contentDoc);
+                }
+
+                return {startInfo: textTermRangeInfo, endInfo: textTermRangeInfo, clientRect: textTermClientRect};
+            } else {
+                var $element = self.getElementByCfi(cfi,
+                    this.getClassBlacklist(),
+                    this.getElementBlacklist(),
+                    this.getIdBlacklist());
+
+                var visibleContentOffsets = getVisibleContentOffsets();
+                return {
+                    startInfo: null,
+                    endInfo: null,
+                    clientRect: getNormalizedBoundingRect($element, visibleContentOffsets)
+                };
             }
-            else if (cont1[i] < cont2[i]) {
+        };
+
+        this.isNodeFromRangeCfiVisible = function (cfi) {
+            var nodeRangeInfo = this.getNodeRangeInfoFromCfi(cfi);
+            if (nodeRangeInfo) {
+                return isRectVisible(nodeRangeInfo.clientRect, false);
+            } else {
+                return undefined;
+            }
+        };
+
+        this.getNearestCfiFromElement = function (element) {
+            var collapseToStart;
+            var chosenNode;
+            var isTextNode;
+
+            var siblingTextNodesAndSelf = _.filter(element.parentNode.childNodes, function (n) {
+                return n === element || isValidTextNode(n);
+            });
+
+            var indexOfSelf = siblingTextNodesAndSelf.indexOf(element);
+            var nearestNode = siblingTextNodesAndSelf[indexOfSelf - 1];
+            if (!nearestNode) {
+                nearestNode = siblingTextNodesAndSelf[indexOfSelf + 1];
+                collapseToStart = true;
+            }
+            if (!nearestNode) {
+                nearestNode = _.last(this.getLeafNodeElements($(element.previousElementSibling)));
+                if (!nearestNode) {
+                    collapseToStart = true;
+                    nearestNode = _.first(this.getLeafNodeElements($(element.nextElementSibling)));
+                }
+            }
+
+            // Prioritize text node use
+            if (isValidTextNode(nearestNode)) {
+                chosenNode = nearestNode;
+                isTextNode = true;
+            } else if (isElementNode(nearestNode)) {
+                chosenNode = nearestNode;
+            } else if (isElementNode(element.previousElementSibling)) {
+                chosenNode = element.previousElementSibling;
+            } else if (isElementNode(element.nextElementSibling)) {
+                chosenNode = element.nextElementSibling;
+            } else {
+                chosenNode = element.parentNode;
+            }
+
+            if (isTextNode) {
+                var range = chosenNode.ownerDocument.createRange();
+                range.selectNodeContents(chosenNode);
+                range.collapse(collapseToStart);
+                return this.getRangeCfiFromDomRange(range);
+            } else {
+                return this.getCfiForElement(chosenNode);
+            }
+        };
+
+        this.getElementByCfi = function (partialCfi, classBlacklist, elementBlacklist, idBlacklist) {
+            return getElementByPartialCfi(partialCfi, classBlacklist, elementBlacklist, idBlacklist);
+        };
+
+        this.getPageIndexDeltaForElement = function ($element) {
+
+            // first try to get delta by rectangles
+            var pageIndex = findPageIndexDeltaByRectangles($element);
+
+            // for hidden elements (e.g., page breaks) there are no rectangles
+            if (pageIndex === null) {
+
+                // get CFI of the nearest (to hidden) element, and then get CFI's element
+                var nearestVisibleElement = this.getElementByCfi(this.getNearestCfiFromElement($element[0]));
+
+                // find page index by rectangles again, for the nearest element
+                return findPageIndexDeltaByRectangles(nearestVisibleElement);
+            }
+            return pageIndex;
+        };
+
+        this.getElementById = function (id) {
+
+            var contentDoc = this.getRootDocument();
+
+            var $element = $(contentDoc.getElementById(id));
+            //$("#" + Helpers.escapeJQuerySelector(id), contentDoc);
+
+            if ($element.length == 0) {
+                return undefined;
+            }
+
+            return $element;
+        };
+
+        this.getPageIndexDeltaForElementId = function (id) {
+
+            var $element = this.getElementById(id);
+            if (!$element) {
                 return -1;
             }
+
+            return this.getPageIndexDeltaForElement($element);
+        };
+
+        // returns raw DOM element (not $ jQuery-wrapped)
+        this.getFirstVisibleMediaOverlayElement = function (visibleContentOffsets) {
+            var $root = $(this.getBodyElement());
+            if (!$root || !$root.length || !$root[0]) return undefined;
+
+            var that = this;
+
+            var firstPartial = undefined;
+
+            function traverseArray(arr) {
+                if (!arr || !arr.length) return undefined;
+
+                for (var i = 0, count = arr.length; i < count; i++) {
+                    var item = arr[i];
+                    if (!item) continue;
+
+                    var $item = $(item);
+
+                    if ($item.data("mediaOverlayData")) {
+                        var visible = that.getElementVisibility($item, visibleContentOffsets);
+                        if (visible) {
+                            if (!firstPartial) firstPartial = item;
+
+                            if (visible == 100) return item;
+                        }
+                    }
+                    else {
+                        var elem = traverseArray(item.children);
+                        if (elem) return elem;
+                    }
+                }
+
+                return undefined;
+            }
+
+            var el = traverseArray([$root[0]]);
+            if (!el) el = firstPartial;
+            return el;
+
+            // var $elements = this.getMediaOverlayElements($root);
+            // return this.getVisibleElements($elements, visibleContentOffsets);
+        };
+
+        this.getElementVisibility = function ($element, visibleContentOffsets) {
+            return checkVisibilityByRectangles($element, true, visibleContentOffsets);
+        };
+
+
+        this.isElementVisible = this.getElementVisibility;
+
+        this.getVisibleElementsWithFilter = function (visibleContentOffsets, filterFunction) {
+            var $elements = this.getElementsWithFilter($(this.getBodyElement()), filterFunction);
+            return this.getVisibleElements($elements, visibleContentOffsets);
+        };
+
+        this.getAllElementsWithFilter = function (filterFunction) {
+            return this.getElementsWithFilter($(this.getBodyElement()), filterFunction);
+        };
+
+        this.getAllVisibleElementsWithSelector = function (selector, visibleContentOffset) {
+            var elements = $(selector, this.getRootElement());
+            var $newElements = [];
+            $.each(elements, function () {
+                $newElements.push($(this));
+            });
+            return this.getVisibleElements($newElements, visibleContentOffset);
+        };
+
+        this.getVisibleElements = function ($elements, visibleContentOffsets, frameDimensions) {
+
+            var visibleElements = [];
+
+            _.each($elements, function ($node) {
+                var isTextNode = ($node[0].nodeType === Node.TEXT_NODE);
+                var $element = isTextNode ? $node.parent() : $node;
+                var visibilityPercentage = checkVisibilityByRectangles(
+                    $node, true, visibleContentOffsets, frameDimensions);
+
+                if (visibilityPercentage) {
+                    visibleElements.push({
+                        element: $element[0], // DOM Element is pushed
+                        textNode: isTextNode ? $node[0] : null,
+                        percentVisible: visibilityPercentage
+
+                    });
+                }
+            });
+
+            return visibleElements;
+        };
+
+        this.getVisibleLeafNodes = function (visibleContentOffsets, frameDimensions) {
+
+            if (_cacheEnabled) {
+                var cacheKey = (options.paginationInfo || {}).currentSpreadIndex || 0;
+                var fromCache = _cache.visibleLeafNodes.get(cacheKey);
+                if (fromCache) {
+                    return fromCache;
+                }
+            }
+
+            var $elements = this.getLeafNodeElements($(this.getBodyElement()));
+
+            var visibleElements = this.getVisibleElements($elements, visibleContentOffsets, frameDimensions);
+            if (_cacheEnabled) {
+                _cache.visibleLeafNodes.set(cacheKey, visibleElements);
+            }
+
+            return visibleElements;
+        };
+
+        function getBaseCfiSelectedByFunc(pickerFunc) {
+            var $elements = self.getLeafNodeElements($(self.getBodyElement()));
+            var $selectedNode = pickerFunc($elements);
+            var collapseToStart = pickerFunc([true, false]);
+            var range = createRange();
+            range.selectNodeContents($selectedNode[0]);
+            range.collapse(collapseToStart);
+            return generateCfiFromDomRange(range);
         }
 
-        //no differences found, so confirm that cont2 did not have values we didn't check
-        if (cont1.length < cont2.length) {
-            return -1;
+        this.getStartCfi = function () {
+            return getBaseCfiSelectedByFunc(_.first);
+        };
+
+
+        this.getEndCfi = function () {
+            return getBaseCfiSelectedByFunc(_.last);
+        };
+
+        this.getElementsWithFilter = function ($root, filterFunction) {
+
+            var $elements = [];
+
+            function traverseCollection(elements) {
+
+                if (elements == undefined) return;
+
+                for (var i = 0, count = elements.length; i < count; i++) {
+
+                    var $element = $(elements[i]);
+
+                    if (filterFunction($element)) {
+                        $elements.push($element);
+                    }
+                    else {
+                        traverseCollection($element[0].children);
+                    }
+
+                }
+            }
+
+            traverseCollection([$root[0]]);
+
+            return $elements;
+        };
+
+        function isElementBlacklisted(element) {
+            var classAttribute = element.className;
+            // check for SVGAnimatedString
+            if (classAttribute && typeof classAttribute.animVal !== "undefined") {
+                classAttribute = classAttribute.animVal;
+            } else if (classAttribute && typeof classAttribute.baseVal !== "undefined") {
+                classAttribute = classAttribute.baseVal;
+            }
+            var classList = classAttribute ? classAttribute.split(' ') : [];
+            var id = element.id;
+
+            var classBlacklist = self.getClassBlacklist();
+            if (classList.length === 1 && _.contains(classBlacklist, classList[0])) {
+                return true;
+            } else if (classList.length && _.intersection(classBlacklist, classList).length) {
+                return true;
+            }
+
+            if (id && id.length && _.contains(self.getIdBlacklist(), id)) {
+                return true;
+            }
+
+            return false;
         }
 
-        //cont arrays are identical
-        return 0;
-    };
+        this.getLeafNodeElements = function ($root) {
 
+            if (_cacheEnabled) {
+                var fromCache = _cache.leafNodeElements.get($root);
+                if (fromCache) {
+                    return fromCache;
+                }
+            }
 
-    // end dmitry debug
+            //noinspection JSUnresolvedVariable,JSCheckFunctionSignatures
+            var nodeIterator = document.createNodeIterator(
+                $root[0],
+                NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
+                function () {
+                    //noinspection JSUnresolvedVariable
+                    return NodeFilter.FILTER_ACCEPT;
+                },
+                false
+            );
 
-    //if (debugMode) {
+            var $leafNodeElements = [];
+
+            var node;
+            while ((node = nodeIterator.nextNode())) {
+                var isLeafNode = node.nodeType === Node.ELEMENT_NODE && !node.childElementCount && !isValidTextNodeContent(node.textContent);
+                if (isLeafNode || isValidTextNode(node)){
+                    var element = (node.nodeType === Node.TEXT_NODE) ? node.parentNode : node;
+                    if (!isElementBlacklisted(element)) {
+                        $leafNodeElements.push($(node));
+                    }
+                }
+            }
+
+            if (_cacheEnabled) {
+                _cache.leafNodeElements.set($root, $leafNodeElements);
+            }
+            return $leafNodeElements;
+        };
+
+        function isElementNode(node) {
+            if (!node) {
+                return false;
+            }
+            else {
+                return node.nodeType === Node.ELEMENT_NODE;
+            }
+        }
+
+        function isValidTextNode(node) {
+            if (!node) {
+                return false;
+            }
+            if (node.nodeType === Node.TEXT_NODE) {
+
+                return isValidTextNodeContent(node.nodeValue);
+            }
+
+            return false;
+
+        }
+
+        function isValidTextNodeContent(text) {
+            // Heuristic to find a text node with actual text
+            // If we don't do this, we may get a reference to a node that doesn't get rendered
+            // (such as for example a node that has tab character and a bunch of spaces)
+            // this is would be bad! ask me why.
+            return !!text.trim().length;
+        }
+
+        this.getElements = function (selector) {
+            if (!selector) {
+                return $(this.getRootElement()).children();
+            }
+            return $(selector, this.getRootElement());
+        };
+
+        this.getElement = function (selector) {
+
+            var $element = this.getElements(selector);
+
+            if ($element.length > 0) {
+                return $element;
+            }
+
+            return undefined;
+        };
+
+        function Cache() {
+            var that = this;
+
+            //true = survives invalidation
+            var props = {
+                leafNodeElements: true,
+                visibleLeafNodes: false
+            };
+
+            _.each(props, function (val, key) {
+                that[key] = new Map();
+            });
+
+            this._invalidate = function () {
+                _.each(props, function (val, key) {
+                    if (!val) {
+                        that[key] = new Map();
+                    }
+                });
+            }
+        }
+
+        var _cache = new Cache();
+
+        var _cacheEnabled = false;
+
+        this.invalidateCache = function () {
+            _cache._invalidate();
+        };
+
+        //if (_DEBUG) {
 
         var $debugOverlays = [];
 
@@ -3755,19 +4448,11 @@ var CfiNavigationLogic = function(options) {
         }
 
         function drawDebugOverlayFromRect(rect) {
-            var leftOffset, topOffset;
-
-            if (isVerticalWritingMode()) {
-                leftOffset = 0;
-                topOffset = -getPaginationLeftOffset();
-            } else {
-                leftOffset = -getPaginationLeftOffset();
-                topOffset = 0;
-            }
+            var offsets = getPaginationOffsets();
 
             addOverlayRect({
-                left: rect.left + leftOffset,
-                top: rect.top + topOffset,
+                left: rect.left + offsets.left,
+                top: rect.top + offsets.top,
                 width: rect.width,
                 height: rect.height
             }, true, self.getRootDocument());
@@ -3787,24 +4472,11 @@ var CfiNavigationLogic = function(options) {
             drawDebugOverlayFromRect(getNodeClientRect(node));
         }
 
-        function getPaginationLeftOffset() {
-
-            var $htmlElement = $("html", self.getRootDocument());
-            var offsetLeftPixels = $htmlElement.css(isVerticalWritingMode() ? "top" : (isPageProgressionRightToLeft() ? "right" : "left"));
-            var offsetLeft = parseInt(offsetLeftPixels.replace("px", ""));
-            if (isNaN(offsetLeft)) {
-                //for fixed layouts, $htmlElement.css("left") has no numerical value
-                offsetLeft = 0;
-            }
-            if (isPageProgressionRightToLeft() && !isVerticalWritingMode()) return -offsetLeft; 
-            return offsetLeft;
-        }
-
         function clearDebugOverlays() {
-            _.each($debugOverlays, function($el){
+            _.each($debugOverlays, function ($el) {
                 $el.remove();
             });
-            $debugOverlays.clear();
+            $debugOverlays = [];
         }
 
         ReadiumSDK._DEBUG_CfiNavigationLogic = {
@@ -3822,13 +4494,187 @@ var CfiNavigationLogic = function(options) {
                 var cfi2 = ReadiumSDK.reader.getLastVisibleCfi();
                 var range2 = ReadiumSDK.reader.getDomRangeFromRangeCfi(cfi2);
                 console.log(cfi2, range2, drawDebugOverlayFromDomRange(range2));
+            },
+            visibleTextRangeOffsetsRunsAvg: function () {
+                var arr = window.top._DEBUG_visibleTextRangeOffsetsRuns;
+                return arr.reduce(function (a, b) {
+                    return a + b;
+                }) / arr.length;
             }
         };
 
         //
-   // }
+        // }
 
-};
+        this.findFirstVisibleElement = function (visibleContentOffsets, frameDimensions) {
+
+            var bodyElement = this.getBodyElement();
+
+            if (!bodyElement) {
+                return null;
+            }
+
+            var firstVisibleElement;
+            var percentVisible = 0;
+            var textNode;
+
+            var treeWalker = document.createTreeWalker(
+                bodyElement,
+                NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
+                function(node) {
+                    if (node.nodeType === Node.ELEMENT_NODE && isElementBlacklisted(node))
+                        return NodeFilter.FILTER_REJECT;
+
+                    if (node.nodeType === Node.TEXT_NODE && !isValidTextNode(node))
+                        return NodeFilter.FILTER_REJECT;
+
+                    var visibilityResult = checkVisibilityByRectangles($(node), true, visibleContentOffsets, frameDimensions);
+                    return visibilityResult ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+                },
+                false
+                );
+
+            while (treeWalker.nextNode()) {
+                var node = treeWalker.currentNode;
+
+                if (node.nodeType === Node.TEXT_NODE) {
+                    firstVisibleElement = node.parentNode;
+                    textNode = node;
+                    percentVisible = 100; // not really used, assume this value unless otherwise
+                    break;
+                }
+
+                var hasChildElements = false;
+                var hasChildTextNodes = false;
+
+                for (var i = node.childNodes.length - 1; i >= 0; i--) {
+                    var childNode = node.childNodes[i];
+                    if (childNode.nodeType === Node.ELEMENT_NODE) {
+                        hasChildElements = true;
+                        break;
+                    }
+                    if (childNode.nodeType === Node.TEXT_NODE)
+                        hasChildTextNodes = true;
+                }
+
+                // potentially stop tree traversal when first element hit with no child element nodes
+                if (!hasChildElements && hasChildTextNodes) {
+                    for (var i=node.childNodes.length-1; i>=0; i--) {
+                        var childNode = node.childNodes[i];
+                        if (childNode.nodeType === Node.TEXT_NODE && isValidTextNode(childNode)) {
+                            var visibilityResult = checkVisibilityByRectangles($(childNode), true, visibleContentOffsets, frameDimensions);
+                            if (visibilityResult) {
+                                firstVisibleElement = node;
+                                textNode = childNode;
+                                percentVisible = visibilityResult;
+                                break;
+                            }
+                        }
+                    }
+                } else if (!hasChildElements) {
+                    firstVisibleElement = node;
+                    percentVisible = 100;
+                    textNode = null;
+                    break;
+                }
+            }
+
+            if (!firstVisibleElement) {
+                return null;
+            }
+            return {
+                element: firstVisibleElement,
+                textNode: textNode,
+                percentVisible: percentVisible
+            };
+        };
+
+        this.findLastVisibleElement = function (visibleContentOffsets, frameDimensions) {
+
+            var bodyElement = this.getBodyElement();
+
+            if (!bodyElement) {
+                return null;
+            }
+
+            var firstVisibleElement;
+            var percentVisible = 0;
+            var textNode;
+
+            var treeWalker = document.createTreeWalker(
+                bodyElement,
+                NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
+                function(node) {
+                    if (node.nodeType === Node.ELEMENT_NODE && isElementBlacklisted(node))
+                        return NodeFilter.FILTER_REJECT;
+
+                    if (node.nodeType === Node.TEXT_NODE && !isValidTextNode(node))
+                        return NodeFilter.FILTER_REJECT;
+
+                    var visibilityResult = checkVisibilityByRectangles($(node), true, visibleContentOffsets, frameDimensions);
+                    return visibilityResult ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+                },
+                false
+                );
+
+            while (treeWalker.lastChild()) { }
+
+            do {
+                var node = treeWalker.currentNode;
+
+                if (node.nodeType === Node.TEXT_NODE) {
+                    firstVisibleElement = node.parentNode;
+                    textNode = node;
+                    percentVisible = 100; // not really used, assume this value unless otherwise
+                    break;
+                }
+
+                var hasChildElements = false;
+                var hasChildTextNodes = false;
+
+                for (var i = node.childNodes.length - 1; i >= 0; i--) {
+                    var childNode = node.childNodes[i];
+                    if (childNode.nodeType === Node.ELEMENT_NODE) {
+                        hasChildElements = true;
+                        break;
+                    }
+                    if (childNode.nodeType === Node.TEXT_NODE)
+                        hasChildTextNodes = true;
+                }
+
+                // potentially stop tree traversal when first element hit with no child element nodes
+                if (!hasChildElements && hasChildTextNodes) {
+                    for (var i=node.childNodes.length-1; i>=0; i--) {
+                        var childNode = node.childNodes[i];
+                        if (childNode.nodeType === Node.TEXT_NODE && isValidTextNode(childNode)) {
+                            var visibilityResult = checkVisibilityByRectangles($(childNode), true, visibleContentOffsets, frameDimensions);
+                            if (visibilityResult) {
+                                firstVisibleElement = node;
+                                textNode = childNode;
+                                percentVisible = visibilityResult;
+                                break;
+                            }
+                        }
+                    }
+                } else if (!hasChildElements) {
+                    firstVisibleElement = node;
+                    percentVisible = 100;
+                    textNode = null;
+                    break;
+                }
+            } while (treeWalker.previousNode());
+
+            if (!firstVisibleElement) {
+                return null;
+            }
+            return {
+                element: firstVisibleElement,
+                textNode: textNode,
+                percentVisible: percentVisible
+            };
+        };
+
+    };
 return CfiNavigationLogic;
 });
 
@@ -3867,36 +4713,169 @@ var ViewerSettings = function(settingsData) {
 
     var self = this;
 
+    /** Set to "auto"
+     *
+     * @property syntheticSpread
+     * @type 
+     */
+
     this.syntheticSpread = "auto";
+
+    /** 
+     *
+     * @property fontSelection
+     * @type number
+     */
+    
+    this.fontSelection = 0;
+
+    /** 
+     *
+     * @property fontSize
+     * @type number
+     */
+
     this.fontSize = 100;
+
+    /** 
+     *
+     * @property columnGap
+     * @type number
+     */
+
     this.columnGap = 20;
     
+    /** 
+     *
+     * @property columnMaxWidth
+     * @type number
+     */
+
     this.columnMaxWidth = 700;
+
+    /** 
+     *
+     * @property columnMinWidth
+     * @type number
+     */
+
     this.columnMinWidth = 400;
+
+    /** 
+     *
+     * @property mediaOverlaysPreservePlaybackWhenScroll
+     * @type bool
+     */
 
     this.mediaOverlaysPreservePlaybackWhenScroll = false;
 
+    /** 
+     *
+     * @property mediaOverlaysSkipSkippables
+     * @type bool
+     */
+
     this.mediaOverlaysSkipSkippables = false;
+
+    /** 
+     *
+     * @property mediaOverlaysEscapables
+     * @type bool
+     */
+
     this.mediaOverlaysEscapeEscapables = true;
 
+    /** 
+     *
+     * @property mediaOverlaysSkippables
+     * @type array
+     */
+
     this.mediaOverlaysSkippables = [];
+    
+    /** 
+     *
+     * @property mediaOverlaysEscapables
+     * @type array
+     */
+
     this.mediaOverlaysEscapables = [];
+
+    /** 
+     *
+     * @property mediaOverlaysEnableClick
+     * @type bool
+     */
     
     this.mediaOverlaysEnableClick = true;
+
+    /** 
+     *
+     * @property mediaOverlaysRate
+     * @type number
+     */
+
     this.mediaOverlaysRate = 1;
+
+    /** 
+     *
+     * @property mediaOverlaysVolume
+     * @type number
+     */
+
     this.mediaOverlaysVolume = 100;
+
+    /** 
+     *
+     * @property mediaOverlaysSynchronizationGranularity
+     * @type string
+     */
     
     this.mediaOverlaysSynchronizationGranularity = "";
 
+    /** 
+     *
+     * @property mediaOverlaysAutomaticPageTurn
+     * @type bool
+     */    
+
     this.mediaOverlaysAutomaticPageTurn = true;
+
+    /** 
+     *
+     * @property enableGPUHardwareAccelerationCSS3D
+     * @type bool
+     */    
+
 
     this.enableGPUHardwareAccelerationCSS3D = false;
 
     // -1 ==> disable
     // [0...n] ==> index of transition in pre-defined array
-    this.pageTransition = -1;
     
+    /** 
+     *
+     * @property pageTransition
+     * @type number
+     */        
+
+    this.pageTransition = -1;
+ 
+    /** 
+     *
+     * @property scroll
+     * @type string
+     */        
+
     this.scroll = "auto";
+
+    /**
+     * Builds an array
+     *
+     * @method     buildArray
+     * @param      {string} str
+     * @return     {array} retArr
+     */
 
     function buildArray(str)
     {
@@ -3913,6 +4892,15 @@ var ViewerSettings = function(settingsData) {
         return retArr;
     }
 
+    /**
+     * Maps the properties to the settings
+     *
+     * @method     mapProperty
+     * @param      {string} propName
+     * @param      settingsData
+     * @param      functionToApply
+     */
+
     function mapProperty(propName, settingsData, functionToApply) {
 
         if(settingsData[propName] !== undefined) {
@@ -3927,12 +4915,20 @@ var ViewerSettings = function(settingsData) {
 
     }
 
+    /**
+     * Updates the settings' new values
+     *
+     * @method     update
+     * @param      settingsData
+     */
+
     this.update = function(settingsData) {
 
         mapProperty("columnGap", settingsData);
         mapProperty("columnMaxWidth", settingsData);
         mapProperty("columnMinWidth", settingsData);
         mapProperty("fontSize", settingsData);
+        mapProperty("fontSelection", settingsData);
         mapProperty("mediaOverlaysPreservePlaybackWhenScroll", settingsData);
         mapProperty("mediaOverlaysSkipSkippables", settingsData);
         mapProperty("mediaOverlaysEscapeEscapables", settingsData);
@@ -3953,6 +4949,221 @@ var ViewerSettings = function(settingsData) {
 };
     return ViewerSettings;
 });
+
+/**
+ * Copyright Marc J. Schmidt. See the LICENSE file at the top-level
+ * directory of this distribution and at
+ * https://github.com/marcj/css-element-queries/blob/master/LICENSE.
+ */
+;
+(function (root, factory) {
+    if (typeof define === "function" && define.amd) {
+        define('ResizeSensor',factory);
+    } else if (typeof exports === "object") {
+        module.exports = factory();
+    } else {
+        root.ResizeSensor = factory();
+    }
+}(typeof window !== 'undefined' ? window : this, function () {
+
+    // Make sure it does not throw in a SSR (Server Side Rendering) situation
+    if (typeof window === "undefined") {
+        return null;
+    }
+    // Only used for the dirty checking, so the event callback count is limited to max 1 call per fps per sensor.
+    // In combination with the event based resize sensor this saves cpu time, because the sensor is too fast and
+    // would generate too many unnecessary events.
+    var requestAnimationFrame = window.requestAnimationFrame ||
+        window.mozRequestAnimationFrame ||
+        window.webkitRequestAnimationFrame ||
+        function (fn) {
+            return window.setTimeout(fn, 20);
+        };
+
+    /**
+     * Iterate over each of the provided element(s).
+     *
+     * @param {HTMLElement|HTMLElement[]} elements
+     * @param {Function}                  callback
+     */
+    function forEachElement(elements, callback){
+        var elementsType = Object.prototype.toString.call(elements);
+        var isCollectionTyped = ('[object Array]' === elementsType
+            || ('[object NodeList]' === elementsType)
+            || ('[object HTMLCollection]' === elementsType)
+            || ('[object Object]' === elementsType)
+            || ('undefined' !== typeof jQuery && elements instanceof jQuery) //jquery
+            || ('undefined' !== typeof Elements && elements instanceof Elements) //mootools
+        );
+        var i = 0, j = elements.length;
+        if (isCollectionTyped) {
+            for (; i < j; i++) {
+                callback(elements[i]);
+            }
+        } else {
+            callback(elements);
+        }
+    }
+
+    /**
+     * Class for dimension change detection.
+     *
+     * @param {Element|Element[]|Elements|jQuery} element
+     * @param {Function} callback
+     *
+     * @constructor
+     */
+    var ResizeSensor = function(element, callback) {
+        /**
+         *
+         * @constructor
+         */
+        function EventQueue() {
+            var q = [];
+            this.add = function(ev) {
+                q.push(ev);
+            };
+
+            var i, j;
+            this.call = function() {
+                for (i = 0, j = q.length; i < j; i++) {
+                    q[i].call();
+                }
+            };
+
+            this.remove = function(ev) {
+                var newQueue = [];
+                for(i = 0, j = q.length; i < j; i++) {
+                    if(q[i] !== ev) newQueue.push(q[i]);
+                }
+                q = newQueue;
+            }
+
+            this.length = function() {
+                return q.length;
+            }
+        }
+
+        /**
+         *
+         * @param {HTMLElement} element
+         * @param {Function}    resized
+         */
+        function attachResizeEvent(element, resized) {
+            if (!element) return;
+            if (element.resizedAttached) {
+                element.resizedAttached.add(resized);
+                return;
+            }
+
+            element.resizedAttached = new EventQueue();
+            element.resizedAttached.add(resized);
+
+            element.resizeSensor = document.createElement('div');
+            element.resizeSensor.className = 'resize-sensor';
+            var style = 'position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: hidden; z-index: -1; visibility: hidden;';
+            var styleChild = 'position: absolute; left: 0; top: 0; transition: 0s;';
+
+            element.resizeSensor.style.cssText = style;
+            element.resizeSensor.innerHTML =
+                '<div class="resize-sensor-expand" style="' + style + '">' +
+                    '<div style="' + styleChild + '" class="resize-sensor-inner"></div>' +
+                '</div>' +
+                '<div class="resize-sensor-shrink" style="' + style + '">' +
+                    '<div style="' + styleChild + ' width: 200%; height: 200%" class="resize-sensor-inner"></div>' +
+                '</div>';
+            element.appendChild(element.resizeSensor);
+
+            if (element.resizeSensor.offsetParent !== element) {
+                element.style.position = 'relative';
+            }
+
+            var expand = element.resizeSensor.childNodes[0];
+            var expandChild = expand.childNodes[0];
+            var shrink = element.resizeSensor.childNodes[1];
+            var dirty, rafId, newWidth, newHeight;
+            var lastWidth = element.offsetWidth;
+            var lastHeight = element.offsetHeight;
+
+            var reset = function() {
+                expandChild.style.width = '100000px';
+                expandChild.style.height = '100000px';
+
+                expand.scrollLeft = 100000;
+                expand.scrollTop = 100000;
+
+                shrink.scrollLeft = 100000;
+                shrink.scrollTop = 100000;
+            };
+
+            reset();
+
+            var onResized = function() {
+                rafId = 0;
+
+                if (!dirty) return;
+
+                lastWidth = newWidth;
+                lastHeight = newHeight;
+
+                if (element.resizedAttached) {
+                    element.resizedAttached.call();
+                }
+            };
+
+            var onScroll = function() {
+                newWidth = element.offsetWidth;
+                newHeight = element.offsetHeight;
+                dirty = newWidth != lastWidth || newHeight != lastHeight;
+
+                if (dirty && !rafId) {
+                    rafId = requestAnimationFrame(onResized);
+                }
+
+                reset();
+            };
+
+            var addEvent = function(el, name, cb) {
+                if (el.attachEvent) {
+                    el.attachEvent('on' + name, cb);
+                } else {
+                    el.addEventListener(name, cb);
+                }
+            };
+
+            addEvent(expand, 'scroll', onScroll);
+            addEvent(shrink, 'scroll', onScroll);
+        }
+
+        forEachElement(element, function(elem){
+            attachResizeEvent(elem, callback);
+        });
+
+        this.detach = function(ev) {
+            ResizeSensor.detach(element, ev);
+        };
+    };
+
+    ResizeSensor.detach = function(element, ev) {
+        forEachElement(element, function(elem){
+            if (!elem) return
+            if(elem.resizedAttached && typeof ev == "function"){
+                elem.resizedAttached.remove(ev);
+                if(elem.resizedAttached.length()) return;
+            }
+            if (elem.resizeSensor) {
+                if (elem.contains(elem.resizeSensor)) {
+                    elem.removeChild(elem.resizeSensor);
+                }
+                delete elem.resizeSensor;
+                delete elem.resizedAttached;
+            }
+        });
+    };
+
+    return ResizeSensor;
+
+}));
 
 //  Created by Boris Schneiderman.
 //  Copyright (c) 2014 Readium Foundation and/or its licensees. All rights reserved.
@@ -3980,8 +5191,8 @@ var ViewerSettings = function(settingsData) {
 //  OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-define('readium_shared_js/views/one_page_view',["../globals", "jquery", "underscore", "eventEmitter", "./cfi_navigation_logic", "../helpers", "../models/viewer_settings", "../models/bookmark_data"],
-    function (Globals, $, _, EventEmitter, CfiNavigationLogic, Helpers, ViewerSettings, BookmarkData) {
+define('readium_shared_js/views/one_page_view',["../globals", "jquery", "underscore", "eventEmitter", "./cfi_navigation_logic", "../helpers", "../models/viewer_settings", "../models/bookmark_data", "ResizeSensor"],
+    function (Globals, $, _, EventEmitter, CfiNavigationLogic, Helpers, ViewerSettings, BookmarkData, ResizeSensor) {
 
 /**
  * Renders one page of fixed layout spread
@@ -4012,6 +5223,11 @@ var OnePageView = function (options, classes, enableBookStyleOverrides, reader) 
     var _isIframeLoaded = false;
 
     var _$scaler;
+
+    var _lastBodySize = {
+        width: undefined,
+        height: undefined
+    };
 
     var PageTransitionHandler = function (opts) {
         var PageTransition = function (begin, end) {
@@ -4325,28 +5541,77 @@ var OnePageView = function (options, classes, enableBookStyleOverrides, reader) 
             _$epubHtml = $("html", epubContentDocument);
             if (!_$epubHtml || _$epubHtml.length == 0) {
                 _$epubHtml = $("svg", epubContentDocument);
+                _$epubBody = undefined;
             } else {
                 _$epubBody = $("body", _$epubHtml);
             }
 
             //_$epubHtml.css("overflow", "hidden");
 
-            if (_enableBookStyleOverrides) {
+            if (_enableBookStyleOverrides) { // not fixed layout (reflowable in scroll view)
                 self.applyBookStyles();
             }
 
             updateMetaSize();
 
+            initResizeSensor();
+
             _pageTransitionHandler.onIFrameLoad();
         }
     }
 
+    function initResizeSensor() {
+
+        if (_$epubBody // undefined with SVG spine items
+            && _enableBookStyleOverrides // not fixed layout (reflowable in scroll view)
+            ) {
+
+            var bodyElement = _$epubBody[0];
+            if (bodyElement.resizeSensor) {
+                return;
+            }
+
+            // We need to make sure the content has indeed be resized, especially
+            // the first time it is triggered
+            _lastBodySize.width = $(bodyElement).width();
+            _lastBodySize.height = $(bodyElement).height();
+
+            bodyElement.resizeSensor = new ResizeSensor(bodyElement, function() {
+
+                var newBodySize = {
+                    width: $(bodyElement).width(),
+                    height: $(bodyElement).height()
+                };
+
+                console.debug("OnePageView content resized ...", newBodySize.width, newBodySize.height, _currentSpineItem.idref);
+                
+                if (newBodySize.width != _lastBodySize.width || newBodySize.height != _lastBodySize.height) {
+                    _lastBodySize.width = newBodySize.width;
+                    _lastBodySize.height = newBodySize.height;
+
+                    console.debug("... updating pagination.");
+
+                    var src = _spine.package.resolveRelativeUrl(_currentSpineItem.href);
+
+                    Globals.logEvent("OnePageView.Events.CONTENT_SIZE_CHANGED", "EMIT", "one_page_view.js [ " + _currentSpineItem.href + " -- " + src + " ]");
+                    
+                    self.emit(OnePageView.Events.CONTENT_SIZE_CHANGED, _$iframe, _currentSpineItem);
+                    
+                    //updatePagination();
+                } else {
+                    console.debug("... ignored (identical dimensions).");
+                }
+            });
+        }
+    }
+    
     var _viewSettings = undefined;
-    this.setViewSettings = function (settings) {
+    this.setViewSettings = function (settings, docWillChange) {
 
         _viewSettings = settings;
 
-        if (_enableBookStyleOverrides) {
+        if (_enableBookStyleOverrides  // not fixed layout (reflowable in scroll view)
+            && !docWillChange) {
             self.applyBookStyles();
         }
 
@@ -4355,27 +5620,34 @@ var OnePageView = function (options, classes, enableBookStyleOverrides, reader) 
         _pageTransitionHandler.updateOptions(settings);
     };
 
-    function updateHtmlFontSize() {
+    function updateHtmlFontInfo() {
 
-        if (!_enableBookStyleOverrides) return;
+        if (!_enableBookStyleOverrides) return;  // fixed layout (not reflowable in scroll view)
 
         if (_$epubHtml && _viewSettings) {
-            Helpers.UpdateHtmlFontSize(_$epubHtml, _viewSettings.fontSize);
+            var i = _viewSettings.fontSelection;
+            var useDefault = !reader.fonts || !reader.fonts.length || i <= 0 || (i-1) >= reader.fonts.length;
+            var font = (useDefault ?
+                        {} :
+                        reader.fonts[i - 1]);
+            Helpers.UpdateHtmlFontAttributes(_$epubHtml, _viewSettings.fontSize, font, function() {});
         }
     }
 
     this.applyBookStyles = function () {
 
-        if (!_enableBookStyleOverrides) return;
+        if (!_enableBookStyleOverrides) return;  // fixed layout (not reflowable in scroll view)
 
         if (_$epubHtml) {
             Helpers.setStyles(_bookStyles.getStyles(), _$epubHtml);
-            updateHtmlFontSize();
+            updateHtmlFontInfo();
         }
     };
 
     //this is called by scroll_view for fixed spine item
     this.scaleToWidth = function (width) {
+
+        if (_enableBookStyleOverrides) return;  // not fixed layout (reflowable in scroll view)
 
         if (_meta_size.width <= 0) return; // resize event too early!
 
@@ -4484,6 +5756,8 @@ var OnePageView = function (options, classes, enableBookStyleOverrides, reader) 
 
     this.transformContentImmediate = function (scale, left, top) {
 
+        if (_enableBookStyleOverrides) return;  // not fixed layout (reflowable in scroll view)
+
         var elWidth = Math.ceil(_meta_size.width * scale);
         var elHeight = Math.floor(_meta_size.height * scale);
 
@@ -4509,7 +5783,9 @@ var OnePageView = function (options, classes, enableBookStyleOverrides, reader) 
             enable3D = true;
         }
         
-        if (reader.needsFixedLayoutScalerWorkAround()) {
+        if (_$epubBody // not SVG spine item (otherwise fails in Safari OSX)
+            && reader.needsFixedLayoutScalerWorkAround()) {
+
             var css1 = Helpers.CSSTransformString({scale: scale, enable3D: enable3D});
             
             // See https://github.com/readium/readium-shared-js/issues/285 
@@ -4517,7 +5793,7 @@ var OnePageView = function (options, classes, enableBookStyleOverrides, reader) 
             css1["min-height"] = _meta_size.height;
             
             _$epubHtml.css(css1);
-            
+
             // Ensures content dimensions matches viewport meta (authors / production tools should do this in their CSS...but unfortunately some don't).
             if (_$epubBody && _$epubBody.length) {
                 _$epubBody.css({width:_meta_size.width, height:_meta_size.height});
@@ -4535,7 +5811,7 @@ var OnePageView = function (options, classes, enableBookStyleOverrides, reader) 
             css["height"] = _meta_size.height;
             _$scaler.css(css);
         }
-                
+
         // Chrome workaround: otherwise text is sometimes invisible (probably a rendering glitch due to the 3D transform graphics backend?)
         //_$epubHtml.css("visibility", "hidden"); // "flashing" in two-page spread mode is annoying :(
         _$epubHtml.css("opacity", "0.999");
@@ -4563,6 +5839,8 @@ var OnePageView = function (options, classes, enableBookStyleOverrides, reader) 
 
         _meta_size.width = 0;
         _meta_size.height = 0;
+
+        if (_enableBookStyleOverrides) return; // not fixed layout (reflowable in scroll view)
 
         var size = undefined;
 
@@ -4741,6 +6019,8 @@ var OnePageView = function (options, classes, enableBookStyleOverrides, reader) 
 
     function onUnload (spineItem) {
         if (spineItem) {
+            
+            Globals.logEvent("CONTENT_DOCUMENT_UNLOADED", "EMIT", "one_page_view.js [ " + spineItem.href + " ]");
             self.emit(Globals.Events.CONTENT_DOCUMENT_UNLOADED, _$iframe, spineItem);
         }
     }
@@ -4861,17 +6141,27 @@ var OnePageView = function (options, classes, enableBookStyleOverrides, reader) 
     }
     
     function getFrameDimensions() {
+        if (reader.needsFixedLayoutScalerWorkAround()) {
+            var parentEl = _$el.parent()[0];
+            return {
+                width: parentEl.clientWidth,
+                height: parentEl.clientHeight
+            };
+        }
         return {
-            width: _$el.parent()[0].clientWidth,
-            height: _$el.parent()[0].clientHeight
+            width: _meta_size.width,
+            height: _meta_size.height
         };
     }
     
     this.getNavigator = function () {
         return new CfiNavigationLogic({
             $iframe: _$iframe,
-            frameDimensions: getFrameDimensions,
-            visibleContentOffsets: getVisibleContentOffsets
+            frameDimensionsGetter: getFrameDimensions,
+            visibleContentOffsetsGetter: getVisibleContentOffsets,
+            classBlacklist: ["cfi-marker", "mo-cfi-highlight", "resize-sensor", "resize-sensor-expand", "resize-sensor-shrink", "resize-sensor-inner"],
+            elementBlacklist: [],
+            idBlacklist: ["MathJax_Message", "MathJax_SVG_Hidden"]
         });
     };
 
@@ -4961,7 +6251,11 @@ var OnePageView = function (options, classes, enableBookStyleOverrides, reader) 
         return navigation.getNodeRangeInfoFromCfi(partialCfi);
     };
 
-    function createBookmarkFromCfi(cfi){
+    function createBookmarkFromCfi(cfi) {
+        if (!_currentSpineItem) {
+            return null;
+        }
+
         return new BookmarkData(_currentSpineItem.idref, cfi);
     }
 
@@ -5001,10 +6295,22 @@ var OnePageView = function (options, classes, enableBookStyleOverrides, reader) 
         return self.getNavigator().getElementFromPoint(x, y);
     };
 
+    this.getStartCfi = function () {
+        return createBookmarkFromCfi(self.getNavigator().getStartCfi());
+    };
+
+    this.getEndCfi = function () {
+        return createBookmarkFromCfi(self.getNavigator().getEndCfi());
+    };
+
+    this.getNearestCfiFromElement = function(element) {
+        return createBookmarkFromCfi(self.getNavigator().getNearestCfiFromElement(element));
+    };
 };
 
 OnePageView.Events = {
-    SPINE_ITEM_OPEN_START: "SpineItemOpenStart"
+    SPINE_ITEM_OPEN_START: "SpineItemOpenStart",
+    CONTENT_SIZE_CHANGED: "ContentSizeChanged"
 };
 return OnePageView;
 });
@@ -5044,10 +6350,12 @@ define('readium_shared_js/models/page_open_request',[],function() {
  *  firstPage {bool},
  *  lastPage {bool}
  *
+ * @class Models.PageOpenRequest
+ * @constructor
  * @param {Models.SpineItem} spineItem
  * @param {object} [initiator]
  *
- * @constructor
+
  */
 var PageOpenRequest = function(spineItem, initiator) {
 
@@ -5055,9 +6363,17 @@ var PageOpenRequest = function(spineItem, initiator) {
     this.spineItemPageIndex = undefined;
     this.elementId = undefined;
     this.elementCfi = undefined;
+    this.firstVisibleCfi = undefined;
+    this.lastVisibleCfi = undefined;
     this.firstPage = false;
     this.lastPage = false;
     this.initiator = initiator;
+
+    /**
+     * Resets the reading system
+     *
+     * @method     reset
+     */
 
     this.reset = function() {
         this.spineItemPageIndex = undefined;
@@ -5067,32 +6383,74 @@ var PageOpenRequest = function(spineItem, initiator) {
         this.lastPage = false;
     };
 
+    /**
+     * Sets the first page of the book
+     *
+     * @method     setFirstPage
+     */
+
     this.setFirstPage = function() {
         this.reset();
         this.firstPage = true;
     };
+
+    /**
+     * Sets the last page of the book
+     *
+     * @method     setLastPage
+     */
 
     this.setLastPage = function() {
         this.reset();
         this.lastPage = true;
     };
 
+    /**
+     * Sets the index of the book
+     *
+     * @method     setPageIndex
+     * @param      pageIndex
+     */
+
     this.setPageIndex = function(pageIndex) {
         this.reset();
         this.spineItemPageIndex = pageIndex;
     };
 
+    /**
+     * Sets the ID of the current element
+     *
+     * @method     setElementId
+     * @param      {number} elementId 
+     */
+
     this.setElementId = function(elementId) {
         this.reset();
         this.elementId = elementId;
     };
+    
+    /**
+     * Sets the CFI of the current element
+     *
+     * @method     setElementCfi
+     * @param      elementCfi
+     */
 
     this.setElementCfi = function(elementCfi) {
-
         this.reset();
         this.elementCfi = elementCfi;
     };
 
+    // Used by ReflowView to better keep track of the current page
+    // using just a bookmark to firstVisibleElement makes the current
+    // page gradually shift to the beginning of the chapter. By bookmarking
+    // both the first and last visible elements, we can keep track of the 
+    // "middle" of the visible area.
+    this.setFirstAndLastVisibleCfi = function(firstVisibleCfi, lastVisibleCfi) {
+        this.reset();
+        this.firstVisibleCfi = firstVisibleCfi;
+        this.lastVisibleCfi = lastVisibleCfi;
+    }
 
 };
 
@@ -5183,6 +6541,9 @@ var FixedView = function(options, reader){
 
         pageView.on(Globals.Events.CONTENT_DOCUMENT_UNLOADED, function($iframe, spineItem) {
 
+            Globals.logEvent("CONTENT_DOCUMENT_UNLOADED", "ON", "fixed_view.js [ " + spineItem.href + " ]");
+
+            Globals.logEvent("CONTENT_DOCUMENT_UNLOADED", "EMIT", "fixed_view.js [ " + spineItem.href + " ]");
             self.emit(Globals.Events.CONTENT_DOCUMENT_UNLOADED, $iframe, spineItem);
         });
 
@@ -5235,7 +6596,7 @@ var FixedView = function(options, reader){
     };
 
 
-    this.setViewSettings = function(settings) {
+    this.setViewSettings = function(settings, docWillChange) {
         
         _viewSettings = settings;
         
@@ -5243,7 +6604,7 @@ var FixedView = function(options, reader){
 
         var views = getDisplayingViews();
         for(var i = 0, count = views.length; i < count; i++) {
-            views[i].setViewSettings(settings);
+            views[i].setViewSettings(settings, docWillChange);
         }
     };
 
@@ -5414,6 +6775,11 @@ var FixedView = function(options, reader){
         return viewportWidth && viewportHeight;
     }
 
+    this.moveInPage = function(deltaX, deltaY) {
+        _$viewport.scrollTop(_$viewport.scrollTop() + deltaY);
+        _$viewport.scrollLeft(_$viewport.scrollLeft() + deltaX);
+    };
+
     function resizeBook(viewportIsResizing) {
 
         updatePageSwitchDir(0, false);
@@ -5443,10 +6809,11 @@ var FixedView = function(options, reader){
 
         var horScale = potentialContentSize.width / _contentMetaSize.width;
         var verScale = potentialContentSize.height / _contentMetaSize.height;
-        
+        var minScale = Math.min(horScale, verScale);
+
         _$viewport.css("overflow", "auto");
             
-        var scale;
+        var scale, scaleRatio;
         if (_zoom.style == 'fit-width'){
             scale = horScale;
         }
@@ -5456,13 +6823,15 @@ var FixedView = function(options, reader){
         else if (_zoom.style == 'user'){
             scale = _zoom.scale;
         }
-        else{
-            scale = Math.min(horScale, verScale);
-
-            // no need for pan during "viewport fit" zoom
-            _$viewport.css("overflow", "hidden");
+        else {
+            scale = minScale;
         }
 
+        _$viewport.find('iframe').each(function () {
+          this.contentDocument.body.style.cursor = scale > minScale ? 'move' : 'auto';
+        });
+
+        scaleRatio = scale / _currentScale;
         _currentScale = scale;
 
         var contentSize = { width: _contentMetaSize.width * scale,
@@ -5511,8 +6880,13 @@ var FixedView = function(options, reader){
 
             _centerPageView[transFunc](scale, left, top);
         }
-        
+
+        if (_zoom.center) {
+            self.moveInPage(Math.round(_zoom.center.x * (scaleRatio - 1)) - _$viewport.offset().left, Math.round(_zoom.center.y * (scaleRatio - 1)) - _$viewport.offset().top);
+        }
+
         Globals.logEvent("FXL_VIEW_RESIZED", "EMIT", "fixed_view.js");
+
         self.emit(Globals.Events.FXL_VIEW_RESIZED);
     }
 
@@ -5691,10 +7065,12 @@ var FixedView = function(options, reader){
     this.bookmarkCurrentPage = function() {
 
         var views = getDisplayingViews();
+        var loadedSpineItems = this.getLoadedSpineItems();
 
-        if(views.length > 0) {
-
+        if (views.length > 0) {
             return views[0].getFirstVisibleCfi();
+        } else if (loadedSpineItems.length > 0) {
+            return new BookmarkData(this.getLoadedSpineItems()[0].idref, null);
         }
 
         return undefined;
@@ -5959,6 +7335,27 @@ var FixedView = function(options, reader){
         });
     };
 
+    this.getStartCfi = function () {
+        return getDisplayingViews()[0].getStartCfi();
+    };
+
+    this.getEndCfi = function () {
+        return getDisplayingViews()[0].getEndCfi();
+    };
+
+    this.getNearestCfiFromElement = function(element) {
+        var views = getDisplayingViews();
+
+        for (var i = 0, count = views.length; i < count; i++) {
+
+            var view = views[i];
+            if (view.getLoadedContentFrames()[0].$iframe[0].contentDocument === element.ownerDocument) {
+                return view.getNearestCfiFromElement(element);
+            }
+        }
+
+    };
+
 };
     return FixedView;
 });
@@ -5991,7 +7388,7 @@ var FixedView = function(options, reader){
 //  OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED 
 //  OF THE POSSIBILITY OF SUCH DAMAGE.
 
-define('readium_shared_js/views/iframe_loader',["jquery", "underscore"], function($, _) {
+define('readium_shared_js/views/iframe_loader',["../globals", "jquery", "underscore", "eventEmitter"], function(Globals, $, _, EventEmitter) {
 /**
  *
  * @constructor
@@ -6001,6 +7398,7 @@ var IFrameLoader = function() {
     var self = this;
     var eventListeners = {};
 
+    $.extend(this, new EventEmitter());
 
     this.addIFrameEventListener = function (eventName, callback, context) {
 
@@ -6047,11 +7445,16 @@ var IFrameLoader = function() {
     };
 
     this._loadIframeWithUri = function (iframe, attachedData, contentUri, callback) {
-
-        iframe.onload = function () {
+          iframe.onload = function () {
+            // prevent epub own programmatic navigation
+            if (iframe.src !== "" && iframe.contentWindow !== null && iframe.src !== iframe.contentWindow.location.href) {
+              $(iframe).contents().empty();
+              self.emit(Globals.Events.SCRIPT_NAVIGATION_DETECTED, iframe.contentWindow.location.href);
+              return;
+            }
 
             var doc = iframe.contentDocument || iframe.contentWindow.document;
-            $('svg', doc).load(function(){
+            $('svg', doc).on("load", function(){
                 console.log('SVG loaded');
             });
             
@@ -6337,8 +7740,8 @@ return InternalLinksSupport;
 //  LauncherOSX
 //
 //  Created by Boris Schneiderman.
-// Modified by Daniel Weck
-//  Copyright (c) 2014 Readium Foundation and/or its licensees. All rights reserved.
+//  Modified by Daniel Weck
+//  Copyright (c) 2016 Readium Foundation and/or its licensees. All rights reserved.
 //  
 //  Redistribution and use in source and binary forms, with or without modification, 
 //  are permitted provided that the following conditions are met:
@@ -6363,14 +7766,39 @@ return InternalLinksSupport;
 //  OF THE POSSIBILITY OF SUCH DAMAGE.
 define ('readium_shared_js/models/smil_iterator',["jquery", "../helpers"], function($, Helpers) {
 /**
+ * Wrapper of a smil iterator object. 
+ * A smil iterator is used by the media overlay player, to move along text areas which have an audio overlay. 
+ * Such areas are specified in the smil model via parallel smil nodes (text + audio).  
  *
- * @param smil
+ * @class  Models.SmilIterator
  * @constructor
+ * @param {Models.SmilModel} smil The current smil model
  */
 var SmilIterator = function(smil) {
 
+   /**
+     * The smil model
+     *
+     * @property smil
+     * @type Models.SmilModel
+     */
     this.smil = smil;
+
+    /**
+     * The current parallel smil node
+     *
+     * @property currentPar
+     * @type object
+     */
+     
     this.currentPar = undefined;
+
+    /**
+     * Resets the iterator. 
+     * In practice, looks for the first parallel smil node in the smil model
+     *
+     * @method     reset
+     */
 
     this.reset = function() {
         this.currentPar = findParNode(0, this.smil, false);
@@ -6397,7 +7825,15 @@ var SmilIterator = function(smil) {
 //            this.next();
 //        }
 //    };
-
+    
+    /**
+     * Looks for a text smil node identified by the id parameter 
+     * Returns true if the id param identifies a text smil node.
+     *
+     * @method     findTextId
+     * @param      {Number} id A smil node identifier
+     * @return     {Boolean} 
+     */
     this.findTextId = function(id)
     {
         if (!this.currentPar)
@@ -6431,6 +7867,7 @@ var SmilIterator = function(smil) {
 
                     parent = parent.parentNode;
                 }
+                //console.log(parent);
 
                 // INNER match
                 //var inside = this.currentPar.element.ownerDocument.getElementById(id);
@@ -6440,12 +7877,18 @@ var SmilIterator = function(smil) {
                     return true;
                 }
             }
-
+            // moves to the next parallel smil node
             this.next();
         }
 
         return false;
     }
+
+    /**
+     * Looks for the next parallel smil node
+     *
+     * @method     next 
+     */
 
     this.next = function() {
 
@@ -6457,6 +7900,12 @@ var SmilIterator = function(smil) {
         this.currentPar = findParNode(this.currentPar.index + 1, this.currentPar.parent, false);
     };
 
+    /**
+     * Looks for the previous parallel smil node
+     *
+     * @method     previous
+     */
+
     this.previous = function() {
 
         if(!this.currentPar) {
@@ -6466,6 +7915,13 @@ var SmilIterator = function(smil) {
 
         this.currentPar = findParNode(this.currentPar.index - 1, this.currentPar.parent, true);
     };
+
+    /**
+     * Checks if the current parallel smil node is the last one in the smil model
+     *
+     * @method     isLast
+     * @return     {Bool}
+     */
 
     this.isLast = function() {
 
@@ -6482,6 +7938,14 @@ var SmilIterator = function(smil) {
         return true;
     }
 
+    /**
+     * Moves to the parallel smil node given as a parameter. 
+     *
+     * @method     goToPar
+     * @param      {Containter} par A parallel smil node
+     * @return     {Boolean} 
+     */
+
     this.goToPar =  function(par) {
 
         while(this.currentPar) {
@@ -6492,6 +7956,16 @@ var SmilIterator = function(smil) {
             this.next();
         }
     };
+
+    /**
+     * Looks for a parallel smil node in the smil model.
+     *
+     * @method     findParNode
+     * @param      {Number} startIndex Start index inside the container
+     * @param      {Models.SMilModel} container The smil model
+     * @param      {Boolean} previous True if  search among previous nodes
+     * @return     {Smil.ParNode} 
+     */
 
     function findParNode(startIndex, container, previous) {
 
@@ -6725,8 +8199,8 @@ console.log("MO CLICKED LINK");
 
                                     var range = rangy.createRange(elem.ownerDocument); //createNativeRange
                                     range.setStartAndEnd(
-                                        infoStart.textNode[0], infoStart.textOffset,
-                                        infoEnd.textNode[0], infoEnd.textOffset
+                                        infoStart.textNode, infoStart.textOffset,
+                                        infoEnd.textNode, infoEnd.textOffset
                                     );
         
                                     if (range.isPointInRange(pos.node, pos.offset))
@@ -6936,7 +8410,7 @@ console.debug("MO readaloud attr: " + readaloud);
                 ["MathJax_Message"]);
 //console.log(infoEnd);
 
-                                    var cfiTextParent = infoStart.textNode[0].parentNode;
+                                    var cfiTextParent = infoStart.textNode.parentNode;
 
                                     iter.currentPar.cfi = {
                                         smilTextSrcCfi: iter.currentPar.text.srcFragmentId,
@@ -8128,8 +9602,8 @@ var MediaOverlayElementHighlighter = function(reader) {
 //console.log(infoEnd);
             
             _rangyRange.setStartAndEnd(
-                infoStart.textNode[0], infoStart.textOffset,
-                infoEnd.textNode[0], infoEnd.textOffset
+                infoStart.textNode, infoStart.textOffset,
+                infoEnd.textNode, infoEnd.textOffset
             );
             
             if (false && // we use CssClassApplier instead, because surroundContents() has no trivial undoSurroundContents() function (inc. text nodes normalisation, etc.)
@@ -8453,6 +9927,7 @@ var ScrollView = function (options, isContinuousScroll, reader) {
     var _spine = options.spine;
     var _userStyles = options.userStyles;
     var _deferredPageRequest;
+    var _currentPageRequest;
     var _$contentFrame;
     var _$el;
 
@@ -8664,8 +10139,16 @@ var ScrollView = function (options, isContinuousScroll, reader) {
             && !_isSettingScrollPosition
             && !_isLoadingNewSpineItemOnPageRequest) {
 
+            self.resetCurrentPosition();
+
             updateTransientViews();
             onPaginationChanged(self);
+
+            _.defer(function() {
+                if (!_currentPageRequest) {
+                    self.saveCurrentPosition();
+                }
+            })
 
             var settings = reader.viewerSettings();
             if (!settings.mediaOverlaysPreservePlaybackWhenScroll)
@@ -8715,173 +10198,6 @@ var ScrollView = function (options, isContinuousScroll, reader) {
         }
     }
 
-    function reachStableContentHeight(updateScroll, pageView, iframe, href, fixedLayout, metaWidth, msg, callback)
-    {
-        if (!Helpers.isIframeAlive(iframe))
-        {
-            if (_DEBUG)
-            {
-                console.log("reachStableContentHeight ! win && doc (iFrame disposed?)");
-            }
-
-            if (callback) callback(false);
-            return;
-        }
-
-        var MAX_ATTEMPTS = 10;
-        var TIME_MS = 300;
-
-        var w = iframe.contentWindow;
-        var d = iframe.contentDocument;
-
-        var previousPolledContentHeight = parseInt(Math.round(parseFloat(w.getComputedStyle(d.documentElement).height))); //body can be shorter!;
-
-        var initialContentHeight = previousPolledContentHeight;
-
-        if (updateScroll === 0)
-        {
-            updatePageViewSizeAndAdjustScroll(pageView);
-        }
-        else
-        {
-            updatePageViewSize(pageView);
-        }
-
-        var tryAgainFunc = function(tryAgain)
-        {
-            if (_DEBUG && tryAgain !== MAX_ATTEMPTS)
-            {
-                console.log("tryAgainFunc - " + tryAgain + ": " + href + "  <" + initialContentHeight +" -- "+ previousPolledContentHeight + ">");
-            }
-
-            tryAgain--;
-            if (tryAgain < 0)
-            {
-                if (_DEBUG)
-                {
-                    console.error("tryAgainFunc abort: " + href);
-                }
-
-                if (callback) callback(true);
-                return;
-            }
-
-            setTimeout(function()
-            {
-                try
-                {
-                    if (Helpers.isIframeAlive(iframe))
-                    {
-                        var win = iframe.contentWindow;
-                        var doc = iframe.contentDocument;
-
-                        var iframeHeight = parseInt(Math.round(parseFloat(window.getComputedStyle(iframe).height)));
-
-                        var docHeight = parseInt(Math.round(parseFloat(win.getComputedStyle(doc.documentElement).height))); //body can be shorter!
-
-                        if (previousPolledContentHeight !== docHeight)
-                        {
-                            previousPolledContentHeight = docHeight;
-
-                            tryAgainFunc(tryAgain);
-                            return;
-                        }
-
-                        // CONTENT HEIGHT IS NOW STABILISED
-
-                        var diff = iframeHeight - docHeight;
-                        if (Math.abs(diff) > 4)
-                        {
-                            if (_DEBUG)
-                            {
-                                console.log("$$$ IFRAME HEIGHT ADJUST: " + href + "  [" + diff + "]<" + initialContentHeight + " -- " + previousPolledContentHeight + ">");
-                                console.log(msg);
-                            }
-
-                            if (updateScroll === 0)
-                            {
-                                updatePageViewSizeAndAdjustScroll(pageView);
-                            }
-                            else
-                            {
-                                updatePageViewSize(pageView);
-                            }
-
-                            if (Helpers.isIframeAlive(iframe))
-                            {
-                                var win = iframe.contentWindow;
-                                var doc = iframe.contentDocument;
-
-                                var docHeightAfter = parseInt(Math.round(parseFloat(win.getComputedStyle(doc.documentElement).height))); //body can be shorter!
-                                var iframeHeightAfter = parseInt(Math.round(parseFloat(window.getComputedStyle(iframe).height)));
-
-                                var newdiff = iframeHeightAfter - docHeightAfter;
-                                if (Math.abs(newdiff) > 4)
-                                {
-                                    if (_DEBUG)
-                                    {
-                                        console.error("## IFRAME HEIGHT ADJUST: " + href + "  [" + newdiff + "]<" + initialContentHeight + " -- "+ previousPolledContentHeight + ">");
-                                        console.log(msg);
-                                    }
-
-                                    tryAgainFunc(tryAgain);
-                                    return;
-                                }
-                                else
-                                {
-                                    if (_DEBUG)
-                                    {
-                                        console.log(">> IFRAME HEIGHT ADJUSTED OKAY: " + href + "  ["+diff+"]<" + initialContentHeight + " -- " + previousPolledContentHeight + ">");
-                                        // console.log(msg);
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                if (_DEBUG)
-                                {
-                                    console.log("tryAgainFunc ! win && doc (iFrame disposed?)");
-                                }
-
-                                if (callback) callback(false);
-                                return;
-                            }
-                        }
-                        else
-                        {
-                            //if (_DEBUG)
-                            // console.debug("IFRAME HEIGHT NO NEED ADJUST: " + href);
-                            // console.log(msg);
-                        }
-                    }
-                    else
-                    {
-                        if (_DEBUG)
-                        {
-                            console.log("tryAgainFunc ! win && doc (iFrame disposed?)");
-                        }
-
-                        if (callback) callback(false);
-                        return;
-                    }
-                }
-                catch(ex)
-                {
-                    console.error(ex);
-
-                    if (callback) callback(false);
-                    return;
-                }
-
-                if (callback) callback(true);
-
-            }, TIME_MS);
-        };
-
-        tryAgainFunc(MAX_ATTEMPTS);
-    }
-
-
     function addToTopOf(topView, callback) {
 
         var prevSpineItem = _spine.prevItem(topView.currentSpineItem(), true);
@@ -8890,7 +10206,7 @@ var ScrollView = function (options, isContinuousScroll, reader) {
             return;
         }
 
-        var tmpView = createPageViewForSpineItem(true);
+        var tmpView = createPageViewForSpineItem(prevSpineItem, true);
 
         // add to the end first to avoid scrolling during load
         var lastView = lastLoadedView();
@@ -8907,7 +10223,7 @@ var ScrollView = function (options, isContinuousScroll, reader) {
 
                 var scrollPos = scrollTop();
 
-                var newView = createPageViewForSpineItem();
+                var newView = createPageViewForSpineItem(prevSpineItem);
                 var originalHeight = range.bottom - range.top;
 
 
@@ -8925,14 +10241,12 @@ var ScrollView = function (options, isContinuousScroll, reader) {
                 newView.loadSpineItem(prevSpineItem, function (success, $iframe, spineItem, isNewlyLoaded, context) {
                     if (success) {
 
-                        var continueCallback = function (successFlag)
-                        {
-                            onPageViewLoaded(newView, success, $iframe, spineItem, isNewlyLoaded, context);
-
-                            callback(successFlag);
-                        };
-
-                        reachStableContentHeight(0, newView, $iframe[0], spineItem.href, spineItem.isFixedLayout(), spineItem.isFixedLayout() ? newView.meta_width() : 0, "addToTopOf", continueCallback); // //onIFrameLoad called before this callback, so okay.
+                        updatePageViewSizeAndAdjustScroll(newView);
+                        onPageViewLoaded(newView, success, $iframe, spineItem, isNewlyLoaded, context);
+                        callback(success);
+                        // No need for complicated reachStableContentHeight any more
+                        // Remove this
+                        //reachStableContentHeight(0, newView, $iframe[0], spineItem.href, spineItem.isFixedLayout(), spineItem.isFixedLayout() ? newView.meta_width() : 0, "addToTopOf", continueCallback); // //onIFrameLoad called before this callback, so okay.
                     }
                     else {
                         console.error("Unable to open 2 " + prevSpineItem.href);
@@ -8971,20 +10285,17 @@ var ScrollView = function (options, isContinuousScroll, reader) {
 
         var scrollPos = scrollTop();
 
-        var newView = createPageViewForSpineItem();
+        var newView = createPageViewForSpineItem(nexSpineItem);
         newView.element().insertAfter(bottomView.element());
 
         newView.loadSpineItem(nexSpineItem, function (success, $iframe, spineItem, isNewlyLoaded, context) {
             if (success) {
 
-                var continueCallback = function (successFlag)
-                {
-                    onPageViewLoaded(newView, success, $iframe, spineItem, isNewlyLoaded, context);
-
-                    callback(successFlag);
-                };
-
-                reachStableContentHeight(2, newView, $iframe[0], spineItem.href, spineItem.isFixedLayout(), spineItem.isFixedLayout() ? newView.meta_width() : 0, "addToBottomOf", continueCallback); // //onIFrameLoad called before this callback, so okay.
+                updatePageViewSize(newView);
+                onPageViewLoaded(newView, success, $iframe, spineItem, isNewlyLoaded, context);
+                callback(success);
+                // No need for complicated reachStableContentHeight any more
+                //reachStableContentHeight(2, newView, $iframe[0], spineItem.href, spineItem.isFixedLayout(), spineItem.isFixedLayout() ? newView.meta_width() : 0, "addToBottomOf", continueCallback); // //onIFrameLoad called before this callback, so okay.
             }
             else {
                 console.error("Unable to load " + nexSpineItem.href);
@@ -9033,37 +10344,58 @@ var ScrollView = function (options, isContinuousScroll, reader) {
         if (!_$contentFrame) {
             return;
         }
+    };
 
-        forEachItemView(function (pageView) {
+    this.resetCurrentPosition = function() {
+        _currentPageRequest = undefined;
+    };
 
-            updatePageViewSize(pageView);
-        }, false);
+    this.saveCurrentPosition = function() {
+        // If there's a deferred page request, there's no point in saving the current position
+        // as it's going to change soon
+        if (_deferredPageRequest) {
+            return;
+        }
 
-        onPaginationChanged(self);
+        var _firstVisibleCfi = self.getFirstVisibleCfi();
+        var spineItem = _spine.getItemById(_firstVisibleCfi.idref);
+        if (spineItem) {
+            _currentPageRequest = new PageOpenRequest(spineItem, self);
+            _currentPageRequest.setElementCfi(_firstVisibleCfi.contentCFI);
+        }
+    };
 
-        updateTransientViews();
+    this.restoreCurrentPosition = function() {
+        if (_currentPageRequest) {
+            this.openPageInternal(_currentPageRequest);            
+        }
     };
 
     var _viewSettings = undefined;
-    this.setViewSettings = function (settings) {
+    this.setViewSettings = function (settings, docWillChange) {
 
         _viewSettings = settings;
 
         forEachItemView(function (pageView) {
 
-            pageView.setViewSettings(settings);
+            pageView.setViewSettings(settings, docWillChange);
 
         }, false);
     };
 
-    function createPageViewForSpineItem(isTemporaryView) {
-
+    function createPageViewForSpineItem(aSpineItem, isTemporaryView) {
+        
         options.disablePageTransitions = true; // force
+
+        var enableBookStyleOverrides = true;
+        if (aSpineItem.isFixedLayout()) {
+            enableBookStyleOverrides = false;
+        }
 
         var pageView = new OnePageView(
             options,
             ["content-doc-frame"],
-            true, //enableBookStyleOverrides
+            enableBookStyleOverrides,
             reader);
 
         pageView.on(OnePageView.Events.SPINE_ITEM_OPEN_START, function($iframe, spineItem) {
@@ -9074,8 +10406,36 @@ var ScrollView = function (options, isContinuousScroll, reader) {
             self.emit(Globals.Events.CONTENT_DOCUMENT_LOAD_START, $iframe, spineItem);
         });
 
+        pageView.on(Globals.Events.CONTENT_DOCUMENT_UNLOADED, function($iframe, spineItem) {
+            Globals.logEvent("CONTENT_DOCUMENT_UNLOADED", "ON", "scroll_view.js [ " + spineItem.href + " ]");
+            self.emit(Globals.Events.CONTENT_DOCUMENT_UNLOADED, $iframe, spineItem);
+        });
+
+        function updatePageViewSizeAndPagination_() {
+            // Resize the PageView to fit its content and update the pagination
+            // and the adjacent views
+            updatePageViewSize(pageView);
+            onPaginationChanged(self);
+            updateTransientViews();
+            if (_currentPageRequest && !_deferredPageRequest) {
+                self.restoreCurrentPosition();                
+            }
+        }
+        var updatePageViewSizeAndPagination = _.debounce(updatePageViewSizeAndPagination_, 100);
+
+        // Observe the CONTENT_SIZE_CHANGED from the page view so the ScrollView
+        // is notified when the size of the content of the view changes, because
+        // the font or the viewport size has changed
+        pageView.on(OnePageView.Events.CONTENT_SIZE_CHANGED, function($iframe, spineItem) {
+            
+            Globals.logEvent("OnePageView.Events.CONTENT_SIZE_CHANGED", "ON", "scroll_view.js [ " + spineItem.href + " ]");
+            updatePageViewSizeAndPagination();
+        });
+
         pageView.render();
-        if (_viewSettings) pageView.setViewSettings(_viewSettings);
+
+        var docWillChange = true;
+        if (_viewSettings) pageView.setViewSettings(_viewSettings, docWillChange);
 
         if (!isTemporaryView) {
             pageView.element().data("pageView", pageView);
@@ -9178,7 +10538,7 @@ var ScrollView = function (options, isContinuousScroll, reader) {
 
         var scrollPos = scrollTop();
 
-        var loadedView = createPageViewForSpineItem();
+        var loadedView = createPageViewForSpineItem(spineItem);
 
         _$contentFrame.append(loadedView.element());
 
@@ -9186,16 +10546,11 @@ var ScrollView = function (options, isContinuousScroll, reader) {
 
             if (success) {
 
-                var continueCallback = function(successFlag)
-                {
-                    onPageViewLoaded(loadedView, success, $iframe, spineItem, isNewlyLoaded, context);
-
-                    callback(loadedView);
-
-                    //successFlag should always be true as loadedView iFrame cannot be dead at this stage.
-                };
-
-                reachStableContentHeight(1, loadedView, $iframe[0], spineItem.href, spineItem.isFixedLayout(), spineItem.isFixedLayout() ? loadedView.meta_width() : 0, "openPage", continueCallback); // //onIFrameLoad called before this callback, so okay.
+                updatePageViewSize(loadedView);
+                onPageViewLoaded(loadedView, success, $iframe, spineItem, isNewlyLoaded, context);
+                //callback(loadedView);
+                // No need for complicated reachStableContentHeight any more
+                //reachStableContentHeight(1, loadedView, $iframe[0], spineItem.href, spineItem.isFixedLayout(), spineItem.isFixedLayout() ? loadedView.meta_width() : 0, "openPage", continueCallback); // //onIFrameLoad called before this callback, so okay.
             }
             else {
                 console.error("Unable to load " + spineItem.href);
@@ -9230,7 +10585,7 @@ var ScrollView = function (options, isContinuousScroll, reader) {
     };
 
 
-    this.openPage = function (pageRequest) {
+    this.openPageInternal = function (pageRequest) {
 
         _stopTransientViewUpdate = true;
 
@@ -9279,6 +10634,12 @@ var ScrollView = function (options, isContinuousScroll, reader) {
         }
     };
 
+    this.openPage = function(pageRequest) {
+        this.resetCurrentPosition();
+        _currentPageRequest = pageRequest;
+        this.openPageInternal(pageRequest);
+    }
+
     function openPageViewElement(pageView, pageRequest) {
 
         var topOffset = 0;
@@ -9325,7 +10686,8 @@ var ScrollView = function (options, isContinuousScroll, reader) {
                 return;
             }
 
-            topOffset = sfiNav.getVerticalOffsetForElement($element) + pageRange.top;
+            var elementRange = getElementRange(pageView, $element);
+            topOffset = elementRange.top + pageRange.top;
 
         }
         else if (pageView && pageRequest.elementCfi) {
@@ -9340,7 +10702,7 @@ var ScrollView = function (options, isContinuousScroll, reader) {
             }
             
             var domRangeAsRange = getDomRangeAsRange(pageView, domRange);
-            if (isRangeIsVisibleOnScreen(pageView, domRangeAsRange, 60)) {
+            if (isRangeIsVisibleOnScreen(domRangeAsRange, 60)) {
                 //TODO refactoring required
                 // this is artificial call because MO player waits for this event to continue playing.
                 onPaginationChanged(pageRequest.initiator, pageRequest.spineItem, pageRequest.elementId);
@@ -9602,7 +10964,7 @@ var ScrollView = function (options, isContinuousScroll, reader) {
         forEachItemView(function (pageView) {
             if (pageView.currentSpineItem().idref == spineItemIdref) {
 
-                found = pageView.getNavigator().getElementByCfi(spineItemIdref, cfi, classBlacklist, elementBlacklist, idBlacklist);
+                found = pageView.getNavigator().getElementByCfi(cfi, classBlacklist, elementBlacklist, idBlacklist);
                 return false;
             }
 
@@ -9856,37 +11218,24 @@ var ScrollView = function (options, isContinuousScroll, reader) {
     function getFirstOrLastVisibleCfi(pickerFunc) {
         var pageViews = getVisiblePageViews();
         var selectedPageView = pickerFunc(pageViews);
-        var pageViewTopOffset = selectedPageView.element().position().top;
+        var pageViewTopOffset =selectedPageView.element().position().top;
         var visibleContentOffsets, frameDimensions;
-        
-        var setupFunctions = [
-            function () {
-                visibleContentOffsets = {
-                    top: pageViewTopOffset,
-                    left: 0
-                };
-            },
-            function() {
-                var height = selectedPageView.element().height();
-                
-                if (pageViewTopOffset >= 0) {
-                    height = viewHeight() - pageViewTopOffset;
-                }
 
-                frameDimensions = {
-                    width: selectedPageView.element().width(),
-                    height: height
-                };
-                
-                visibleContentOffsets = {
-                    top: 0,
-                    left: 0
-                };
-            }
-        ];
+        visibleContentOffsets = {
+            top:  Math.min(0, pageViewTopOffset),
+            left: 0
+        };
+
+        var height = Math.min(selectedPageView.element().height(), viewHeight());
+
+        if (pageViewTopOffset >= 0) {
+            height = height - pageViewTopOffset;
+        }
         
-        //invoke setup function
-        pickerFunc(setupFunctions)();
+        frameDimensions = {
+            width: selectedPageView.element().width(),
+            height: height
+        };
         
         var cfiFunctions = [
             selectedPageView.getFirstVisibleCfi,
@@ -9922,6 +11271,10 @@ var ScrollView = function (options, isContinuousScroll, reader) {
         });
     };
 
+    function createBookmarkFromCfi(currentSpineItem, cfi){
+        return new BookmarkData(currentSpineItem.idref, cfi);
+    }
+
     this.getRangeCfiFromDomRange = function (domRange) {
         return callOnVisiblePageView(function (pageView) {
             return pageView.getRangeCfiFromDomRange(domRange);
@@ -9930,25 +11283,43 @@ var ScrollView = function (options, isContinuousScroll, reader) {
 
     this.getVisibleCfiFromPoint = function (x, y, precisePoint) {
         return callOnVisiblePageView(function (pageView) {
-            return createBookmark(pageView.currentSpineItem(), pageView.getVisibleCfiFromPoint(x, y, precisePoint));
+            return createBookmarkFromCfi(pageView.currentSpineItem(), pageView.getVisibleCfiFromPoint(x, y, precisePoint));
         });
     };
 
     this.getRangeCfiFromPoints = function (startX, startY, endX, endY) {
         return callOnVisiblePageView(function (pageView) {
-            return createBookmark(pageView.currentSpineItem(), pageView.getRangeCfiFromPoints(startX, startY, endX, endY));
+            return createBookmarkFromCfi(pageView.currentSpineItem(), pageView.getRangeCfiFromPoints(startX, startY, endX, endY));
         });
     };
 
     this.getCfiForElement = function(element) {
         return callOnVisiblePageView(function (pageView) {
-            return createBookmark(pageView.currentSpineItem(), pageView.getCfiForElement(element));
-        });
+            return createBookmarkFromCfi(pageView.currentSpineItem(), pageView.getCfiForElement(element).contentCFI);
+        })
     };
 
     this.getElementFromPoint = function (x, y) {
         return callOnVisiblePageView(function (pageView) {
             return pageView.getElementFromPoint(x, y);
+        });
+    };
+
+    this.getStartCfi = function () {
+        return callOnVisiblePageView(function (pageView) {
+            return pageView.getStartCfi();
+        });
+    };
+
+    this.getEndCfi = function () {
+        return callOnVisiblePageView(function (pageView) {
+            return pageView.getEndCfi();
+        });
+    };
+
+    this.getNearestCfiFromElement = function (element) {
+        return callOnVisiblePageView(function (pageView) {
+            return pageView.getNearestCfiFromElement(element);
         });
     };
 };
@@ -10528,11 +11899,11 @@ var MediaOverlayPlayer = function(reader, onStatusChanged) {
 
                 if (rangy)
                 {
-                    //infoStart.textNode[0].parentNode.ownerDocument
+                    //infoStart.textNode.parentNode.ownerDocument
                     var range = rangy.createRange(doc); //createNativeRange
                     range.setStartAndEnd(
-                        infoStart.textNode[0], infoStart.textOffset,
-                        infoEnd.textNode[0], infoEnd.textOffset
+                        infoStart.textNode, infoStart.textOffset,
+                        infoEnd.textNode, infoEnd.textOffset
                     );
                     _currentTTS = range.toString(); //.text()
                 }
@@ -10888,14 +12259,7 @@ var MediaOverlayPlayer = function(reader, onStatusChanged) {
 
     this.touchInit = function()
     {
-        var todo = _audioPlayer.touchInit();
-        if (todo)
-        {
-            if (_enableHTMLSpeech)
-            {
-                speakStart("o", 0);
-            }
-        }
+        return _audioPlayer.touchInit();
     };
 
     var tokeniseTTS = function(element)
@@ -12113,7 +13477,7 @@ console.debug("textAbsoluteRef: " + textAbsoluteRef);
 });
 
 //  Created by Boris Schneiderman.
-//  Copyright (c) 2014 Readium Foundation and/or its licensees. All rights reserved.
+//  Copyright (c) 2016 Readium Foundation and/or its licensees. All rights reserved.
 //  
 //  Redistribution and use in source and binary forms, with or without modification, 
 //  are permitted provided that the following conditions are met:
@@ -12139,38 +13503,51 @@ console.debug("textAbsoluteRef: " + textAbsoluteRef);
 
 define('readium_shared_js/models/spine',["./spine_item", "../helpers", "URIjs"], function(SpineItem, Helpers, URI) {
 /**
- *  Wrapper of the spine object received from hosting application
+ *  Wrapper of the Spine object received from the host application
  *
- *  @class  Models.Spine
+ * @class  Models.Spine
+ * @constructor
+ * @param {Models.Package} epubPackage Parent package properties 
+ * @param {Object} spineDTO Spine data object, container for spine properties
  */
-
 var Spine = function(epubPackage, spineDTO) {
 
     var self = this;
 
-    /*
-     * Collection of spine items
+    /**
+     * The collection of spine items
+     *
      * @property items
-     * @type {Array}
+     * @type Array
      */
     this.items = [];
 
-    /*
-     * Page progression direction ltr|rtl|default
+    /**
+     * The page progression direction ltr|rtl|default
+     *
      * @property direction
-     * @type {string}
+     * @type String
+     * @default "ltr"
      */
     this.direction = "ltr";
 
-    /*
-     * @property package
-     * @type {Models.Package}
+    /**
+     * The container for parent package properties
+     *
+     * @property package  
+     * @type Models.Package
      *
      */
     this.package = epubPackage;
 
     var _handleLinear = false;
 
+    /**
+     * Sets a flag indicating that the app handles linear spine items
+     *
+     * @method     handleLinear
+     * @param      {Boolean} handleLinear  boolean flag
+     */
     this.handleLinear = function(handleLinear) {
         _handleLinear = handleLinear;
     };
@@ -12179,7 +13556,13 @@ var Spine = function(epubPackage, spineDTO) {
         return !_handleLinear || item.linear !== "no";
     }
 
-
+    /**
+     * Checks if a spine item is linear. 
+     *
+     * @method     isValidLinearItem
+     * @param      {Number} index  index of a spine item
+     * @return     {Boolean} TRUE if the app does not handle linear items or if the item is linear.
+    */
     this.isValidLinearItem = function(index) {
         
         if(!isValidIndex(index)) {
@@ -12189,6 +13572,62 @@ var Spine = function(epubPackage, spineDTO) {
         return isValidLinearItem(this.item(index));
     };
 
+    /**
+     * Checks if the page progression direction is right to left.
+     *
+     * @method     isRightToLeft
+     * @return     {Boolean} 
+     */
+    this.isRightToLeft = function() {
+
+        return self.direction == "rtl";
+    };
+
+    /**
+     * Checks if the page progression direction is left to right.
+     *
+     * @method     isLeftToRight
+     * @return     {Boolean} TRUE if the direction is not rtl.
+     */
+    this.isLeftToRight = function() {
+
+        return !self.isRightToLeft();
+    };
+
+    /**
+     * Checks if an spine item index is valid. 
+     *
+     * @method     isValidIndex
+     * @param      {Number} index  the index of the expected spine item
+     * @return     {Boolean} TRUE is the index is valid.
+    */
+    function isValidIndex(index) {
+
+        return index >= 0 && index < self.items.length;
+    }
+
+    function lookForPrevValidItem(ix) {
+
+        if(!isValidIndex(ix)) {
+            return undefined;
+        }
+
+        var item = self.items[ix];
+
+        if(isValidLinearItem(item)) {
+            return item;
+        }
+
+        return lookForPrevValidItem(item.index - 1);
+    }
+
+    /**
+     * Looks for the previous spine item. 
+     *
+     * @method     prevItem
+     * @param      {Models.SpineItem} item  a spine item
+     * @return     {Models.SpineItem} the previous spine item or undefined.
+    */
     this.prevItem = function(item) {
 
         return lookForPrevValidItem(item.index - 1);
@@ -12209,58 +13648,85 @@ var Spine = function(epubPackage, spineDTO) {
         return lookForNextValidItem(item.index + 1);
     }
 
-    function lookForPrevValidItem(ix) {
-
-        if(!isValidIndex(ix)) {
-            return undefined;
-        }
-
-        var item = self.items[ix];
-
-        if(isValidLinearItem(item)) {
-            return item;
-        }
-
-        return lookForPrevValidItem(item.index - 1);
-    }
-
-    this.nextItem = function(item){
+    /**
+     * Looks for the next spine item. 
+     *
+     * @method     nextItem
+     * @param      {Models.SpineItem} item  a spine item
+     * @return     {Models.SpineItem} the next spine item or undefined.
+    */
+    this.nextItem = function(item) {
 
         return lookForNextValidItem(item.index + 1);
     };
 
+    /**
+     * Gets the relative URL of a spine item. 
+     *
+     * @method     getItemUrl
+     * @param      {Models.SpineItem} item  the spine item
+     * @return     {String} the relative URL of the spine item.
+    */
     this.getItemUrl = function(item) {
 
         return self.package.resolveRelativeUrl(item.href);
 
     };
 
-    function isValidIndex(index) {
-
-        return index >= 0 && index < self.items.length;
-    }
-
+    /**
+     * Returns the first spine item. 
+     *
+     * @method     first
+     * @return     {Models.SpineItem} the first spine item.
+    */
     this.first = function() {
 
         return lookForNextValidItem(0);
     };
 
+    /**
+     * Returns the last spine item. 
+     *
+     * @method     last
+     * @return     {Models.SpineItem} the last spine item.
+    */
     this.last = function() {
 
         return lookForPrevValidItem(this.items.length - 1);
     };
 
+    /**
+     * Checks if a spine item is the first in the spine. 
+     *
+     * @method     isFirstItem
+     * @param      {Models.SpineItem} item  a spine item
+     * @return     {Boolean} TRUE if the spine item is the first in the list.
+    */
     this.isFirstItem = function(item) {
 
         return self.first() === item;
     };
 
+    /**
+     * Checks if a spine item is the last in the spine. 
+     *
+     * @method     isLastItem
+     * @param      {Models.SpineItem} item  a spine item
+     * @return     {Boolean} true if the spine item is the last in the list.
+    */
     this.isLastItem = function(item) {
 
         return self.last() === item;
     };
 
-    this.item = function(index) {
+    /**
+     * Returns a spine item by its index. 
+     *
+     * @method     item
+     * @param      {Number} index  the index of the expected spine item
+     * @return     {Models.SpineItem} the expected spine item or undefined.
+    */
+   this.item = function(index) {
         
         if (isValidIndex(index))
             return self.items[index];
@@ -12268,16 +13734,13 @@ var Spine = function(epubPackage, spineDTO) {
         return undefined;
     };
 
-    this.isRightToLeft = function() {
-
-        return self.direction == "rtl";
-    };
-
-    this.isLeftToRight = function() {
-
-        return !self.isRightToLeft();
-    };
-
+    /**
+     * Returns a spine item by its id.
+     *
+     * @method     getItemById
+     * @param      {Number} idref  the id of the expected spine item
+     * @return     {Models.SpineItem} the expected spine item or undefined.
+     */
     this.getItemById = function(idref) {
 
         var length = self.items.length;
@@ -12292,12 +13755,14 @@ var Spine = function(epubPackage, spineDTO) {
         return undefined;
     };
 
+    /**
+     * Returns a spine item by its href.
+     *
+     * @method     getItemByHref
+     * @param      {String} href  the URL of the expected spine item
+     * @return     {Models.SpineItem} the expected spine item or undefined.
+     */
     this.getItemByHref = function(href) {
-
-        // var href1 = Helpers.ResolveContentRef(self.items[i].href, self.package.rootUrl + "/pack.opf");
-        // var href1 = self.package.resolveRelativeUrl(href);
-        //var href1 = new URI(href).absoluteTo(self.package.rootUrl).pathname();
-        //var href1 = new URI(self.package.resolveRelativeUrl(href)).relativeTo(self.package.rootUrl).pathname();
         
         var href1 = new URI(self.package.resolveRelativeUrl(href)).normalizePathname().pathname();
         
@@ -12307,7 +13772,6 @@ var Spine = function(epubPackage, spineDTO) {
             
             var href2 = new URI(self.package.resolveRelativeUrl(self.items[i].href)).normalizePathname().pathname();
             
-            //if(self.items[i].href == href) {
             if(href1 == href2) {
                 return self.items[i];
             }
@@ -12316,6 +13780,11 @@ var Spine = function(epubPackage, spineDTO) {
         return undefined;
     };
 
+    /**
+     * Updates every spine item spread, if not already defined.
+     *
+     * @method     updateSpineItemsSpread
+     */
     function updateSpineItemsSpread() {
 
         var len = self.items.length;
@@ -12336,6 +13805,7 @@ var Spine = function(epubPackage, spineDTO) {
         }
     }
 
+    // initialization of the local 'direction' and 'items' array from the spineDTO structure
     if(spineDTO) {
 
         if(spineDTO.direction) {
@@ -12384,12 +13854,15 @@ var Spine = function(epubPackage, spineDTO) {
 //  OF THE POSSIBILITY OF SUCH DAMAGE.
 define ('readium_shared_js/models/smil_model',["../helpers"], function(Helpers) {
 
-/**
- *
- * @param parent
- * @constructor
- */
 var Smil = {};
+
+/**
+ * Wrapper of a SmilNode object
+ *
+ * @class      Smil.SmilNode
+ * @constructor
+ * @param      {Smil.SmilNode} parent Parent node of the new smil node
+ */
 
 Smil.SmilNode = function(parent) {
 
@@ -12397,7 +13870,12 @@ Smil.SmilNode = function(parent) {
     
     this.id = "";
     
-    //root node is a smil model
+    /**
+     * Finds the smil model object, i.e. the root node of the smil tree
+     *
+     * @method     getSmil
+     * @return     {Smil.SmilModel} node The smil model object
+     */    
     this.getSmil = function() {
 
         var node = this;
@@ -12407,7 +13885,13 @@ Smil.SmilNode = function(parent) {
 
         return node;
     };
-    
+    /**
+     * Checks if the node given as a parameter is an ancestor of the current node 
+     *
+     * @method     hasAncestor
+     * @param      {Smil.SmilNode} node The checked node
+     * @return     {Bool} true if the parameter node is an ancestor
+     */
     this.hasAncestor = function(node)
     {
         var parent = this.parent;
@@ -12425,14 +13909,63 @@ Smil.SmilNode = function(parent) {
     };
 };
 
+////////////////////////////
+//TimeContainerNode
+
+/**
+ * Wrapper of a time container (smil) node 
+ *
+ * @class      Smil.TimeContainerNode
+ * @constructor
+ * @param      {Smil.SmilNode} parent Parent smil node
+ */
+
 Smil.TimeContainerNode = function(parent) {
 
+    /**
+     * The parent node
+     *
+     * @property parent
+     * @type Smil.SmilNode
+     */
+    
     this.parent = parent;
     
+    /**
+     * The children nodes
+     *
+     * @property children
+     * @type undefined
+     */
+
     this.children = undefined;
+    
+    /**
+     * The index
+     *
+     * @property index
+     * @type undefined
+     */
+
     this.index = undefined;
     
+    /**
+     * The epub type
+     *
+     * @property epubtype
+     * @type String
+     */
+
     this.epubtype = "";
+
+
+    /**
+     * Checks if the smil node is escapable.
+     *
+     * @method     isEscapable
+     * @param      {Array} userEscapables
+     * @return     {Bool} true if the smil node is escapable 
+     */
 
     this.isEscapable = function(userEscapables)
     {
@@ -12463,6 +13996,14 @@ Smil.TimeContainerNode = function(parent) {
 
         return false;
     };
+
+    /**
+     * Checks is the smil node is skippable
+     *
+     * @method     isSkippables
+     * @param      {Array} userSkippables
+     * @return     {Bool} true s the smil node is skippable
+     */
 
     this.isSkippable = function(userSkippables)
     {
@@ -12497,13 +14038,36 @@ Smil.TimeContainerNode = function(parent) {
 
 Smil.TimeContainerNode.prototype = new Smil.SmilNode();
 
-//////////////////////////
+
+////////////////////////////
 //MediaNode
+
+/**
+ * Looks for the media parent folder
+ *
+ * @class      Smil.MediaNode
+ * @constructor
+ * @param      {Smil.SmilNode} parent Parent smil node
+ */
 
 Smil.MediaNode = function(parent) {
 
+    /**
+     * The parent node
+     *
+     * @property parent
+     * @type Smil.SmilNode
+     */
+
     this.parent = parent;
     
+    /**
+     * The source locator
+     *
+     * @property src
+     * @type String
+     */
+
     this.src = "";
 };
 
@@ -12512,18 +14076,64 @@ Smil.MediaNode.prototype = new Smil.SmilNode();
 ////////////////////////////
 //SeqNode
 
+/**
+ * Node Sequence
+ *
+ * @class      Smil.SeqNode
+ * @constructor
+ * @param      {Smil.SmilNode} parent Parent smil node
+ */
+
 Smil.SeqNode = function(parent) {
 
+    /**
+     * The parent node
+     *
+     * @property parent
+     * @type Smil.SmilNode
+     */
+
     this.parent = parent;
-    
+
+    /**
+     * The children nodes
+     *
+     * @property children
+     * @type Array
+     */
+
     this.children = [];
+
+    /**
+     * The node type (seq)
+     *
+     * @property nodeType
+     * @type String
+     */
+
     this.nodeType = "seq";
+
+    /**
+     * The text reference
+     *
+     * @property textref
+     * @type String
+     */
+
     this.textref = "";
     
+    /**
+     * Calculates the total duration of audio clips 
+     *
+     * @method     durationMilliseconds
+     * @return     {Number} 
+     */
+
     this.durationMilliseconds = function()
     {
+        // returns the smil object
         var smilData = this.getSmil();
-            
+
         var total = 0;
         
         for (var i = 0; i < this.children.length; i++)
@@ -12537,8 +14147,6 @@ Smil.SeqNode = function(parent) {
                 }
                 if (container.text && (!container.text.manifestItemId || container.text.manifestItemId != smilData.spineItemId))
                 {
-// console.log(container.text);
-// console.log(smilData.spineItemId);
                     continue;
                 }
                 
@@ -12554,6 +14162,16 @@ Smil.SeqNode = function(parent) {
         return total;
     };
     
+   /**
+     * Looks for a given parallel node in the current sequence node and its children.
+     *  Returns true if found. 
+     *
+     * @method     clipOffset
+     * @param      {Number} offset
+     * @param      {Smil.ParNode} par The reference parallel smil node
+     * @return     {Boolean} 
+     */ 
+
     this.clipOffset = function(offset, par)
     {
         var smilData = this.getSmil();
@@ -12594,6 +14212,16 @@ Smil.SeqNode = function(parent) {
         return false;
     };
 
+
+   /**
+     * Checks if a parallel smil node exists at a given timecode in the smil sequence node. 
+     * Returns the node or undefined.
+     *
+     * @method     parallelAt
+     * @param      {Number} timeMilliseconds
+     * @return     {Smil.ParNode}
+     */ 
+
     this.parallelAt = function(timeMilliseconds)
     {
         var smilData = this.getSmil();
@@ -12606,8 +14234,10 @@ Smil.SeqNode = function(parent) {
 
             var container = this.children[i];
             
+            // looks for a winning parallel smil node in a child parallel smil node
             if (container.nodeType === "par")
             {
+                // the parallel node must contain an audio clip and a text node with a proper id
                 if (!container.audio)
                 {
                     continue;
@@ -12617,7 +14247,7 @@ Smil.SeqNode = function(parent) {
                 {
                     continue;
                 }
-
+                // and the timecode given as a parameter must correspond to the audio clip time range  
                 var clipDur = container.audio.clipDurationMilliseconds();
 
                 if (clipDur > 0 && timeAdjusted <= clipDur)
@@ -12627,6 +14257,7 @@ Smil.SeqNode = function(parent) {
 
                 offset += clipDur;
             }
+            // looks for a winning parallel smil node in a child sequence smil node
             else if (container.nodeType === "seq")
             {
                 var para = container.parallelAt(timeAdjusted);
@@ -12641,6 +14272,15 @@ Smil.SeqNode = function(parent) {
 
         return undefined;
     };
+
+    /**
+     * Looks for the nth parallel smil node in the current sequence node
+     *
+     * @method     nthParallel
+     * @param      {Number} index
+     * @param      {Number} count
+     * @return     {Smil.ParNode} 
+     */    
 
     this.nthParallel = function(index, count)
     {
@@ -12677,16 +14317,78 @@ Smil.SeqNode.prototype = new Smil.TimeContainerNode();
 //////////////////////////
 //ParNode
 
+/**
+ * Returns the parent of the SMIL file by checking out the nodes
+ *
+ * @class      Smil.ParNode
+ * @constructor
+ * @param      {Smil.SmilNode} parent Parent smil node
+
+ */
+
 Smil.ParNode = function(parent) {
+
+    /**
+     * The parent node
+     *
+     * @property parent
+     * @type Smil.SmilNode
+     */
 
     this.parent = parent;
     
+    /**
+     * The children files
+     *
+     * @property children
+     * @type Array
+     */
+
     this.children = [];
-    this.nodeType = "par";
-    this.text = undefined;
-    this.audio = undefined;
-    this.element = undefined;
     
+    /**
+     * The Node Type
+     *
+     * @property nodeType which is equal to "par" here
+     * @type String
+     */
+
+    this.nodeType = "par";
+
+    /**
+     * Some text
+     *
+     * @property text 
+     * @type String
+     */
+    this.text = undefined;
+    
+    /**
+     * Some audio
+     *
+     * @property audio 
+     * @type unknown
+     */
+    
+    this.audio = undefined;
+
+    /**
+     * An element of the epub archive
+     *
+     * @property element 
+     * @type unknown
+     */
+    
+    this.element = undefined;    
+
+    /**
+     * Gets the first ancestor sequence with a given epub type, or undefined.
+     *
+     * @method     getFirstSeqAncestorWithEpubType
+     * @param      {String} epubtype
+     * @param      {Boolean} includeSelf
+     * @return     {Smil.SmilNode} 
+     */       
 
     this.getFirstSeqAncestorWithEpubType = function(epubtype, includeSelf) {
         if (!epubtype) return undefined;
@@ -12711,18 +14413,70 @@ Smil.ParNode.prototype = new Smil.TimeContainerNode();
 //////////////////////////
 //TextNode
 
+/**
+ * Node Sequence
+ *
+ * @class      Smil.TextNode
+ * @constructor
+ * @param      {Smil.SmilNode} parent Parent smil node
+
+ */
+
 Smil.TextNode = function(parent) {
+
+    /**
+     * The parent node
+     *
+     * @property parent
+     * @type Smil.SmilNode
+     */
 
     this.parent = parent;
 
+    /**
+     * The node type, set to "text"
+     *
+     * @property nodeType
+     * @type String 
+     */
+
     this.nodeType = "text";
+
+    /**
+     * The source file
+     *
+     * @property srcFile
+     * @type String
+     */
+    
     this.srcFile = "";
+    
+    /**
+     * A fragment of the source file ID
+     *
+     * @property srcFragmentId
+     * @type String
+     */
+
     this.srcFragmentId = "";
     
+    /**
+     * The ID of the manifest for the current item
+     *
+     * @property manifestItemId
+     * @type Number
+     */
     
     this.manifestItemId = undefined;
-    this.updateMediaManifestItemId = function()
-    {
+    
+    /**
+     * Updates the ID of the manifest for the current media
+     *
+     * @method     updateMediaManifestItemId 
+     */  
+
+    this.updateMediaManifestItemId = function() {
+
         var smilData = this.getSmil();
         
         if (!smilData.href || !smilData.href.length)
@@ -12768,17 +14522,67 @@ Smil.TextNode.prototype = new Smil.MediaNode();
 ///////////////////////////
 //AudioNode
 
+/**
+ * Looks for the media parent folder
+ *
+ * @class      Smil.AudioNode
+ * @constructor
+ * @param      {Smil.SmilNode} parent Parent smil node
+ */
+
 Smil.AudioNode = function(parent) {
+
+    /**
+     * The parent node
+     *
+     * @property parent
+     * @type Smil.SmilNode
+     */
 
     this.parent = parent;
 
+    /**
+     * The node type, set to "audio"
+     *
+     * @property nodeType 
+     * @type String
+     */
+
     this.nodeType = "audio";
+
+    /**
+     * The clip begin timecode
+     *
+     * @property clipBegin 
+     * @type Number
+     */
 
     this.clipBegin = 0;
 
+    /**
+     * The max duration of the audio clip which is almost infinite
+     *
+     * @property MAX 
+     * @type Number
+     */
+
     this.MAX = 1234567890.1; //Number.MAX_VALUE - 0.1; //Infinity;
+    
+    /**
+     * The clip end timecode
+     *
+     * @property clipEnd
+     * @type Number
+     */
+
     this.clipEnd = this.MAX;
     
+    /**
+     * Returns the duration of the audio clip
+     *
+     * @method     clipDurationMilliseconds
+     * @return     {Number} 
+     */  
 
     this.clipDurationMilliseconds = function()
     {
@@ -12799,28 +14603,105 @@ Smil.AudioNode.prototype = new Smil.MediaNode();
 //////////////////////////////
 //SmilModel
 
+/**
+ * Wrapper of the SmilModel object
+ *
+ * @class      Models.SmilModel
+ * @constructor
+ */
+
 var SmilModel = function() {
+
+    /**
+     * The parent object
+     *
+     * @property parent
+     * @type any
+     */
 
     this.parent = undefined;
     
+    /**
+     * The smil model children, i.e. a collection of seq or par smil nodes
+     *
+     * @property children
+     * @type Array
+     */
     
+    this.children = []; 
     
-    this.children = []; //collection of seq or par smil nodes
-    this.id = undefined; //manifest item id
-    this.href = undefined; //href of the .smil source file
+    /**
+     * The manifest item ID
+     *
+     * @property id
+     * @type Number
+     */
+
+    this.id = undefined; 
+
+    /**
+     * The href of the .smil source file
+     *
+     * @property href
+     * @type String
+     */
+
+    this.href = undefined; 
+    
+    /**
+     * The duration of the audio clips
+     *
+     * @property duration
+     * @type Number
+     */
+
     this.duration = undefined;
+
+    /**
+     * The media overlay object
+     *
+     * @property mo
+     * @type Models.MediaOverlay
+     */
+
     this.mo = undefined;
+
+    /**
+     * Checks if a parallel smil node exists at a given timecode in the smil model. 
+     * Returns the node or undefined.
+     *
+     * @method     parallelAt
+     * @param      {Number} timeMillisecond 
+     * @return     {Smil.ParNode}
+     */
     
     this.parallelAt = function(timeMilliseconds)
     {
         return this.children[0].parallelAt(timeMilliseconds);
     };
 
+    /**
+     * Looks for the nth parallel smil node in the current smil model
+     *
+     * @method     nthParallel
+     * @param      {Number} index
+     * @return     {Smil.ParNode} 
+     */
+
     this.nthParallel = function(index)
     {
         var count = {count: -1};
         return this.children[0].nthParallel(index, count);
     };
+
+    /**
+     * Looks for a given parallel node in the current smil model.
+     *  Returns its offset if found. 
+     *
+     * @method     clipOffset
+     * @param      {Smil.ParNode} par The reference parallel smil node
+     * @return     {Number} offset of the audio clip
+     */
 
     this.clipOffset = function(par)
     {
@@ -12832,7 +14713,14 @@ var SmilModel = function() {
 
         return 0;
     };
-    
+
+    /**
+     * Calculates the total audio duration of the smil model
+     *
+     * @method     durationMilliseconds_Calculated    
+     * @return     {Number}
+     */
+
     this.durationMilliseconds_Calculated = function()
     {
         return this.children[0].durationMilliseconds();
@@ -12846,26 +14734,31 @@ var SmilModel = function() {
     //     _epubtypeSyncs = [];
     // };
 
+    // local function, helper
     this.hasSync = function(epubtype)
     {
         for (var i = 0; i < _epubtypeSyncs.length; i++)
         {
             if (_epubtypeSyncs[i] === epubtype)
             {
-//console.debug("hasSync OK: ["+epubtype+"]");
                 return true;
             }
         }
         
-//console.debug("hasSync??: ["+epubtype+"] " + _epubtypeSyncs);
         return false;
     };
-    
+
+    /**
+     * Stores epub types given as parameters in the _epubtypeSyncs array
+     * Note: any use of the _epubtypeSyncs array?
+     *
+     * @method     addSync
+     * @param      {String} epubtypes    
+     */
+
     this.addSync = function(epubtypes)
     {
         if (!epubtypes) return;
-        
-//console.debug("addSyncs: "+epubtypes);
 
         var parts = epubtypes.split(' ');
         for (var i = 0; i < parts.length; i++)
@@ -12875,13 +14768,20 @@ var SmilModel = function() {
             if (epubtype.length > 0 && !this.hasSync(epubtype))
             {
                 _epubtypeSyncs.push(epubtype);
-
-//console.debug("addSync: "+epubtype);
             }
         }
     };
     
 };
+
+/**
+ * Static SmilModel.fromSmilDTO method, returns a clean SmilModel object
+ *
+ * @method      Model.fromSmilDTO
+ * @param      {string} smilDTO
+ * @param      {string} parent
+ * @return {Models.SmilModel}
+*/
 
 SmilModel.fromSmilDTO = function(smilDTO, mo) {
 
@@ -12890,6 +14790,7 @@ SmilModel.fromSmilDTO = function(smilDTO, mo) {
         console.debug("Media Overlay DTO import...");
     }
 
+    // Debug level indenting function
     var indent = 0;
     var getIndent = function()
     {
@@ -12926,6 +14827,7 @@ SmilModel.fromSmilDTO = function(smilDTO, mo) {
         console.log("JS MO duration=" + smilModel.duration);
     }
 
+    // Safe copy, helper function
     var safeCopyProperty = function(property, from, to, isRequired) {
 
         if((property in from))
@@ -12947,6 +14849,7 @@ SmilModel.fromSmilDTO = function(smilDTO, mo) {
         }
     };
 
+    // smil node creation, helper function
     var createNodeFromDTO = function(nodeDTO, parent) {
 
         var node;
@@ -13008,9 +14911,9 @@ SmilModel.fromSmilDTO = function(smilDTO, mo) {
                 }
             }
 
-////////////////
-var forceTTS = false; // for testing only!
-////////////////
+            ////////////////
+            var forceTTS = false; // for testing only!
+            ////////////////
 
             if (forceTTS || !node.audio)
             {
@@ -13093,6 +14996,7 @@ var forceTTS = false; // for testing only!
 
     };
 
+    // recursive copy of a tree, helper function
     var copyChildren = function(from, to) {
 
         var count = from.children.length;
@@ -13143,15 +15047,28 @@ return SmilModel;
 //  OF THE POSSIBILITY OF SUCH DAMAGE.
 
 define('readium_shared_js/models/media_overlay',["./smil_model"], function(SmilModel) {
-/**
- *
- * @param package
- * @constructor
- */
-var MediaOverlay = function(package) {
 
-    this.package = package;
-    
+/**
+ * Wrapper of the MediaOverlay object
+ *
+ * @class Models.MediaOverlay
+ * @constructor
+ * @param {Models.Package} _package EPUB package
+ */
+var MediaOverlay = function(_package) {
+
+    /**
+     * The parent package object
+     *
+     * @property package
+     * @type Models.Package
+     */
+    this.package = _package;
+
+    /**
+     * Checks if a parallel smil node exists at a given timecode. 
+     * Returns the first corresponding node found in a smil model found, or undefined.
+     */
 
     this.parallelAt = function(timeMilliseconds)
     {
@@ -13175,6 +15092,16 @@ var MediaOverlay = function(package) {
         return undefined;
     };
     
+    /**
+     * Calculates a timecode corresponding to a percent of the total audio duration (the function parameters smilData, par, and milliseconds are objects with a single field using the same name)
+     *
+     * @method     percentToPosition
+     * @param      {Number} percent
+     * @param      {Models.SmilModel} smilData (object with a single field using the same name, used as OUT param)
+     * @param      {Smil.ParNode} par (object with a single field using the same name, used as OUT param)
+     * @param      {Number} milliseconds (object with a single field using the same name, used as OUT param)
+     */
+
     this.percentToPosition = function(percent, smilData, par, milliseconds)
     {
         if (percent < 0.0 || percent > 100.0)
@@ -13213,6 +15140,13 @@ var MediaOverlay = function(package) {
         milliseconds.milliseconds = timeMs - (smilDataOffset + smilData.smilData.clipOffset(par.par));
     };
 
+    /**
+     * Calculates the accumulated audio duration of each smil overlay
+     *
+     * @method     durationMilliseconds_Calculated
+     * @return     {Number} total duration 
+     */
+
     this.durationMilliseconds_Calculated = function()
     {
         var total = 0;
@@ -13227,6 +15161,14 @@ var MediaOverlay = function(package) {
         return total;
     };
     
+    /**
+     * Returns the smil overlay at the given index
+     *
+     * @method     smilAt
+     * @param      {Number} smilIndex
+     * @return     {Models.SmilModel}
+     */
+
     this.smilAt = function(smilIndex)
     {
         if (smilIndex < 0 || smilIndex >= this.smil_models.length)
@@ -13237,14 +15179,19 @@ var MediaOverlay = function(package) {
         return this.smil_models[smilIndex];
     }
     
+    /**
+     * Calculates a percent of the total audio duration corresponding to a timecode
+     * 
+     * @method     positionToPercent
+     * @param      {Number} smilIndex Index of a smil model
+     * @param      {Number} parIndex
+     * @param      {Number} milliseconds
+     * @return     {Number} percent 
+     */
+
     this.positionToPercent = function(smilIndex, parIndex, milliseconds)
     {
-// console.log(">>>>>>>>>>");
-// console.log(milliseconds);
-// console.log(smilIndex);
-// console.log(parIndex);
-// console.log("-------");
-                
+           
         if (smilIndex >= this.smil_models.length)
         {
             return -1.0;
@@ -13256,8 +15203,6 @@ var MediaOverlay = function(package) {
             var sd = this.smil_models[i];
             smilDataOffset += sd.durationMilliseconds_Calculated();
         }
-
-//console.log(smilDataOffset);
         
         var smilData = this.smil_models[smilIndex];
 
@@ -13268,34 +15213,87 @@ var MediaOverlay = function(package) {
         }
 
         var offset = smilDataOffset + smilData.clipOffset(par) + milliseconds;
-
-//console.log(offset);
         
         var total = this.durationMilliseconds_Calculated();
 
-///console.log(total);
-
         var percent = (offset / total) * 100;
-
-//console.log("<<<<<<<<<<< " + percent);
         
         return percent;
       };
-      
+
+    /**
+     * Array of smil models {Models.SmilModel}
+     *
+     * @property smil_models
+     * @type Array
+     */
+
     this.smil_models = [];
 
+    /**
+     * List of the skippable smil items
+     *
+     * @property skippables
+     * @type Array
+     */
+
     this.skippables = [];
+    
+    /**
+     * List of the escapable smil items
+     *
+     * @property escapables
+     * @type Array
+     */
+
     this.escapables = [];
 
+    /**
+     * Duration of the smil audio
+     *
+     * @property duration
+     * @type Number
+     */
+
     this.duration = undefined;
+
+    /**
+     * Narrator
+     *
+     * @property narrator
+     * @type String
+     */
+
     this.narrator = undefined;
 
+    /**
+     * Author-defined name of the CSS "active class" (applied to the document as a whole)
+     *
+     * @property activeClass
+     * @type String
+     */
 
     this.activeClass = undefined;
+
+    /**
+     * Author-defined name of the CSS "playback active class" (applied to a single audio fragment)
+     *
+     * @property playbackActiveClass
+     * @type String
+     */
+
     this.playbackActiveClass = undefined;
 
+    // Debug messages, must be false in production!
     this.DEBUG = false;
 
+    /**
+     * Returns the smil model corresponding to a spine item, or undefined if not found.
+     *
+     * @method     getSmilBySpineItem
+     * @param      {Models.SpineItem} spineItem
+     * @return     {Models.SmilModel} 
+     */
 
     this.getSmilBySpineItem = function (spineItem) {
         if (!spineItem) return undefined;
@@ -13330,6 +15328,14 @@ var MediaOverlay = function(package) {
     };
     */
 
+    /**
+     * Returns the next smil model
+     *
+     * @method     getNextSmil
+     * @param      {Models.SmilModel} smil The current smil model
+     * @return     {Models.SmilModel} 
+     */
+
     this.getNextSmil = function(smil) {
 
         var index = this.smil_models.indexOf(smil);
@@ -13339,6 +15345,14 @@ var MediaOverlay = function(package) {
 
         return this.smil_models[index + 1];
     }
+
+    /**
+     * Returns the previous smil model
+     *
+     * @method     getPreviousSmil
+     * @param      {Models.SmilModel} smil The current smil model
+     * @return     {Models.SmilModel} 
+     */
 
     this.getPreviousSmil = function(smil) {
 
@@ -13351,18 +15365,23 @@ var MediaOverlay = function(package) {
     }
 };
 
+/**
+ * Static MediaOverlay.fromDTO method, returns a clean MediaOverlay object
+ *
+ * @method MediaOverlay.fromDTO
+ * @param {Object} moDTO Media overlay data object (raw JSON, as returned by a parser)
+ * @param {Models.Package} package EPUB package object
+ * @return {Models.MediaOverlay}
+*/
+
 MediaOverlay.fromDTO = function(moDTO, pack) {
 
     var mo = new MediaOverlay(pack);
 
     if(!moDTO) {
-        console.debug("No Media Overlay.");
         return mo;
     }
 
-    // if (mo.DEBUG)
-    //     console.debug(JSON.stringify(moDTO));
-        
     mo.duration = moDTO.duration;
     if (mo.duration && mo.duration.length && mo.duration.length > 0)
     {
@@ -13402,9 +15421,6 @@ MediaOverlay.fromDTO = function(moDTO, pack) {
 
     for(var i = 0; i < count; i++) {
         mo.skippables.push(moDTO.skippables[i]);
-
-        //if (mo.DEBUG)
-        //    console.debug("Media Overlay SKIPPABLE: " + mo.skippables[i]);
     }
 
     count = moDTO.escapables.length;
@@ -13414,8 +15430,6 @@ MediaOverlay.fromDTO = function(moDTO, pack) {
     for(var i = 0; i < count; i++) {
         mo.escapables.push(moDTO.escapables[i]);
 
-        //if (mo.DEBUG)
-        //    console.debug("Media Overlay ESCAPABLE: " + mo.escapables[i]);
     }
 
     return mo;
@@ -13427,7 +15441,7 @@ return MediaOverlay;
 
 
 //  Created by Boris Schneiderman.
-//  Copyright (c) 2014 Readium Foundation and/or its licensees. All rights reserved.
+//  Copyright (c) 2016 Readium Foundation and/or its licensees. All rights reserved.
 //  
 //  Redistribution and use in source and binary forms, with or without modification, 
 //  are permitted provided that the following conditions are met:
@@ -13455,7 +15469,7 @@ return MediaOverlay;
 define('readium_shared_js/models/package_data',[],function() {
 /**
  * This object is not instantiated directly but provided by the host application to the DOMAccess layer in the
- * Views.ReaderView.openBook function
+ * Views.ReaderView.OpenBookData function
  *
  * Provided for reference only
  *
@@ -13464,24 +15478,35 @@ define('readium_shared_js/models/package_data',[],function() {
 var PackageData = {
 
     /**
-     * @property rootUrl Url of the package file
-     * @type {string}
+     * The Url of the package file
+     *
+     * @property rootUrl 
+     * @type {String}
      *
      */
     rootUrl: "",
     /**
-     * @property rootUrl Url of the package file, to prefix Media Overlays SMIL audio references
-     * @type {string}
+     * The Url of the package file, to prefix Media Overlays SMIL audio references
+     *
+     * @property rootUrlMO 
+     * @type {String}
      *
      */
     rootUrlMO: "",
     /**
+     * The rendering layout; expected values are "reflowable"|"pre-paginated"
      *
-     * @property rendering_layout expected values "reflowable"|rendering_layout="pre-paginated"
-     * @type {string}
+     * @property rendering_layout 
+     * @type {String}
      */
     rendering_layout: "",
 
+    /**
+     * The spine properties
+     *
+     * @property spine 
+     * @type {Object}
+     */
     spine: {
 
         direction: "ltr",
@@ -13499,7 +15524,7 @@ var PackageData = {
 return PackageData;
 });
 //  Created by Boris Schneiderman.
-//  Copyright (c) 2014 Readium Foundation and/or its licensees. All rights reserved.
+//  Copyright (c) 2016 Readium Foundation and/or its licensees. All rights reserved.
 //  
 //  Redistribution and use in source and binary forms, with or without modification, 
 //  are permitted provided that the following conditions are met:
@@ -13523,34 +15548,104 @@ return PackageData;
 //  OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED 
 //  OF THE POSSIBILITY OF SUCH DAMAGE.
 define('readium_shared_js/models/package',['../helpers','./spine_item','./spine','./media_overlay', './package_data', 'URIjs'], function (Helpers, SpineItem, Spine, MediaOverlay, PackageData, URI) {
+
 /**
+ *  Wrapper of the Package object, created in openBook()
  *
- * @class Package
+ * @class  Models.Package
  * @constructor
+ * @param {Models.PackageData} packageData container for package properties 
  */
 var Package = function(packageData){
 
     var self = this;
-
+    
+    /**
+     * The associated spine object
+     *
+     * @property spine
+     * @type     Models.Spine
+     */
     this.spine = undefined;
-    
+
+    /**
+     * The root URL of the package file
+     *
+     * @property rootUrl
+     * @type     String
+     */
     this.rootUrl = undefined;
+
+    /**
+     * The root URL of the package file, to prefix Media Overlays SMIL audio references
+     *
+     * @property rootUrlMO 
+     * @type     String
+     *
+     */
     this.rootUrlMO = undefined;
-    
+ 
+    /**
+     * The Media Overlays object
+     *
+     * @property media_overlay 
+     * @type     Models.MediaOverlay
+     *
+     */   
     this.media_overlay = undefined;
     
+    /**
+     * The rendition viewport (as per the EPUB3 specification)
+     *
+     * @property rendition_viewport 
+     * @type     String
+     *
+     */   
     this.rendition_viewport = undefined;
     
+    /**
+     * The rendition flow (as per the EPUB3 specification)
+     *
+     * @property rendition_flow 
+     * @type     String
+     *
+     */   
     this.rendition_flow = undefined;
     
+    /**
+     * The rendition layout (as per the EPUB3 specification)
+     *
+     * @property rendition_layout 
+     * @type     String
+     *
+     */   
     this.rendition_layout = undefined;
 
-    //TODO: unused yet!
+    /**
+     * The rendition spread (as per the EPUB3 specification)
+     *
+     * @property rendition_spread 
+     * @type     String
+     *
+     */   
     this.rendition_spread = undefined;
 
-    //TODO: unused yet!
+    /**
+     * The rendition orientation (as per the EPUB3 specification)
+     *
+     * @property rendition_orientation 
+     * @type     String
+     *
+     */   
     this.rendition_orientation = undefined;
 
+    /**
+     * Returns a resolved relative Url, Media Overlay variant.
+     *
+     * @method     resolveRelativeUrlMO
+     * @param      {String} relativeUrl  the relative URL to resolve
+     * @return     {String} the resolved relative URL.
+     */
     this.resolveRelativeUrlMO = function(relativeUrl) {
         
         var relativeUrlUri = undefined;
@@ -13586,6 +15681,13 @@ var Package = function(packageData){
         return self.resolveRelativeUrl(relativeUrl);
     };
 
+    /**
+     * Returns a resolved relative Url.
+     *
+     * @method     resolveRelativeUrl
+     * @param      {String} relativeUrl  the relative URL to resolve
+     * @return     {String} the resolved relative URL.
+     */
     this.resolveRelativeUrl = function(relativeUrl) {
 
         var relativeUrlUri = undefined;
@@ -13621,15 +15723,26 @@ var Package = function(packageData){
         return relativeUrl;
     };
 
+    /**
+     * Checks if the package is Fixed Layout.
+     *
+     * @method     isFixedLayout
+     * @return     {Boolean} TRUE if the package is Fixed Layout.
+     */
     this.isFixedLayout = function() {
         return self.rendition_layout === SpineItem.RENDITION_LAYOUT_PREPAGINATED;
     };
 
+    /**
+     * Checks if the package is Reflowable.
+     *
+     * @method     isReflowable
+     * @return     {Boolean} TRUE if the package is Reflowable (i.e. not Fixed Layout).
+     */
     this.isReflowable = function() {
         return !self.isFixedLayout();
     };
     
-
     if(packageData) {
         
         this.rootUrl = packageData.rootUrl;
@@ -13653,8 +15766,8 @@ return Package;
 });
 
 
-//  Created by Juan Corona <juanc@evidentpoint.com>
-//  Copyright (c) 2014 Readium Foundation and/or its licensees. All rights reserved.
+//  Created by Juan Corona
+//  Copyright (c) 2016 Readium Foundation and/or its licensees. All rights reserved.
 //
 //  Redistribution and use in source and binary forms, with or without modification,
 //  are permitted provided that the following conditions are met:
@@ -13677,218 +15790,42 @@ return Package;
 //  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
 //  OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 //  OF THE POSSIBILITY OF SUCH DAMAGE.
+define('readium_shared_js/models/metadata',[], function () {
 
-//TODO: This could be made into a plugin in the future.
-// A plugin would be ideal because we can make a light-weight alternative that doesn't need the FontLoader shim and the CSSOM parser.
-define('readium_shared_js/views/font_loader',["jquery", "underscore", "FontLoader", "cssom"], function($, _, FontLoader, CSSOM) {
+    /**
+     *  Wrapper of the Metadata object, created in openBook()
+     *
+     * @class  Models.Metadata
+     */
+    var Metadata = function(packageMetadata) {
+        this.identifier = undefined;
+        this.title = undefined;
+        this.author = undefined;
+        this.description = undefined;
+        this.publisher = undefined;
+        this.language = undefined;
+        this.rights = undefined;
+        this.modifiedDate = undefined;
+        this.publishedDate = undefined;
+        this.epubVersion = undefined;
 
-var FontLoaderFallback = function(document, options) {
-    var debug = options.debug;
-
-    var getRestrictedCssRules = function (styleSheet, callback) {
-        $.get(styleSheet.href).done(function(data) {
-            callback(CSSOM.parse(data).cssRules);
-        }).fail(function() {
-            callback(null);
-        });
+        if (packageMetadata) {
+            this.identifier = packageMetadata.id;
+            this.title = packageMetadata.title;
+            this.author = packageMetadata.author;
+            this.description = packageMetadata.description;
+            this.language = packageMetadata.language;
+            this.publisher = packageMetadata.publisher;
+            this.rights = packageMetadata.rights;
+            this.modifiedDate = packageMetadata.modified_date;
+            this.publishedDate = packageMetadata.pubdate;
+            this.epubVersion = packageMetadata.epub_version;
+        }
     };
 
-    var getUsedFonts = function(callback) {
-        var styleSheets = document.styleSheets;
-        var fontFamilies = [];
-        var fontFamilyRules = [];
-
-        // if no style sheets are found return immediately
-        if (!styleSheets || styleSheets.length <= 0) {
-            callback([]);
-            return;
-        }
-
-        var getFontFamilyFromRule = function(rule) {
-            if (rule.style && (rule.style.getPropertyValue || rule.style.fontFamily)) {
-                return rule.style.getPropertyValue("font-family") || rule.style.fontFamily;
-            }
-        }
-
-        var returnUsedFonts = function() {
-            if (debug) {
-                console.log(fontFamilies);
-            }
-            var usedFontFamilies = [];
-            _.each(fontFamilyRules, function(rule) {
-                var usedFontFamily = _.find(fontFamilies, function(family) {
-                    var fontFamily = getFontFamilyFromRule(rule);
-                    if (fontFamily && ~fontFamily.indexOf(family[1])) {
-                        return true;
-                    }
-                });
-
-                if (usedFontFamily && rule.selectorText && !_.contains(usedFontFamilies, usedFontFamily[0]) && document.querySelector(rule.selectorText)) {
-                    usedFontFamilies.push(usedFontFamily[0]);
-                }
-            });
-
-            if (debug) {
-                console.log(usedFontFamilies);
-            }
-
-            callback(usedFontFamilies);
-        };
-
-        var processedCount = 0;
-        var processCssRules = function(cssRules) {
-            _.each(cssRules, function(rule) {
-                var fontFamily = getFontFamilyFromRule(rule);
-                if (fontFamily) {
-                    if (rule.type === CSSRule.FONT_FACE_RULE) {
-                        fontFamilies.push([fontFamily.replace(/(^['"]|['"]$)/g, '').replace(/\\(['"])/g, '$1'), fontFamily]);
-                    } else {
-                        fontFamilyRules.push(rule);
-                    }
-                }
-            });
-
-            processedCount++;
-
-            if (processedCount >= styleSheets.length) {
-                returnUsedFonts();
-            }
-        };
-
-        _.each(styleSheets, function(styleSheet) {
-            var cssRules;
-            // Firefox (and possibly IE as well) throw a security exception if the CSS was loaded from a different domain.
-            // Other browsers just have null as the value of cssRules for that case.
-            try {
-                cssRules = styleSheet.cssRules || styleSheet.rules;
-            } catch (ignored) {}
-
-            if (!cssRules) {
-                getRestrictedCssRules(styleSheet, processCssRules);
-            } else {
-                processCssRules(cssRules);
-            }
-        });
-    };
-
-    return function(callback) {
-        callback = _.once(callback);
-        var loadCount = 0;
-
-        getUsedFonts(function(usedFontFamilies){
-            var fontLoader = new FontLoader(usedFontFamilies, {
-                "fontsLoaded": function(error) {
-                    if (debug) {
-                        if (error !== null) {
-                            // Reached the timeout but not all fonts were loaded
-                            console.log("font loader: " + error.message, error.notLoadedFonts);
-                        } else {
-                            // All fonts were loaded
-                            console.log("font loader: all fonts were loaded");
-                        }
-                    }
-                    callback();
-                },
-                "fontLoaded": function(font) {
-                    loadCount++;
-                    if (debug) {
-                        console.log("font loaded: " + font.family);
-                    }
-                    if (usedFontFamilies.length > options.minLoadCount && (loadCount / usedFontFamilies.length) >= options.minLoadRatio) {
-
-                        if (debug) {
-                            console.log('font loader: early callback');
-                        }
-                        callback();
-                    }
-                }
-            }, options.timeout, document);
-
-            fontLoader.loadFonts();
-        });
-    };
-};
-
-var FontLoaderNative = function(document, options) {
-    var debug = options.debug;
-
-    return function(callback) {
-        callback = _.once(callback);
-        var loadCount = 0;
-
-        var fontFaceCount = document.fonts.size;
-        var fontLoaded = function(font) {
-            loadCount++;
-            if (debug) {
-                console.log("(native) font loaded: " + font.family);
-            }
-            if (fontFaceCount > options.minLoadCount && (loadCount / fontFaceCount) >= options.minLoadRatio) {
-
-                if (debug) {
-                    console.log('(native) font loader: early callback');
-                }
-                callback();
-            }
-        }
-
-        var fontIterator = function(font) {
-            font.loaded.then(function() {
-                fontLoaded(font);
-            });
-        };
-
-        // For some reason (at this time) Chrome's implementation has a .forEach
-        // but it is not Array-like. This is opposite with Firefox's though.
-        if (document.fonts.forEach) {
-            document.fonts.forEach(fontIterator);
-        } else {
-            _.each(document.fonts, fontIterator);
-        }
-        var fontsReady = document.fonts.ready;
-        // In older implementations (chromium 35 for example) this is a method not a property
-        if (_.isFunction(fontsReady)) {
-            fontsReady = fontsReady.call(document.fonts);
-        }
-        fontsReady.then(function() {
-            if (debug) {
-                // All fonts were loaded
-                console.log("(native) font loader: all fonts were loaded");
-            }
-            callback();
-        });
-
-        window.setTimeout(function() {
-            if (debug && loadCount !== fontFaceCount) {
-                console.log('(native) font loader: timeout, not all fonts loaded/required');
-            } else if (debug) {
-                console.log('(native) font loader: timeout');
-            }
-            callback();
-        }, options.timeout);
-    }
-}
-
-var FontLoaderWrapper = function($iframe, options) {
-    options = options || {};
-
-    options.debug = options.debug || false;
-    options.timeout = options.timeout || 1500;
-    options.minLoadCount = options.minLoadCount || 3;
-    options.minLoadRatio = options.minLoadRatio || 0.75;
-
-    var document = $iframe[0].contentDocument;
-
-    // For browsers without CSS Font Loading Module
-    var fallbackNeeded = !document.fonts;
-
-    var fontLoader = fallbackNeeded ? FontLoaderFallback : FontLoaderNative;
-
-    this.waitForFonts = fontLoader(document, options);
-};
-
-return FontLoaderWrapper;
-
+    return Metadata;
 });
+
 
 
 //  LauncherOSX
@@ -13920,17 +15857,16 @@ return FontLoaderWrapper;
 
 define('readium_shared_js/views/reflowable_view',["../globals", "jquery", "underscore", "eventEmitter", "../models/bookmark_data", "./cfi_navigation_logic",
     "../models/current_pages_info", "../helpers", "../models/page_open_request",
-    "../models/viewer_settings", "./font_loader"],
+    "../models/viewer_settings", "ResizeSensor"],
     function(Globals, $, _, EventEmitter, BookmarkData, CfiNavigationLogic,
              CurrentPagesInfo, Helpers, PageOpenRequest,
-             ViewerSettings, FontLoader) {
+             ViewerSettings, ResizeSensor) {
 /**
  * Renders reflowable content using CSS columns
  * @param options
  * @constructor
  */
 var ReflowableView = function(options, reader){
-
     $.extend(this, new EventEmitter());
 
     var self = this;
@@ -13945,11 +15881,17 @@ var ReflowableView = function(options, reader){
     var _isWaitingFrameRender = false;
     var _deferredPageRequest;
     var _fontSize = 100;
+    var _fontSelection = 0;
     var _$contentFrame;
     var _navigationLogic;
     var _$el;
     var _$iframe;
     var _$epubHtml;
+    var _lastPageRequest = undefined;
+
+    var _cfiClassBlacklist = ["cfi-marker", "mo-cfi-highlight", "resize-sensor", "resize-sensor-expand", "resize-sensor-shrink", "resize-sensor-inner"];
+    var _cfiElementBlacklist = [];
+    var _cfiIdBlacklist = ["MathJax_Message", "MathJax_SVG_Hidden"];
 
     var _$htmlBody;
 
@@ -13965,6 +15907,11 @@ var ReflowableView = function(options, reader){
         height: undefined
     };
 
+    var _lastBodySize = {
+        width: undefined,
+        height: undefined
+    };
+
     var _paginationInfo = {
 
         visibleColumnCount : 2,
@@ -13973,6 +15920,7 @@ var ReflowableView = function(options, reader){
         columnMinWidth: 400,
         spreadCount : 0,
         currentSpreadIndex : 0,
+        currentPageIndex: 0,
         columnWidth : undefined,
         pageOffset : 0,
         columnCount: 0
@@ -14031,7 +15979,7 @@ var ReflowableView = function(options, reader){
     };
 
     var _viewSettings = undefined;
-    this.setViewSettings = function(settings) {
+    this.setViewSettings = function(settings, docWillChange) {
 
         _viewSettings = settings;
 
@@ -14040,18 +15988,42 @@ var ReflowableView = function(options, reader){
         _paginationInfo.columnMinWidth = settings.columnMinWidth;
         
         _fontSize = settings.fontSize;
-
-        updateHtmlFontSize();
-        updateColumnGap();
+        _fontSelection = settings.fontSelection;
 
         updateViewportSize();
-        updatePagination();
+
+        if (!docWillChange) {
+            updateColumnGap();
+
+            updateHtmlFontInfo();
+        }
     };
     
     function getFrameDimensions() {
         return {
             width: _$iframe[0].clientWidth,
             height: _$iframe[0].clientHeight
+        };
+    }
+
+    function getPageOffset() {
+        if (_paginationInfo.rightToLeft && !_paginationInfo.isVerticalWritingMode) {
+            return -_paginationInfo.pageOffset;
+        }
+        return _paginationInfo.pageOffset;
+    }
+
+    function getPaginationOffsets() {
+        var offset = getPageOffset();
+        if (_paginationInfo.isVerticalWritingMode) {
+            return {
+                top: offset,
+                left: 0
+            };
+        }
+        return {
+            top: 0,
+            left: offset
         };
     }
 
@@ -14077,8 +16049,12 @@ var ReflowableView = function(options, reader){
 
         _navigationLogic = new CfiNavigationLogic({
             $iframe: _$iframe,
-            frameDimensions: getFrameDimensions,
-            paginationInfo: _paginationInfo
+            frameDimensionsGetter: getFrameDimensions,
+            paginationInfo: _paginationInfo,
+            paginationOffsetsGetter: getPaginationOffsets,
+            classBlacklist: _cfiClassBlacklist,
+            elementBlacklist: _cfiElementBlacklist,
+            idBlacklist: _cfiIdBlacklist
         });
     }
 
@@ -14089,11 +16065,15 @@ var ReflowableView = function(options, reader){
             //create & append iframe to container frame
             renderIframe();
             if (_currentSpineItem) {
+                Globals.logEvent("CONTENT_DOCUMENT_UNLOADED", "EMIT", "reflowable_view.js [ " + _currentSpineItem.href + " ]");
                 self.emit(Globals.Events.CONTENT_DOCUMENT_UNLOADED, _$iframe, _currentSpineItem);
             }
 
+            self.resetCurrentPosition();
+
             _paginationInfo.pageOffset = 0;
             _paginationInfo.currentSpreadIndex = 0;
+            _paginationInfo.currentPageIndex = 0;
             _currentSpineItem = spineItem;
             
             // TODO: this is a dirty hack!!
@@ -14112,10 +16092,15 @@ var ReflowableView = function(options, reader){
         }
     }
 
-    function updateHtmlFontSize() {
-
+    function updateHtmlFontInfo() {
+    
         if(_$epubHtml) {
-            Helpers.UpdateHtmlFontSize(_$epubHtml, _fontSize);
+            var i = _fontSelection;
+            var useDefault = !reader.fonts || !reader.fonts.length || i <= 0 || (i-1) >= reader.fonts.length;
+            var font = (useDefault ?
+                        {} :
+                        reader.fonts[i - 1]);
+            Helpers.UpdateHtmlFontAttributes(_$epubHtml, _fontSize, font, function() {self.applyStyles();});
         }
     }
 
@@ -14128,17 +16113,6 @@ var ReflowableView = function(options, reader){
     }
 
     function onIFrameLoad(success) {
-        if (!success) {
-            applyIFrameLoad(success);
-            return;
-        }
-        var fontLoader = new FontLoader(_$iframe);
-        fontLoader.waitForFonts(function () {
-            applyIFrameLoad(success);
-        });
-    }
-
-    function applyIFrameLoad(success) {
 
         _isWaitingFrameRender = false;
 
@@ -14239,6 +16213,13 @@ var ReflowableView = function(options, reader){
 
         _$epubHtml.css("column-axis", (_htmlBodyIsVerticalWritingMode ? "vertical" : "horizontal"));
 
+        //apply hyphens auto
+        _$htmlBody.css('hyphens', 'auto');
+        _$htmlBody.css('-o-hyphens', 'auto');
+        _$htmlBody.css('-ms-hyphens', 'auto');
+        _$htmlBody.css('-moz-hyphens', 'auto');
+        _$htmlBody.css('-webkit-hyphens', 'auto');
+
         //
         // /////////
         // //Columns Debugging
@@ -14251,13 +16232,11 @@ var ReflowableView = function(options, reader){
         // ////
 
         self.applyBookStyles();
-        resizeImages();
+        resizeImages(_currentSpineItem);
 
-        updateHtmlFontSize();
         updateColumnGap();
 
-
-        self.applyStyles();
+        updateHtmlFontInfo();
     }
 
     this.applyStyles = function() {
@@ -14276,8 +16255,8 @@ var ReflowableView = function(options, reader){
 
     this.applyBookStyles = function() {
 
-        if(_$epubHtml) {
-            Helpers.setStyles(_bookStyles.getStyles(), _$epubHtml);
+        if(_$epubHtml) { // implies _$iframe
+            Helpers.setStyles(_bookStyles.getStyles(), _$iframe[0].contentDocument); //_$epubHtml
         }
     };
 
@@ -14293,18 +16272,18 @@ var ReflowableView = function(options, reader){
 
     }
 
-    this.openPage = function(pageRequest) {
+    function _openPageInternal(pageRequest) {
 
         if(_isWaitingFrameRender) {
             _deferredPageRequest = pageRequest;
-            return;
+            return false;
         }
 
         // if no spine item specified we are talking about current spine item
         if(pageRequest.spineItem && pageRequest.spineItem != _currentSpineItem) {
             _deferredPageRequest = pageRequest;
             loadSpineItem(pageRequest.spineItem);
-            return;
+            return true;
         }
 
         var pageIndex = undefined;
@@ -14314,19 +16293,45 @@ var ReflowableView = function(options, reader){
             pageIndex = pageRequest.spineItemPageIndex;
         }
         else if(pageRequest.elementId) {
-            pageIndex = _navigationLogic.getPageForElementId(pageRequest.elementId);
-            
-            if (pageIndex < 0) pageIndex = 0;
+            pageIndex = _paginationInfo.currentPageIndex + _navigationLogic.getPageIndexDeltaForElementId(pageRequest.elementId);
+        }
+        else if(pageRequest.firstVisibleCfi && pageRequest.lastVisibleCfi) {
+            var firstPageIndex;
+            var lastPageIndex;
+            try
+            {
+                firstPageIndex = _navigationLogic.getPageIndexDeltaForCfi(pageRequest.firstVisibleCfi,
+                    _cfiClassBlacklist,
+                    _cfiElementBlacklist,
+                    _cfiIdBlacklist);
+            }
+            catch (e)
+            {
+                firstPageIndex = 0;
+                console.error(e);
+            }
+            try
+            {
+                lastPageIndex = _navigationLogic.getPageIndexDeltaForCfi(pageRequest.lastVisibleCfi,
+                    _cfiClassBlacklist,
+                    _cfiElementBlacklist,
+                    _cfiIdBlacklist);
+            }
+            catch (e)
+            {
+                lastPageIndex = 0;
+                console.error(e);
+            }
+            // Go to the page in the middle of the two elements
+            pageIndex = _paginationInfo.currentPageIndex + Math.round((firstPageIndex + lastPageIndex) / 2);
         }
         else if(pageRequest.elementCfi) {
             try
             {
-                pageIndex = _navigationLogic.getPageForElementCfi(pageRequest.elementCfi,
-                    ["cfi-marker", "mo-cfi-highlight"],
-                    [],
-                    ["MathJax_Message"]);
-                
-                if (pageIndex < 0) pageIndex = 0;
+                pageIndex = _paginationInfo.currentPageIndex + _navigationLogic.getPageIndexDeltaForCfi(pageRequest.elementCfi,
+                    _cfiClassBlacklist,
+                    _cfiElementBlacklist,
+                    _cfiIdBlacklist);
             }
             catch (e)
             {
@@ -14345,12 +16350,44 @@ var ReflowableView = function(options, reader){
             pageIndex = 0;
         }
 
-        if(pageIndex >= 0 && pageIndex < _paginationInfo.columnCount) {
-            _paginationInfo.currentSpreadIndex = Math.floor(pageIndex / _paginationInfo.visibleColumnCount) ;
-            onPaginationChanged(pageRequest.initiator, pageRequest.spineItem, pageRequest.elementId);
-        }
-        else {
+        if (pageIndex < 0 || pageIndex > _paginationInfo.columnCount) {
             console.log('Illegal pageIndex value: ', pageIndex, 'column count is ', _paginationInfo.columnCount);
+            pageIndex = pageIndex < 0 ? 0 : _paginationInfo.columnCount;
+        }
+
+        _paginationInfo.currentPageIndex = pageIndex;
+        _paginationInfo.currentSpreadIndex = Math.floor(pageIndex / _paginationInfo.visibleColumnCount) ;
+        onPaginationChanged(pageRequest.initiator, pageRequest.spineItem, pageRequest.elementId);
+        return true;
+    }
+
+    this.openPage = function(pageRequest) {
+        // Go to request page, it will save the new position in onPaginationChanged
+        _openPageInternal(pageRequest);
+        // Save it for when pagination is updated
+        _lastPageRequest = pageRequest;
+    };
+
+    this.resetCurrentPosition = function() {
+        _lastPageRequest = undefined;
+    };
+
+    this.saveCurrentPosition = function() {
+        // If there's a deferred page request, there's no point in saving the current position
+        // as it's going to change soon
+        if (_deferredPageRequest) {
+            return;
+        }
+
+        var _firstVisibleCfi = self.getFirstVisibleCfi();
+        var _lastVisibleCfi = self.getLastVisibleCfi();
+        _lastPageRequest = new PageOpenRequest(_currentSpineItem, self);
+        _lastPageRequest.setFirstAndLastVisibleCfi(_firstVisibleCfi.contentCFI, _lastVisibleCfi.contentCFI);
+    };
+
+    this.restoreCurrentPosition = function() {
+        if (_lastPageRequest) {
+            _openPageInternal(_lastPageRequest);
         }
     };
 
@@ -14395,12 +16432,26 @@ var ReflowableView = function(options, reader){
     }
 
     function onPaginationChanged_(initiator, paginationRequest_spineItem, paginationRequest_elementId) {
+        _paginationInfo.currentPageIndex = _paginationInfo.currentSpreadIndex * _paginationInfo.visibleColumnCount;
+        _paginationInfo.pageOffset = Math.round((_paginationInfo.columnWidth + _paginationInfo.columnGap) * _paginationInfo.visibleColumnCount * _paginationInfo.currentSpreadIndex);
 
-        _paginationInfo.pageOffset = (_paginationInfo.columnWidth + _paginationInfo.columnGap) * _paginationInfo.visibleColumnCount * _paginationInfo.currentSpreadIndex;
-        
         redraw();
 
+        if (!paginationRequest_elementId) {
+            var elementInPage = Array.prototype.filter.call(_$htmlBody[0].querySelectorAll("div[id], p[id], span[id]"), function (element) {
+                return !/^no/.test(element.id) && element.getBoundingClientRect().right <= window.screen.availWidth;
+            });
+
+            if (elementInPage && elementInPage.length > 0) {
+                paginationRequest_elementId = elementInPage.pop().id;
+            }
+        }
+
         _.defer(function () {
+
+            if (_lastPageRequest == undefined) {
+                self.saveCurrentPosition();
+            }
             
             Globals.logEvent("InternalEvents.CURRENT_VIEW_PAGINATION_CHANGED", "EMIT", "reflowable_view.js");
             self.emit(Globals.InternalEvents.CURRENT_VIEW_PAGINATION_CHANGED, {
@@ -14410,6 +16461,8 @@ var ReflowableView = function(options, reader){
                 elementId: paginationRequest_elementId
             });
         });
+
+        self.emit(Globals.InternalEvents.CURRENT_VIEW_PAGINATION_CHANGED, { paginationInfo: self.getPaginationInfo(), initiator: initiator, spineItem: paginationRequest_spineItem, elementId: paginationRequest_elementId } );
     }
     var onPaginationChanged = _.debounce(onPaginationChanged_, 100);
 
@@ -14420,8 +16473,11 @@ var ReflowableView = function(options, reader){
         }
 
         if(_paginationInfo.currentSpreadIndex > 0) {
+            // Page will change, the current position is not valid any more
+            // Reset it so it's saved next time onPaginationChanged is called
+            this.resetCurrentPosition();
             _paginationInfo.currentSpreadIndex--;
-            onPaginationChanged(initiator);
+            onPaginationChanged(initiator, _currentSpineItem);
         }
         else {
 
@@ -14442,8 +16498,11 @@ var ReflowableView = function(options, reader){
         }
 
         if(_paginationInfo.currentSpreadIndex < _paginationInfo.spreadCount - 1) {
+            // Page will change, the current position is not valid any more
+            // Reset it so it's saved next time onPaginationChanged is called
+            this.resetCurrentPosition();
             _paginationInfo.currentSpreadIndex++;
-            onPaginationChanged(initiator);
+            onPaginationChanged(initiator, _currentSpineItem);
         }
         else {
 
@@ -14458,7 +16517,7 @@ var ReflowableView = function(options, reader){
     };
 
 
-    function updatePagination() {
+    function updatePagination_() {
 
         // At 100% font-size = 16px (on HTML, not body or descendant markup!)
         var MAXW = _paginationInfo.columnMaxWidth;
@@ -14577,16 +16636,24 @@ var ReflowableView = function(options, reader){
         _$epubHtml.css("min-height", _lastViewPortSize.height + "px");
         _$epubHtml.css("max-height", _lastViewPortSize.height + "px");
 
-        //normalise spacing to avoid interference with column-isation
+        // normalise spacing to avoid interference with column-isation
         _$epubHtml.css('margin', 0);
         _$epubHtml.css('padding', 0);
         _$epubHtml.css('border', 0);
+
+        // In order for the ResizeSensor to work, the content body needs to be "positioned".
+        // This may be an issue since it changes the assumptions some content authors might make when positioning their content.
+        _$htmlBody.css('position', 'relative');
+
         _$htmlBody.css('margin', 0);
         _$htmlBody.css('padding', 0);
 
+        // body must be 100% height so children can use % heights
+        _$htmlBody.css("height", "100%");
+
         _paginationInfo.rightToLeft = _spine.isRightToLeft();
 
-        _paginationInfo.columnWidth = Math.round(((_htmlBodyIsVerticalWritingMode ? _lastViewPortSize.height : _lastViewPortSize.width) - _paginationInfo.columnGap * (_paginationInfo.visibleColumnCount - 1)) / _paginationInfo.visibleColumnCount);
+        _paginationInfo.columnWidth = ((_htmlBodyIsVerticalWritingMode ? _lastViewPortSize.height : _lastViewPortSize.width) - _paginationInfo.columnGap * (_paginationInfo.visibleColumnCount - 1)) / _paginationInfo.visibleColumnCount;
 
         var useColumnCountNotWidth = _paginationInfo.visibleColumnCount > 1; // column-count == 1 does not work in Chrome, and is not needed anyway (HTML width is full viewport width, no Firefox video flickering)
         if (useColumnCountNotWidth) {
@@ -14594,9 +16661,9 @@ var ReflowableView = function(options, reader){
             _$epubHtml.css("column-width", "auto");
             _$epubHtml.css("column-count", _paginationInfo.visibleColumnCount);
         } else {
-            _$epubHtml.css("width", (_htmlBodyIsVerticalWritingMode ? _lastViewPortSize.width : _paginationInfo.columnWidth) + "px");
+            _$epubHtml.css("width", (_htmlBodyIsVerticalWritingMode ? _lastViewPortSize.width : Math.round(_paginationInfo.columnWidth)) + "px");
             _$epubHtml.css("column-count", "auto");
-            _$epubHtml.css("column-width", _paginationInfo.columnWidth + "px");
+            _$epubHtml.css("column-width", Math.round(_paginationInfo.columnWidth) + "px");
         }
 
         _$epubHtml.css("column-fill", "auto");
@@ -14605,11 +16672,19 @@ var ReflowableView = function(options, reader){
 
         Helpers.triggerLayout(_$iframe);
 
-        _paginationInfo.columnCount = ((_htmlBodyIsVerticalWritingMode ? _$epubHtml[0].scrollHeight : _$epubHtml[0].scrollWidth) + _paginationInfo.columnGap) / (_paginationInfo.columnWidth + _paginationInfo.columnGap);
+        var dim = (_htmlBodyIsVerticalWritingMode ? _$epubHtml[0].scrollHeight : _$epubHtml[0].scrollWidth);
+        if (dim == 0) {
+            console.error("Document dimensions zero?!");
+        }
+
+        _paginationInfo.columnCount = (dim + _paginationInfo.columnGap) / (_paginationInfo.columnWidth + _paginationInfo.columnGap);
         _paginationInfo.columnCount = Math.round(_paginationInfo.columnCount);
+        if (_paginationInfo.columnCount == 0) {
+            console.error("Column count zero?!");
+        }
 
         var totalGaps = (_paginationInfo.columnCount-1) * _paginationInfo.columnGap;
-        var colWidthCheck = ((_htmlBodyIsVerticalWritingMode ? _$epubHtml[0].scrollHeight : _$epubHtml[0].scrollWidth) - totalGaps) / _paginationInfo.columnCount;
+        var colWidthCheck = (dim - totalGaps) / _paginationInfo.columnCount;
         colWidthCheck = Math.round(colWidthCheck);
 
         if (colWidthCheck > _paginationInfo.columnWidth)
@@ -14634,9 +16709,17 @@ var ReflowableView = function(options, reader){
         }
         else {
 
-            //we get here on resizing the viewport
+            // we get here on resizing the viewport
+            if (_lastPageRequest) {
+                // Make sure we stay on the same page after the content or the viewport 
+                // has been resized
+                _paginationInfo.currentPageIndex = 0; // current page index is not stable, reset it
+                self.restoreCurrentPosition();
+            } else {
+                onPaginationChanged(self, _currentSpineItem); // => redraw() => showBook(), so the trick below is not needed                
+            }
 
-            onPaginationChanged(self); // => redraw() => showBook(), so the trick below is not needed
+            //onPaginationChanged(self, _currentSpineItem); // => redraw() => showBook(), so the trick below is not needed 
 
             // //We do this to force re-rendering of the document in the iframe.
             // //There is a bug in WebView control with right to left columns layout - after resizing the window html document
@@ -14644,12 +16727,51 @@ var ReflowableView = function(options, reader){
             // _$epubHtml.hide();
             // setTimeout(function() {
             //     _$epubHtml.show();
-            //     onPaginationChanged(self); // => redraw() => showBook()
+            //     onPaginationChanged(self, _currentSpineItem); // => redraw() => showBook()
             // }, 50);
 
         }
-    }
 
+        // Only initializes the resize sensor once the content has been paginated once,
+        // to avoid the pagination process to trigger a resize event during its first
+        // execution, provoking a flicker
+        initResizeSensor();
+    }
+    var updatePagination = _.debounce(updatePagination_, 100);
+
+    function initResizeSensor() {
+        var bodyElement = _$htmlBody[0];
+        if (bodyElement.resizeSensor) {
+            return;
+        }
+
+        // We need to make sure the content has indeed be resized, especially
+        // the first time it is triggered
+        _lastBodySize.width = $(bodyElement).width();
+        _lastBodySize.height = $(bodyElement).height();
+
+        bodyElement.resizeSensor = new ResizeSensor(bodyElement, function() {
+            
+            var newBodySize = {
+                width: $(bodyElement).width(),
+                height: $(bodyElement).height()
+            };
+
+            console.debug("ReflowableView content resized ...", newBodySize.width, newBodySize.height, _currentSpineItem.idref);
+            
+            if (newBodySize.width != _lastBodySize.width || newBodySize.height != _lastBodySize.height) {
+                _lastBodySize.width = newBodySize.width;
+                _lastBodySize.height = newBodySize.height;
+                
+                console.debug("... updating pagination.");
+
+                updatePagination();
+            } else {
+                console.debug("... ignored (identical dimensions).");
+            }
+        });
+    }
+    
 //    function shiftBookOfScreen() {
 //
 //        if(_spine.isLeftToRight()) {
@@ -14664,7 +16786,10 @@ var ReflowableView = function(options, reader){
     {
         if (_currentOpacity != -1) return; // already hidden
 
-        _currentOpacity = _$epubHtml.css('opacity');
+        // css('opacity') produces invalid result in Firefox, when iframes are involved and when is called
+        // directly after set, i.e. after showBook(), see: https://github.com/jquery/jquery/issues/2622
+        //_currentOpacity = $epubHtml.css('opacity');
+        _currentOpacity = _$epubHtml[0].style.opacity;
         _$epubHtml.css('opacity', "0");
     }
 
@@ -14672,7 +16797,7 @@ var ReflowableView = function(options, reader){
     {
         if (_currentOpacity != -1)
         {
-            _$epubHtml.css('opacity', _currentOpacity);
+            _$epubHtml[0].style.opacity = _currentOpacity;
         }
         _currentOpacity = -1;
     }
@@ -14712,34 +16837,34 @@ var ReflowableView = function(options, reader){
     }
 
     //we need this styles for css columnizer not to chop big images
-    function resizeImages() {
-
+    function resizeImages(currentSpineItem) {
         if(!_$epubHtml) {
             return;
         }
 
-        var $elem;
-        var height;
-        var width;
+        $('img, svg', _$epubHtml).each(function() {
+            var element = this;
 
-        $('img, svg', _$epubHtml).each(function(){
+            if (currentSpineItem.index === 0) {
+                element.style['width'] = 'auto';
+                element.style['height'] = 'auto';
+                element.style['max-width'] = '100%';
+                element.style['max-height'] = '99vh';
+            } else {
+                // if we set max-width/max-height to 100% columnizing engine chops images embedded in the text
+                // (but not if we set it to 99-98%) go figure.
+                // TODO: CSS min-w/h is content-box, not border-box (does not take into account padding + border)? => images may still overrun?
+                element.style['max-width'] = '99%';
+                element.style['max-height'] = '99%';
 
-            $elem = $(this);
+                if(!element.style['height']) {
+                    element.style['height'] = 'auto';
+                }
 
-            // if we set max-width/max-height to 100% columnizing engine chops images embedded in the text
-            // (but not if we set it to 99-98%) go figure.
-            // TODO: CSS min-w/h is content-box, not border-box (does not take into account padding + border)? => images may still overrun?
-            $elem.css('max-width', '98%');
-            $elem.css('max-height', '98%');
-
-            if(!$elem.css('height')) {
-                $elem.css('height', 'auto');
+                if(!element.style['width']) {
+                    element.style['width'] = 'auto';
+                }
             }
-
-            if(!$elem.css('width')) {
-                $elem.css('width', 'auto');
-            }
-
         });
     }
 
@@ -14800,15 +16925,15 @@ var ReflowableView = function(options, reader){
             return;
         }
 
-        var page = _navigationLogic.getPageForElement($element);
+        var elementCfi = _navigationLogic.getCfiForElement(element);
 
-        if(page == -1)
+        if (!elementCfi)
         {
             return;
         }
 
         var openPageRequest = new PageOpenRequest(_currentSpineItem, initiator);
-        openPageRequest.setPageIndex(page);
+        openPageRequest.setElementCfi(elementCfi);
 
         var id = element.id;
         if (!id)
@@ -14900,6 +17025,14 @@ var ReflowableView = function(options, reader){
         return createBookmarkFromCfi(_navigationLogic.getLastVisibleCfi());
     };
 
+    this.getStartCfi = function () {
+        return createBookmarkFromCfi(_navigationLogic.getStartCfi());
+    };
+
+    this.getEndCfi = function () {
+        return createBookmarkFromCfi(_navigationLogic.getEndCfi());
+    };
+
     this.getDomRangeFromRangeCfi = function (rangeCfi, rangeCfi2, inclusive) {
         if (rangeCfi2 && rangeCfi.idref !== rangeCfi2.idref) {
             console.error("getDomRangeFromRangeCfi: both CFIs must be scoped under the same spineitem idref");
@@ -14926,6 +17059,10 @@ var ReflowableView = function(options, reader){
 
     this.getElementFromPoint = function(x, y) {
         return _navigationLogic.getElementFromPoint(x,y);
+    };
+
+    this.getNearestCfiFromElement = function(element) {
+        return createBookmarkFromCfi(_navigationLogic.getNearestCfiFromElement(element));
     };
 };
     return ReflowableView;
@@ -14958,15 +17095,37 @@ var ReflowableView = function(options, reader){
 
 define('readium_shared_js/models/style',[], function() {
 /**
- *
+ * @class Models.Style
+ * @constructor
  * @param selector
  * @param declarations
- * @constructor
  */
 var Style = function(selector, declarations) {
 
+    /**
+     * Initializing the selector
+     *
+     * @property selector
+     * @type 
+     */
+
     this.selector = selector;
+
+    /**
+     * Initializing the declarations
+     *
+     * @property selector
+     * @type 
+     */
+
     this.declarations = declarations;
+
+    /**
+     * Set the declarations array
+     *
+     * @method setDeclarations
+     * @param {Object} declarations
+     */
 
     this.setDeclarations = function(declarations) {
 
@@ -14981,7 +17140,7 @@ var Style = function(selector, declarations) {
     return Style;
 });
 
-//  Created by Boris Schneiderman.
+    //  Created by Boris Schneiderman.
 //  Copyright (c) 2014 Readium Foundation and/or its licensees. All rights reserved.
 //  
 //  Redistribution and use in source and binary forms, with or without modification, 
@@ -15007,18 +17166,36 @@ var Style = function(selector, declarations) {
 //  OF THE POSSIBILITY OF SUCH DAMAGE.
 
 define('readium_shared_js/models/style_collection',["./style"], function(Style) {
+
 /**
  *
+ * @class Models.StyleCollection
+ * @return StyleCollection
  * @constructor
  */
+
 var StyleCollection = function() {
 
     var _styles = [];
+
+    /**
+     * Clears the collection.
+     *
+     * @method     clear
+     */
 
     this.clear = function() {
         _styles.length = 0;
 
     };
+
+    /**
+     * Finds the style of a selected item
+     *
+     * @method     findStyle
+     * @param      selector
+     * @return     {Models.Style}
+     */
 
     this.findStyle = function(selector) {
 
@@ -15031,6 +17208,15 @@ var StyleCollection = function() {
 
         return undefined;
     };
+
+    /**
+     * Adds a style to the collection
+     *
+     * @method     addStyle
+     * @param      selector
+     * @param      declarations
+     * @return     {Models.Style}
+     */
 
     this.addStyle = function(selector, declarations) {
 
@@ -15047,6 +17233,13 @@ var StyleCollection = function() {
         return style;
     };
 
+    /**
+     * Removes a style from the collection
+     *
+     * @method     addStyle
+     * @param      selector
+     */
+
     this.removeStyle = function(selector) {
         
         var count = _styles.length;
@@ -15060,9 +17253,22 @@ var StyleCollection = function() {
         }
     };
 
+    /**
+     * Gets all styles
+     *
+     * @method     getStyles
+     * @return     {Array}
+     */
+
     this.getStyles = function() {
         return _styles;
     };
+
+    /**
+     * Resets the styles
+     *
+     * @method     resetStyleValues
+     */
 
     this.resetStyleValues = function() {
 
@@ -15112,8 +17318,10 @@ var StyleCollection = function() {
 //  OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED 
 //  OF THE POSSIBILITY OF SUCH DAMAGE.
 define('readium_shared_js/models/switches',["jquery", "underscore"], function($, _) {
-/**
- *
+/** 
+ * Switches in the epub publication.
+ * 
+ * @class Models.Switches
  * @constructor
  */
 var Switches = function() {
@@ -15122,6 +17330,15 @@ var Switches = function() {
 
 // Description: Parse the epub "switch" tags and hide
 // cases that are not supported
+
+/**
+ *
+ * Static Switches.apply method.
+ * 
+ * @method Switches.apply
+ * @param dom
+ */
+
 Switches.apply = function(dom) {
 
     function isSupported(caseNode) {
@@ -15202,21 +17419,61 @@ Switches.apply = function(dom) {
 
 define('readium_shared_js/models/trigger',["jquery", "../helpers"], function($, Helpers) {
 /**
- * Setter fot epub Triggers
+ * Trigger in an epub publication.
  *
- *
+ * @class Models.Trigger
+ * @constructor
  * @param domNode
  */
 
 var Trigger = function(domNode) {
+
     var $el = $(domNode);
+    
+    /**
+     * epub trigger action
+     *
+     * @property action
+     * @type String
+     */
+
     this.action     = $el.attr("action");
+    
+    /**
+     * epub trigger ref
+     *
+     * @property ref
+     * @type String
+     */
+
     this.ref         = $el.attr("ref");
+    
+    /**
+     * epub trigger event
+     *
+     * @property event
+     * @type String
+     */
+
     this.event         = $el.attr("ev:event");
+    
+    /**
+     * epub trigger observer
+     *
+     * @property observer
+     * @type String
+     */
+
     this.observer     = $el.attr("ev:observer");
     this.ref         = $el.attr("ref");
 };
 
+/**
+ * Static register method
+ *
+ * @method register
+ * @param dom
+ */
 Trigger.register = function(dom) {
     $('trigger', dom).each(function() {
         var trigger = new Trigger(this);
@@ -15224,15 +17481,31 @@ Trigger.register = function(dom) {
     });
 };
 
+/**
+ * Prototype subscribe method
+ *
+ * @method subscribe
+ * @param dom
+ */
+
 Trigger.prototype.subscribe = function(dom) {
+    
     var selector = "#" + this.observer;
     var that = this;
     $(selector, dom).on(this.event, function() {
-        that.execute(dom);
+        return that.execute(dom);
     });
 };
 
+/**
+ * Prototype execute method
+ *
+ * @method execute
+ * @param dom
+ */
+
 Trigger.prototype.execute = function(dom) {
+
     var $target = $( "#" + Helpers.escapeJQuerySelector(this.ref), dom);
     switch(this.action)
     {
@@ -15260,13 +17533,17 @@ Trigger.prototype.execute = function(dom) {
             break;
         default:
             console.log("do not no how to handle trigger " + this.action);
+            return null;
     }
+    return false;   // do not propagate click event; it was already handled
+
 };
+
     return Trigger;
 });
 
 //  Created by Juan Corona
-//  Copyright (c) 2014 Readium Foundation and/or its licensees. All rights reserved.
+//  Copyright (c) 2016 Readium Foundation and/or its licensees. All rights reserved.
 //
 //  Redistribution and use in source and binary forms, with or without modification,
 //  are permitted provided that the following conditions are met:
@@ -15293,30 +17570,35 @@ Trigger.prototype.execute = function(dom) {
 define('readium_shared_js/models/node_range_info',[],function () {
 
     /**
-     * @class ReadiumSDK.Models.NodeRangePositionInfo
+     * @class Models.NodeRangePositionInfo
      * @constructor
+     * @param {Node} node The actual DOM node
+     * @param {Number} offest The position offsetf for the node
      */
     var NodeRangePositionInfo = function (node, offset) {
 
         /**
          * The actual DOM node
          * @property node
-         * @type {Node}
+         * @type Node
          */
         this.node = node;
 
         /**
          * The position offsetf for the node
          * @property offset
-         * @type {Number}
+         * @type Number
          */
         this.offset = offset;
 
     };
 
     /**
-     * @class ReadiumSDK.Models.NodeRangeInfo
+     * @class Models.NodeRangeInfo
      * @constructor
+     * @param {ClientRect} clientRect
+     * @param {Models.NodeRangePositionInfo} startInfo
+     * @param {Models.NodeRangePositionInfo} endInfo
      */
     var NodeRangeInfo = function (clientRect, startInfo, endInfo) {
 
@@ -15324,21 +17606,21 @@ define('readium_shared_js/models/node_range_info',[],function () {
         /**
          * Client rectangle information for the range content bounds
          * @property clientRect
-         * @type {ClientRect}
+         * @type ClientRect
          */
         this.clientRect = clientRect;
 
         /**
          * Node and position information providing where and which node the range starts with
          * @property startInfo
-         * @type {ReadiumSDK.Models.NodeRangePositionInfo}
+         * @type Models.NodeRangePositionInfo
          */
         this.startInfo = startInfo;
 
         /**
          * Node and position information providing where and which node the range ends with
          * @property endInfo
-         * @type {ReadiumSDK.Models.NodeRangePositionInfo}
+         * @type Models.NodeRangePositionInfo
          */
         this.endInfo = endInfo;
 
@@ -15356,6 +17638,189 @@ define('readium_shared_js/models/node_range_info',[],function () {
 
     return NodeRangeInfo;
 });
+//  Copyright (c) 2014 Readium Foundation and/or its licensees. All rights reserved.
+//
+//  Redistribution and use in source and binary forms, with or without modification,
+//  are permitted provided that the following conditions are met:
+//  1. Redistributions of source code must retain the above copyright notice, this
+//  list of conditions and the following disclaimer.
+//  2. Redistributions in binary form must reproduce the above copyright notice,
+//  this list of conditions and the following disclaimer in the documentation and/or
+//  other materials provided with the distribution.
+//  3. Neither the name of the organization nor the names of its contributors may be
+//  used to endorse or promote products derived from this software without specific
+//  prior written permission.
+//
+//  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+//  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+//  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+//  IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+//  INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+//  BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+//  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+//  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+//  OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+//  OF THE POSSIBILITY OF SUCH DAMAGE.
+
+define('readium_shared_js/views/external_agent_support',["../globals", "underscore"], function(Globals, _) {
+    /**
+     * This module helps external agents that interact with content documents from
+     * the level of the iframe browsing context:
+     *
+     *   - By providing a means of identifying the content through metadata
+     *     that's brought down from the package document level.
+     *
+     *   - By providing a direct link (bringing down the shareable URL) that could be used
+     *     to load the content in the proper context with the reader app instead of the actual
+     *     content document asset path.
+     *
+     *   - By responding to an event when the external agent wants to bring a
+     *     specific range of content into view.
+     *
+     * @param {Views.ReaderView} reader     The Reader instance
+     * @constructor
+     */
+    var ExternalAgentSupport = function(reader) {
+
+        var contentDocumentStates = {};
+        var contentDocuments = {};
+
+        Globals.on(Globals.Events.PLUGINS_LOADED, function() {
+            // Disable the AMD environment since it's not needed anymore at this point.
+            // This is done because external agents with their own module systems (Browserify)
+            // might load third-party scripts that are in the format of
+            // UMD (Universal Module Definition),
+            // and will mistakenly try to use Readium's AMD shim, almond.js, or require.js
+            if (window.define && window.define.amd) {
+                delete window.define.amd;
+            }
+        });
+
+        function appendMetaTag(_document, property, content) {
+            var tag = _document.createElement('meta');
+            tag.setAttribute('name', property);
+            tag.setAttribute('content', content);
+            _document.head.appendChild(tag);
+        }
+
+        function injectDublinCoreResourceIdentifiers(contentDocument, spineItem) {
+            var renditionIdentifier = reader.metadata().identifier; // the package unique identifier
+            var spineItemIdentifier = spineItem.idref; // use the spine item id as an identifier too
+            if (renditionIdentifier && spineItemIdentifier) {
+                appendMetaTag(contentDocument, 'dc.relation.ispartof', renditionIdentifier);
+                appendMetaTag(contentDocument, 'dc.identifier', spineItemIdentifier);
+            }
+        }
+
+        function injectAppUrlAsCanonicalLink(contentDocument, spineItem) {
+            if (contentDocument.defaultView && contentDocument.defaultView.parent) {
+                var parentWindow = contentDocument.defaultView.parent;
+                var isParentInSameDomain = Object.keys(parentWindow).indexOf('document') !== -1;
+                // Only do this if there's no potential cross-domain violation
+                // and the reader application URL has a CFI value in a 'goto' query param.
+                if (isParentInSameDomain && parentWindow.location.search.match(/goto=.*cfi/i)) {
+                    var link = contentDocument.createElement('link');
+                    link.setAttribute('rel', 'canonical');
+                    link.setAttribute('href', parentWindow.location.href);
+                    contentDocument.head.appendChild(link);
+                    contentDocumentStates[spineItem.idref].canonicalLinkElement = link;
+                }
+            }
+        }
+
+        var bringIntoViewDebounced = _.debounce(function (range) {
+            var target = reader.getRangeCfiFromDomRange(range);
+            var contentDocumentState = contentDocumentStates[target.idref];
+
+            if (contentDocumentState && contentDocumentState.isUpdated) {
+                reader.openSpineItemElementCfi(target.idref, target.contentCFI);
+            } else {
+                contentDocumentState.pendingNavRequest = {
+                    idref: target.idref,
+                    contentCFI: target.contentCFI
+                };
+            }
+        }, 100);
+
+        function bindBringIntoViewEvent(contentDocument) {
+            // 'scrolltorange' is a non-standard event that is emitted on the content frame
+            // by some external tools like Hypothes.is
+            contentDocument.addEventListener('scrolltorange', function (event) {
+                event.preventDefault();
+
+                var range = event.detail;
+                bringIntoViewDebounced(range);
+            });
+        }
+
+        function bindSelectionPopupWorkaround(contentDocument) {
+            // A hack to make the Hypothes.is 'adder' context menu popup work when the content doc body is positioned.
+            // When the content doc has columns and a body with position set to 'relative'
+            // the adder won't be positioned properly.
+            //
+            // The workaround is to clear the position property when a selection is active.
+            // Then restore the position property to 'relative' when the selection clears.
+            contentDocument.addEventListener('selectionchange', function () {
+                var selection = contentDocument.getSelection();
+                if (selection && selection.isCollapsed) {
+                    contentDocument.body.style.position = 'relative';
+                } else {
+                    contentDocument.body.style.position = '';
+                }
+            });
+        }
+
+        /***
+         *
+         * @param {Document} contentDocument    Document instance with DOM tree
+         * @param {Models.SpineItem} spineItem  The associated spine item object
+         */
+        this.bindToContentDocument = function(contentDocument, spineItem) {
+            contentDocuments[spineItem.idref] = contentDocument;
+            contentDocumentStates[spineItem.idref] = {};
+            injectDublinCoreResourceIdentifiers(contentDocument, spineItem);
+            injectAppUrlAsCanonicalLink(contentDocument, spineItem);
+            bindBringIntoViewEvent(contentDocument);
+
+            if (spineItem.isReflowable()) {
+                bindSelectionPopupWorkaround(contentDocument);
+            }
+        };
+
+        /***
+         *
+         * @param {Models.SpineItem} spineItem  The associated spine item object
+         */
+        this.updateContentDocument = function (spineItem) {
+            var contentDocument = contentDocuments[spineItem.idref];
+            var state = contentDocumentStates[spineItem.idref];
+
+            if (contentDocument && state) {
+
+                if (state.canonicalLinkElement &&
+                    contentDocument.defaultView &&
+                    contentDocument.defaultView.parent) {
+                    var parentWindow = contentDocument.defaultView.parent;
+                    var isParentInDifferentDomain = 'document' in Object.keys(parentWindow);
+                    if (!isParentInDifferentDomain) {
+                        state.canonicalLinkElement.setAttribute('href', parentWindow.location.href);
+                    }
+                }
+
+                state.isUpdated = true;
+
+                var pendingNavRequest = state.pendingNavRequest;
+                if (pendingNavRequest) {
+                    reader.openSpineItemElementCfi(pendingNavRequest.idref, pendingNavRequest.contentCFI);
+                    state.pendingNavRequest = null;
+                }
+            }
+        };
+    };
+
+    return ExternalAgentSupport;
+});
+
 //  Created by Boris Schneiderman.
 // Modified by Daniel Weck
 //  Copyright (c) 2014 Readium Foundation and/or its licensees. All rights reserved.
@@ -15383,13 +17848,13 @@ define('readium_shared_js/models/node_range_info',[],function () {
 //  OF THE POSSIBILITY OF SUCH DAMAGE.
 
 define('readium_shared_js/views/reader_view',["../globals", "jquery", "underscore", "eventEmitter", "./fixed_view", "../helpers", "./iframe_loader", "./internal_links_support",
-        "./media_overlay_data_injector", "./media_overlay_player", "../models/package", "../models/page_open_request",
+        "./media_overlay_data_injector", "./media_overlay_player", "../models/package", "../models/metadata", "../models/page_open_request",
         "./reflowable_view", "./scroll_view", "../models/style_collection", "../models/switches", "../models/trigger",
-        "../models/viewer_settings", "../models/bookmark_data", "../models/node_range_info"],
+        "../models/viewer_settings", "../models/bookmark_data", "../models/node_range_info", "./external_agent_support"],
     function (Globals, $, _, EventEmitter, FixedView, Helpers, IFrameLoader, InternalLinksSupport,
-              MediaOverlayDataInjector, MediaOverlayPlayer, Package, PageOpenRequest,
+              MediaOverlayDataInjector, MediaOverlayPlayer, Package, Metadata, PageOpenRequest,
               ReflowableView, ScrollView, StyleCollection, Switches, Trigger,
-              ViewerSettings, BookmarkData, NodeRangeInfo) {
+              ViewerSettings, BookmarkData, NodeRangeInfo, ExternalAgentSupport) {
 /**
  * Options passed on the reader from the readium loader/initializer
  *
@@ -15405,12 +17870,12 @@ define('readium_shared_js/views/reader_view',["../globals", "jquery", "underscor
  * @constructor
  */
 var ReaderView = function (options) {
-
     $.extend(this, new EventEmitter());
 
     var self = this;
     var _currentView = undefined;
     var _package = undefined;
+    var _metadata = undefined;
     var _spine = undefined;
     var _viewerSettings = new ViewerSettings({});
     //styles applied to the container divs
@@ -15418,6 +17883,7 @@ var ReaderView = function (options) {
     //styles applied to the content documents
     var _bookStyles = new StyleCollection();
     var _internalLinksSupport = new InternalLinksSupport(this);
+    var _externalAgentSupport = new ExternalAgentSupport(this);
     var _mediaOverlayPlayer;
     var _mediaOverlayDataInjector;
     var _iframeLoader;
@@ -15430,6 +17896,9 @@ var ReaderView = function (options) {
         handleViewportResizeEnd, 250, 1000, self);
 
     $(window).on("resize.ReadiumSDK.readerView", lazyResize);
+
+    this.fonts = options.fonts;
+
 
     if (options.el instanceof $) {
         _$el = options.el;
@@ -15445,6 +17914,12 @@ var ReaderView = function (options) {
     else {
         _iframeLoader = new IFrameLoader({mathJaxUrl: options.mathJaxUrl});
     }
+    _iframeLoader.on(Globals.Events.SCRIPT_NAVIGATION_DETECTED, function (url) {
+      var rootUrl = self.package().rootUrl;
+      var relativePath = url.slice(url.indexOf(rootUrl) + rootUrl.length + 1);
+      console.warn('SCRIPT_NAVIGATION_DETECTED', relativePath);
+      self.openContentUrl(relativePath);
+    });
 
 
     _needsFixedLayoutScalerWorkAround = options.needsFixedLayoutScalerWorkAround;
@@ -15590,7 +18065,8 @@ var ReaderView = function (options) {
         self.emit(Globals.Events.READER_VIEW_CREATED, desiredViewType);
 
         _currentView.on(Globals.Events.CONTENT_DOCUMENT_LOADED, function ($iframe, spineItem) {
-            
+            var contentDoc = $iframe[0].contentDocument;
+
             Globals.logEvent("CONTENT_DOCUMENT_LOADED", "ON", "reader_view.js (current view) [ " + spineItem.href + " ]");
 
             if (!Helpers.isIframeAlive($iframe[0])) return;
@@ -15600,7 +18076,8 @@ var ReaderView = function (options) {
 
             _internalLinksSupport.processLinkElements($iframe, spineItem);
 
-            var contentDoc = $iframe[0].contentDocument;
+            _externalAgentSupport.bindToContentDocument(contentDoc, spineItem);
+
             Trigger.register(contentDoc);
             Switches.apply(contentDoc);
 
@@ -15609,11 +18086,14 @@ var ReaderView = function (options) {
         });
 
         _currentView.on(Globals.Events.CONTENT_DOCUMENT_LOAD_START, function ($iframe, spineItem) {
+
             Globals.logEvent("CONTENT_DOCUMENT_LOAD_START", "EMIT", "reader_view.js [ " + spineItem.href + " ]");
             self.emit(Globals.Events.CONTENT_DOCUMENT_LOAD_START, $iframe, spineItem);
         });
 
         _currentView.on(Globals.Events.CONTENT_DOCUMENT_UNLOADED, function ($iframe, spineItem) {
+            
+            Globals.logEvent("CONTENT_DOCUMENT_UNLOADED", "EMIT", "reader_view.js [ " + spineItem.href + " ]");
             self.emit(Globals.Events.CONTENT_DOCUMENT_UNLOADED, $iframe, spineItem);
         });
 
@@ -15629,6 +18109,11 @@ var ReaderView = function (options) {
             _.defer(function () {
                 Globals.logEvent("PAGINATION_CHANGED", "EMIT", "reader_view.js");
                 self.emit(Globals.Events.PAGINATION_CHANGED, pageChangeData);
+                
+                if (!pageChangeData.spineItem) return;
+                _.defer(function () {
+                    _externalAgentSupport.updateContentDocument(pageChangeData.spineItem);
+                });
             });
         });
 
@@ -15638,7 +18123,9 @@ var ReaderView = function (options) {
         })
 
         _currentView.render();
-        _currentView.setViewSettings(_viewerSettings);
+
+        var docWillChange = true;
+        _currentView.setViewSettings(_viewerSettings, docWillChange);
 
         // we do this to wait until elements are rendered otherwise book is not able to determine view size.
         setTimeout(function () {
@@ -15699,6 +18186,15 @@ var ReaderView = function (options) {
     };
 
     /**
+     * Returns a data object based on the package document metadata
+     *
+     * @returns {Models.Metadata}
+     */
+    this.metadata = function () {
+        return _metadata;
+    };
+
+    /**
      * Returns a representation of the spine as a data object, also acts as list of spine items
      *
      * @returns {Models.Spine}
@@ -15730,13 +18226,14 @@ var ReaderView = function (options) {
     /**
      * Triggers the process of opening the book and requesting resources specified in the packageData
      *
-     * @param {Views.ReaderView.OpenBookData} openBookData - object with open book data
+     * @param {Views.ReaderView.OpenBookData} openBookData Open book data object
      */
     this.openBook = function (openBookData) {
 
         var packageData = openBookData.package ? openBookData.package : openBookData;
 
         _package = new Package(packageData);
+        _metadata = new Metadata(packageData.metadata);
 
         _spine = _package.spine;
         _spine.handleLinear(true);
@@ -15762,6 +18259,10 @@ var ReaderView = function (options) {
         }
 
         var pageRequestData = undefined;
+
+        if (openBookData.openPageRequest && typeof(openBookData.openPageRequest) === 'function') {
+            openBookData.openPageRequest = openBookData.openPageRequest();
+        }
 
         if (openBookData.openPageRequest) {
 
@@ -15818,8 +18319,8 @@ var ReaderView = function (options) {
     };
 
     function onMediaPlayerStatusChanged(status) {
+
         Globals.logEvent("MEDIA_OVERLAY_STATUS_CHANGED", "EMIT", "reader_view.js (via MediaOverlayPlayer + AudioPlayer)");
-console.trace(JSON.stringify(status));
         self.emit(Globals.Events.MEDIA_OVERLAY_STATUS_CHANGED, status);
     }
 
@@ -15882,6 +18383,17 @@ console.trace(JSON.stringify(status));
     };
 
     /**
+     *
+     * @param deltaX
+     * @param deltaY
+     */
+    this.moveInPage = function (deltaX, deltaY) {
+        if (self.isCurrentViewFixedLayout()) {
+            _currentView.moveInPage(deltaX, deltaY);
+        }
+    };
+
+    /**
      * Returns the current view scale as a percentage
      *
      * @returns {number}
@@ -15900,7 +18412,8 @@ console.trace(JSON.stringify(status));
      *
      * @typedef {object} Globals.Views.ReaderView.SettingsData
      * @property {number} fontSize - Font size as percentage
-     * @property {(string|boolean)} syntheticSpread - "auto"|true|false
+     * @property {number} fontSelection - Font selection as the number in the list of possible fonts, where 0 is special meaning default.
+     * @property {(string|boolean)} syntheticSpread - "auto"|"single"|"double"
      * @property {(string|boolean)} scroll - "auto"|true|false
      * @property {boolean} doNotUpdateView - Indicates whether the view should be updated after the settings are applied
      * @property {boolean} mediaOverlaysEnableClick - Indicates whether media overlays are interactive on mouse clicks
@@ -15941,8 +18454,15 @@ console.trace(JSON.stringify(status));
                 initViewForItem(spineItem, function (isViewChanged) {
 
                     if (!isViewChanged) {
-                        _currentView.setViewSettings(_viewerSettings);
+                        var docWillChange = false;
+                        _currentView.setViewSettings(_viewerSettings, docWillChange);
                     }
+
+                    self.once(ReadiumSDK.Events.PAGINATION_CHANGED, function (pageChangeData)
+                    {
+                        var cfi = new BookmarkData(bookMark.idref, bookMark.contentCFI);
+                        self.debugBookmarkData(cfi);
+                    });
 
                     self.openSpineItemElementCfi(bookMark.idref, bookMark.contentCFI, self);
 
@@ -15962,7 +18482,6 @@ console.trace(JSON.stringify(status));
         }
 
         Globals.logEvent("SETTINGS_APPLIED 2 (no view update)", "EMIT", "reader_view.js");
-console.trace(JSON.stringify(settingsData));
         self.emit(Globals.Events.SETTINGS_APPLIED);
     };
 
@@ -16038,6 +18557,25 @@ console.trace(JSON.stringify(settingsData));
         openPageRequest.setLastPage();
 
         openPage(openPageRequest, 1);
+    };
+
+    /**
+     * Opens the next spine item.
+     */
+    this.openChapterNext = function (paginationInfo) {
+      var lastOpenPage = paginationInfo.openPages[paginationInfo.openPages.length - 1];
+
+      var currentSpineItem = _spine.getItemById(lastOpenPage.idref);
+      var nextSpineItem = _spine.nextItem(currentSpineItem);
+
+      if (!nextSpineItem) {
+        return;
+      }
+
+      var openPageRequest = new PageOpenRequest(nextSpineItem, self);
+      openPageRequest.setFirstPage();
+
+      openPage(openPageRequest, 2);
     };
 
     function getSpineItem(idref) {
@@ -16126,7 +18664,8 @@ console.trace(JSON.stringify(settingsData));
         initViewForItem(pageRequest.spineItem, function (isViewChanged) {
 
             if (!isViewChanged) {
-                _currentView.setViewSettings(_viewerSettings);
+                var docWillChange = true;
+                _currentView.setViewSettings(_viewerSettings, docWillChange);
             }
 
             _currentView.openPage(pageRequest, dir);
@@ -16192,7 +18731,12 @@ console.trace(JSON.stringify(settingsData));
         var count = styles.length;
 
         for (var i = 0; i < count; i++) {
-            _bookStyles.addStyle(styles[i].selector, styles[i].declarations);
+            if (styles[i].declarations) {
+                _bookStyles.addStyle(styles[i].selector, styles[i].declarations);
+            }
+            else {
+                _bookStyles.removeStyle(styles[i].selector);
+            }
         }
 
         if (_currentView) {
@@ -16345,6 +18889,54 @@ console.trace(JSON.stringify(settingsData));
         openPage(pageData, 0);
 
         return true;
+    };
+
+    //var cfi = new BookmarkData(bookmark.idref, bookmark.contentCFI);
+    this.debugBookmarkData = function(cfi) {
+
+        if (!ReadiumSDK) return;
+
+        var DEBUG = true; // change this to visualize the CFI range
+        if (!DEBUG) return;
+            
+        var paginationInfo = this.getPaginationInfo();
+        console.log(JSON.stringify(paginationInfo));
+        
+        if (paginationInfo.isFixedLayout) return;
+    
+        try {
+            ReadiumSDK._DEBUG_CfiNavigationLogic.clearDebugOverlays();
+            
+        } catch (error) {
+            //ignore
+        }
+        
+        try {
+            console.log(cfi);
+            
+            var range = this.getDomRangeFromRangeCfi(cfi);
+            console.log(range);
+            
+            var res = ReadiumSDK._DEBUG_CfiNavigationLogic.drawDebugOverlayFromDomRange(range);
+            console.log(res);
+        
+            var cfiFirst = ReadiumSDK.reader.getFirstVisibleCfi();
+            console.log(cfiFirst);
+            
+            var cfiLast  = ReadiumSDK.reader.getLastVisibleCfi();
+            console.log(cfiLast);
+            
+        } catch (error) {
+            //ignore
+        }
+        
+        setTimeout(function() {
+            try {
+                ReadiumSDK._DEBUG_CfiNavigationLogic.clearDebugOverlays();
+            } catch (error) {
+                //ignore
+            }
+        }, 2000);
     };
 
     /**
@@ -16549,19 +19141,7 @@ console.trace(JSON.stringify(settingsData));
     this.handleViewportResize = function (bookmarkToRestore) {
         if (!_currentView) return;
 
-        var bookMark = bookmarkToRestore || _currentView.bookmarkCurrentPage(); // not self! (JSON string)
-
-        if (_currentView.isReflowable && _currentView.isReflowable() && bookMark && bookMark.idref) {
-            var spineItem = _spine.getItemById(bookMark.idref);
-
-            initViewForItem(spineItem, function (isViewChanged) {
-                self.openSpineItemElementCfi(bookMark.idref, bookMark.contentCFI, self);
-                return;
-            });
-        }
-        else {
-            _currentView.onViewportResize();
-        }
+        _currentView.onViewportResize();
     };
 
     /**
@@ -16574,13 +19154,6 @@ console.trace(JSON.stringify(settingsData));
      */
     this.addIFrameEventListener = function (eventName, callback, context) {
         _iframeLoader.addIFrameEventListener(eventName, callback, context);
-    };
-
-    this.isElementCfiVisible = function (spineIdRef, contentCfi) {
-        if (!_currentView) {
-            return false;
-        }
-        return _currentView.isElementCfiVisible(spineIdRef, contentCfi);
     };
 
     var BackgroundAudioTrackManager = function (readerView) {
@@ -16890,7 +19463,7 @@ console.trace(JSON.stringify(settingsData));
      * Resolve a range CFI into an object containing info about it.
      * @param {string} spineIdRef    The spine item idref associated with the content document
      * @param {string} partialCfi    The partial CFI that is the range CFI to resolve
-     * @returns {ReadiumSDK.Models.NodeRangeInfo}
+     * @returns {Models.NodeRangeInfo}
      */
     this.getNodeRangeInfoFromCfi = function (spineIdRef, partialCfi) {
         if (_currentView && spineIdRef && partialCfi) {
@@ -16933,6 +19506,29 @@ console.trace(JSON.stringify(settingsData));
         }
         return undefined;
     };
+
+    /**
+     * Get CFI of the first element from the base of the document
+     * @returns {ReadiumSDK.Models.BookmarkData}
+     */
+    this.getStartCfi = function() {
+        if (_currentView) {
+            return _currentView.getStartCfi();
+        }
+        return undefined;
+    };
+
+    /**
+     * Get CFI of the last element from the base of the document
+     * @returns {ReadiumSDK.Models.BookmarkData}
+     */
+    this.getEndCfi = function() {
+        if (_currentView) {
+            return _currentView.getEndCfi();
+        }
+        return undefined;
+    };
+
     /**
      *
      * @param {string} rangeCfi
@@ -17038,6 +19634,19 @@ console.trace(JSON.stringify(settingsData));
         }
         return undefined;
     };
+       
+    /**
+     * Useful for getting a CFI that's as close as possible to an invisible (not rendered, zero client rects) element
+     * @param {HTMLElement} element
+     * @returns {*}
+     */
+    this.getNearestCfiFromElement = function(element) {
+        if (_currentView) {
+            return _currentView.getNearestCfiFromElement(element);
+        }
+        return undefined;
+    };
+    
 };
 
 /**

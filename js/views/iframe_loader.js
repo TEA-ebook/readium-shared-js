@@ -92,7 +92,7 @@ var IFrameLoader = function() {
             }
 
             var doc = iframe.contentDocument || iframe.contentWindow.document;
-            $('svg', doc).load(function(){
+            $('svg', doc).on("load", function(){
                 console.log('SVG loaded');
             });
             

@@ -513,8 +513,6 @@ var OnePageView = function (options, classes, enableBookStyleOverrides, reader) 
         _$iframe.css("visibility", "visible");
 
         if (_useCSSTransformToHideIframe) {
-            _$iframe.css("transform", "none");
-
             var enable3D = false;
             var settings = _viewSettings;
             if (!settings || typeof settings.enableGPUHardwareAccelerationCSS3D === "undefined") {
@@ -624,8 +622,8 @@ var OnePageView = function (options, classes, enableBookStyleOverrides, reader) 
             // See https://github.com/readium/readium-shared-js/issues/285 
             css1["min-width"] = _meta_size.width;
             css1["min-height"] = _meta_size.height;
-            
-            _$epubHtml.css(css1);
+
+            _$iframe.css(css1);
 
             // Ensures content dimensions matches viewport meta (authors / production tools should do this in their CSS...but unfortunately some don't).
             if (_$epubBody && _$epubBody.length) {

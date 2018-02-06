@@ -516,6 +516,9 @@ var ReflowableView = function(options, reader){
         else if(pageRequest.lastPage) {
             pageIndex = _paginationInfo.columnCount - 1;
         }
+        else if(pageRequest.progression) {
+          pageIndex = Math.ceil(pageRequest.progression * _paginationInfo.columnCount) - 1;
+        }
         else {
             console.debug("No criteria in pageRequest");
             pageIndex = 0;

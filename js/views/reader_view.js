@@ -875,6 +875,28 @@ var ReaderView = function (options) {
         return true;
     };
 
+  /**
+   * Opens progression of the spine item with idref provided
+   *
+   * @param {string} idref Id of the spine item
+   * @param {number} progression Percentage of the spine item content
+   */
+  this.openSpineItemProgression = function (idref, progression) {
+    var spineItem = getSpineItem(idref);
+    if (!spineItem) {
+      return false;
+    }
+
+    var pageData = new PageOpenRequest(spineItem, initiator);
+    if (progression) {
+      pageData.setProgression(progression);
+    }
+
+    openPage(pageData, 0);
+
+    return true;
+  };
+
     /**
      * Set CSS Styles to the reader container
      *

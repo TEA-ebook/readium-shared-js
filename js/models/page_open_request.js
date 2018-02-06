@@ -46,6 +46,7 @@ var PageOpenRequest = function(spineItem, initiator) {
     this.spineItemPageIndex = undefined;
     this.elementId = undefined;
     this.elementCfi = undefined;
+    this.progression = undefined;
     this.firstVisibleCfi = undefined;
     this.lastVisibleCfi = undefined;
     this.firstPage = false;
@@ -62,6 +63,7 @@ var PageOpenRequest = function(spineItem, initiator) {
         this.spineItemPageIndex = undefined;
         this.elementId = undefined;
         this.elementCfi = undefined;
+        this.progression = undefined;
         this.firstPage = false;
         this.lastPage = false;
     };
@@ -133,8 +135,19 @@ var PageOpenRequest = function(spineItem, initiator) {
         this.reset();
         this.firstVisibleCfi = firstVisibleCfi;
         this.lastVisibleCfi = lastVisibleCfi;
-    }
+    };
 
+    /**
+     * Sets the progression of the spine
+     *
+     * @method     setProgression
+     * @param      progression
+     */
+
+    this.setProgression = function(progression) {
+      this.reset();
+      this.progression = progression;
+    };
 };
 
 return PageOpenRequest;

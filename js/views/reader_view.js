@@ -887,7 +887,7 @@ var ReaderView = function (options) {
       return false;
     }
 
-    var pageData = new PageOpenRequest(spineItem, initiator);
+    var pageData = new PageOpenRequest(spineItem);
     if (progression) {
       pageData.setProgression(progression);
     }

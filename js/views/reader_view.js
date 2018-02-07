@@ -1150,6 +1150,18 @@ var ReaderView = function (options) {
     };
 
     /**
+     * Returns the bookmark associated with currently opened page.
+     *
+     * @returns {string} Serialized ReadiumSDK.Models.BookmarkData object as JSON string.
+     *          {null} If a bookmark could not be created successfully.
+     */
+    this.bookmarkCurrentPages = function() {
+      var fromCfi = _currentView.getFirstVisibleCfi();
+      var toCfi = _currentView.getLastVisibleCfi();
+      return fromCfi && toCfi ? [fromCfi.toString(),toCfi.toString()] : [];
+    };
+
+    /**
      * Resets all the custom styles set by setStyle callers at runtime
      */
     this.clearStyles = function () {

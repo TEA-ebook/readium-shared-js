@@ -60,30 +60,6 @@ var Globals = {
      * @namespace
      */
     Events: {
-        READER_INITIALIZED: "ReaderInitialized",
-        // PAGINATION_CHANGED gets triggered on every page turnover. it includes spine information and such.
-        PAGINATION_CHANGED: "PaginationChanged",
-        SETTINGS_APPLIED: "SettingsApplied",
-        FXL_VIEW_RESIZED: "FXLViewResized",
-        READER_VIEW_CREATED: "ReaderViewCreated",
-        READER_VIEW_DESTROYED: "ReaderViewDestroyed",
-        CONTENT_DOCUMENT_LOAD_START: "ContentDocumentLoadStart",
-        CONTENT_DOCUMENT_LOADED: "ContentDocumentLoaded",
-        MEDIA_OVERLAY_STATUS_CHANGED: "MediaOverlayStatusChanged",
-        MEDIA_OVERLAY_TTS_SPEAK: "MediaOverlayTTSSpeak",
-        MEDIA_OVERLAY_TTS_STOP: "MediaOverlayTTSStop",
-        GESTURE_PINCH: "GesturePinch",
-        GESTURE_PINCH_MOVE: "GesturePinchMove",
-        GESTURE_TAP: "GestureTap",
-        GESTURE_SWIPE_LEFT: "GestureSwipeLeft",
-        GESTURE_SWIPE_RIGHT: "GestureSwipeRight",
-        GESTURE_PRESS: "GesturePress",
-        SCRIPT_NAVIGATION_DETECTED: "ScriptNavigationDetected",
-        MOUSE_MOVE: "MouseMove",
-        TEXT_SELECTED: "TextSelected"
-    },
-
-    InternalEvents: {
         /**
          * @event
          */
@@ -148,7 +124,7 @@ var Globals = {
         /**
          * @event
          */
-        CURRENT_VIEW_PAGINATION_CHANGED: "CurrentViewPaginationChanged"
+        CURRENT_VIEW_PAGINATION_CHANGED: "CurrentViewPaginationChanged",
     },
     
     logEvent: function(eventName, eventType, eventSource) {
@@ -668,10 +644,6 @@ define('readium_shared_js/globalsSetup',['./globals', 'jquery', 'console_shim', 
 
         window.URL = window.webkitURL;
     }
-
-    // polyfill to support old versions of some browsers
-    window.BlobBuilder = window.BlobBuilder || window.WebKitBlobBuilder || window.MozBlobBuilder || window.MSBlobBuilder;
-
     // Plugins bootstrapping begins
     Globals.Plugins = PluginsController;
     Globals.on(Globals.Events.READER_INITIALIZED, function(reader) {
@@ -1328,6 +1300,16 @@ var SpineItem = function(itemData, index, spine){
     this.href = itemData.href;
 
     /**
+     * The package level CFI of the spine item, i.e. the CFI path to the spine item
+     * element in the package document.
+     *
+     * @property cfi
+     * @type String
+     * @default  None
+     */
+    this.cfi = itemData.cfi;
+
+    /**
      * A flag indicating whether the spineItem has the attribute linear, which 
      * is either yes or no.  Default is yes.
      *
@@ -1850,7 +1832,7 @@ SpineItem.alternateSpread = function(spread) {
 //  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
 //  OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 //  OF THE POSSIBILITY OF SUCH DAMAGE.
-define('readium_shared_js/helpers',["./globals", 'underscore', "jquery", "jquerySizes", "./models/spine_item"], function(Globals, _, $, JQuerySizes, SpineItem) {
+define('readium_shared_js/helpers',["./globals", 'underscore', "jquery", "jquerySizes", "./models/spine_item", 'URIjs'], function(Globals, _, $, JQuerySizes, SpineItem, URI) {
     
 (function()
 {
@@ -1917,13 +1899,13 @@ Helpers.getEbookUrlFilePath = function(ebookURL) {
 };
 
 /**
- *
+ * @param initialQuery: (optional) initial query string
  * @returns object (map between URL query parameter names and corresponding decoded / unescaped values)
  */
-Helpers.getURLQueryParams = function() {
+Helpers.getURLQueryParams = function(initialQuery) {
     var params = {};
 
-    var query = window.location.search;
+    var query = initialQuery || window.location.search;
     if (query && query.length) {
         query = query.substring(1);
         var keyParams = query.split('&');
@@ -1941,57 +1923,64 @@ Helpers.getURLQueryParams = function() {
 
 
 /**
- * @param urlpath: string corresponding a URL without query parameters (i.e. the part before the '?' question mark in index.html?param=value). If undefined/null, the default window.location is used.
- * @param overrides: object that maps query parameter names with values (to be included in the resulting URL, while any other query params in the current window.location are preserved as-is) 
- * @returns a string corresponding to a URL obtained by concatenating the given URL with the given query parameters (and those already in window.location)
+ * @param initialUrl: string corresponding a URL. If undefined/null, the default window.location is used.
+ * @param queryStringOverrides: object that maps query parameter names with values (to be included in the resulting URL, while any other query params in the current window.location are preserved as-is)
+ * @returns string corresponding to a URL obtained by concatenating the given URL with the given query parameters
  */
-Helpers.buildUrlQueryParameters = function(urlpath, overrides) {
-    
-    if (!urlpath) {
-        urlpath =
-        window.location ? (
-            window.location.protocol
-            + "//"
-            + window.location.hostname
-            + (window.location.port ? (':' + window.location.port) : '')
-            + window.location.pathname
-        ) : 'index.html';
+Helpers.buildUrlQueryParameters = function(initialUrl, queryStringOverrides) {
+    var uriInstance = new URI(initialUrl || window.location);
+    var startingQueryString = uriInstance.search();
+    var urlFragment = uriInstance.hash();
+    var urlPath = uriInstance.search('').hash('').toString();
+
+    var newQueryString = "";
+
+    for (var overrideKey in queryStringOverrides) {
+        if (!queryStringOverrides.hasOwnProperty(overrideKey)) continue;
+
+        if (!queryStringOverrides[overrideKey]) continue;
+
+        var overrideEntry = queryStringOverrides[overrideKey];
+        if (_.isString(overrideEntry)) {
+            overrideEntry = overrideEntry.trim();
+        }
+
+        if (!overrideEntry) continue;
+
+        if (overrideEntry.verbatim) {
+            overrideEntry = overrideEntry.value; // grab value from entry as object
+        } else {
+            overrideEntry = encodeURIComponent(overrideEntry);
+        }
+
+        console.debug("URL QUERY PARAM OVERRIDE: " + overrideKey + " = " + overrideEntry);
+
+        newQueryString += (overrideKey + "=" + overrideEntry);
+        newQueryString += "&";
     }
 
-    var paramsString = "";
-    
-    for (var key in overrides) {
-        if (!overrides.hasOwnProperty(key)) continue;
-        
-        if (!overrides[key]) continue;
-        
-        var val = overrides[key].trim();
-        if (!val) continue;
-        
-        console.debug("URL QUERY PARAM OVERRIDE: " + key + " = " + val);
 
-        paramsString += (key + "=" + encodeURIComponent(val));
-        paramsString += "&";
+    var parsedQueryString = Helpers.getURLQueryParams(startingQueryString);
+    for (var parsedKey in parsedQueryString) {
+        if (!parsedQueryString.hasOwnProperty(parsedKey)) continue;
+
+        if (!parsedQueryString[parsedKey]) continue;
+
+        if (queryStringOverrides[parsedKey]) continue;
+
+        var parsedValue = parsedQueryString[parsedKey].trim();
+        if (!parsedValue) continue;
+
+        console.debug("URL QUERY PARAM PRESERVED: " + parsedKey + " = " + parsedValue);
+
+        newQueryString += (parsedKey + "=" + encodeURIComponent(parsedValue));
+        newQueryString += "&";
     }
-    
-    var urlParams = Helpers.getURLQueryParams();
-    for (var key in urlParams) {
-        if (!urlParams.hasOwnProperty(key)) continue;
-        
-        if (!urlParams[key]) continue;
-        
-        if (overrides[key]) continue;
 
-        var val = urlParams[key].trim();
-        if (!val) continue;
-        
-        console.debug("URL QUERY PARAM PRESERVED: " + key + " = " + val);
+    // remove trailing "&"
+    newQueryString = newQueryString.slice(0, -1);
 
-        paramsString += (key + "=" + encodeURIComponent(val));
-        paramsString += "&";
-    }
-    
-    return urlpath + "?" + paramsString;
+    return urlPath + "?" + newQueryString + urlFragment;
 };
 
 
@@ -2541,19 +2530,19 @@ Helpers.loadTemplate = function (name, params) {
  * @type {{fixed_book_frame: string, single_page_frame: string, scrolled_book_frame: string, reflowable_book_frame: string, reflowable_book_page_frame: string}}
  */
 Helpers.loadTemplate.cache = {
-  "fixed_book_frame": '<div id="fixed-book-frame" class="clearfix book-frame fixed-book-frame"></div>',
-  "single_page_frame": '<div><div id="scaler"><iframe enable-annotation="enable-annotation" allowfullscreen="allowfullscreen" scrolling="no" class="iframe-fixed"></iframe></div></div>',
-  //"single_page_frame" : '<div><iframe scrolling="no" class="iframe-fixed" id="scaler"></iframe></div>',
+    "fixed_book_frame": '<div id="fixed-book-frame" class="clearfix book-frame fixed-book-frame"></div>',
+    "single_page_frame": '<div><div id="scaler"><iframe enable-annotation="enable-annotation" allowfullscreen="allowfullscreen" scrolling="no" class="iframe-fixed"></iframe></div></div>',
+    //"single_page_frame" : '<div><iframe scrolling="no" class="iframe-fixed" id="scaler"></iframe></div>',
 
-  "scrolled_book_frame": '<div id="reflowable-book-frame" class="clearfix book-frame reflowable-book-frame"><div id="scrolled-content-frame"></div></div>',
-  "reflowable_book_frame": '<div id="reflowable-book-frame" class="clearfix book-frame reflowable-book-frame"></div>',
-  "reflowable_book_page_frame": '<div id="reflowable-content-frame" class="reflowable-content-frame"><iframe enable-annotation="enable-annotation" allowfullscreen="allowfullscreen" scrolling="no" id="epubContentIframe"></iframe></div>'
-  /***
-   * The `enable-annotation` attribute on an iframe helps detect the content frames for annotating tools such as Hypothesis
-   * See here for more details:
-   * https://h.readthedocs.io/projects/client/en/latest/publishers/embedding/
-   * https://github.com/hypothesis/client/pull/533
-   ***/
+    "scrolled_book_frame": '<div id="reflowable-book-frame" class="clearfix book-frame reflowable-book-frame"><div id="scrolled-content-frame"></div></div>',
+    "reflowable_book_frame": '<div id="reflowable-book-frame" class="clearfix book-frame reflowable-book-frame"></div>',
+    "reflowable_book_page_frame": '<div id="reflowable-content-frame" class="reflowable-content-frame"><iframe enable-annotation="enable-annotation" allowfullscreen="allowfullscreen" scrolling="no" id="epubContentIframe"></iframe></div>'
+    /***
+     * The `enable-annotation` attribute on an iframe helps detect the content frames for annotating tools such as Hypothesis
+     * See here for more details:
+     * https://h.readthedocs.io/projects/client/en/latest/publishers/embedding/
+     * https://github.com/hypothesis/client/pull/533
+     ***/
 };
 
 /**
@@ -5544,6 +5533,10 @@ var OnePageView = function (options, classes, enableBookStyleOverrides, reader) 
                 _$epubBody = undefined;
             } else {
                 _$epubBody = $("body", _$epubHtml);
+
+                if (!_enableBookStyleOverrides) { // fixed layout
+                    _$epubBody.css("margin", "0"); // ensures 8px margin default user agent stylesheet is reset to zero
+                }
             }
 
             //_$epubHtml.css("overflow", "hidden");
@@ -6775,11 +6768,6 @@ var FixedView = function(options, reader){
         return viewportWidth && viewportHeight;
     }
 
-    this.moveInPage = function(deltaX, deltaY) {
-        _$viewport.scrollTop(_$viewport.scrollTop() + deltaY);
-        _$viewport.scrollLeft(_$viewport.scrollLeft() + deltaX);
-    };
-
     function resizeBook(viewportIsResizing) {
 
         updatePageSwitchDir(0, false);
@@ -6809,11 +6797,10 @@ var FixedView = function(options, reader){
 
         var horScale = potentialContentSize.width / _contentMetaSize.width;
         var verScale = potentialContentSize.height / _contentMetaSize.height;
-        var minScale = Math.min(horScale, verScale);
-
+        
         _$viewport.css("overflow", "auto");
             
-        var scale, scaleRatio;
+        var scale;
         if (_zoom.style == 'fit-width'){
             scale = horScale;
         }
@@ -6823,15 +6810,13 @@ var FixedView = function(options, reader){
         else if (_zoom.style == 'user'){
             scale = _zoom.scale;
         }
-        else {
-            scale = minScale;
+        else{
+            scale = Math.min(horScale, verScale);
+
+            // no need for pan during "viewport fit" zoom
+            _$viewport.css("overflow", "hidden");
         }
 
-        _$viewport.find('iframe').each(function () {
-          this.contentDocument.body.style.cursor = scale > minScale ? 'move' : 'auto';
-        });
-
-        scaleRatio = scale / _currentScale;
         _currentScale = scale;
 
         var contentSize = { width: _contentMetaSize.width * scale,
@@ -6880,13 +6865,8 @@ var FixedView = function(options, reader){
 
             _centerPageView[transFunc](scale, left, top);
         }
-
-        if (_zoom.center) {
-            self.moveInPage(Math.round(_zoom.center.x * (scaleRatio - 1)) - _$viewport.offset().left, Math.round(_zoom.center.y * (scaleRatio - 1)) - _$viewport.offset().top);
-        }
-
+        
         Globals.logEvent("FXL_VIEW_RESIZED", "EMIT", "fixed_view.js");
-
         self.emit(Globals.Events.FXL_VIEW_RESIZED);
     }
 
@@ -7388,7 +7368,7 @@ var FixedView = function(options, reader){
 //  OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED 
 //  OF THE POSSIBILITY OF SUCH DAMAGE.
 
-define('readium_shared_js/views/iframe_loader',["../globals", "jquery", "underscore", "eventEmitter"], function(Globals, $, _, EventEmitter) {
+define('readium_shared_js/views/iframe_loader',["jquery", "underscore", 'URIjs'], function($, _, URI) {
 /**
  *
  * @constructor
@@ -7398,7 +7378,6 @@ var IFrameLoader = function() {
     var self = this;
     var eventListeners = {};
 
-    $.extend(this, new EventEmitter());
 
     this.addIFrameEventListener = function (eventName, callback, context) {
 
@@ -7445,13 +7424,8 @@ var IFrameLoader = function() {
     };
 
     this._loadIframeWithUri = function (iframe, attachedData, contentUri, callback) {
-          iframe.onload = function () {
-            // prevent epub own programmatic navigation
-            if (iframe.src !== "" && iframe.contentWindow !== null && iframe.src !== iframe.contentWindow.location.href) {
-              $(iframe).contents().empty();
-              self.emit(Globals.Events.SCRIPT_NAVIGATION_DETECTED, iframe.contentWindow.location.href);
-              return;
-            }
+
+        iframe.onload = function () {
 
             var doc = iframe.contentDocument || iframe.contentWindow.document;
             $('svg', doc).on("load", function(){
@@ -7533,7 +7507,7 @@ return IFrameLoader;
 //  OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED 
 //  OF THE POSSIBILITY OF SUCH DAMAGE.
 
-define('readium_shared_js/views/internal_links_support',['jquery', '../helpers', 'readium_cfi_js'], function($, Helpers, epubCfi) {
+define('readium_shared_js/views/internal_links_support',['jquery', '../helpers', 'readium_cfi_js', 'URIjs'], function($, Helpers, epubCfi, URI) {
 /**
  *
  * @param reader
@@ -13764,13 +13738,17 @@ var Spine = function(epubPackage, spineDTO) {
      */
     this.getItemByHref = function(href) {
         
-        var href1 = new URI(self.package.resolveRelativeUrl(href)).normalizePathname().pathname();
+        var href1_ = self.package.resolveRelativeUrl(href);
+        href1_ = href1_.replace("filesystem:chrome-extension://", "filesystem-chrome-extension://");
+        var href1 = new URI(href1_).normalizePathname().pathname();
         
         var length = self.items.length;
 
         for(var i = 0; i < length; i++) {
             
-            var href2 = new URI(self.package.resolveRelativeUrl(self.items[i].href)).normalizePathname().pathname();
+            var href2_ = self.package.resolveRelativeUrl(self.items[i].href);
+            href2_ = href2_.replace("filesystem:chrome-extension://", "filesystem-chrome-extension://");
+            var href2 = new URI(href2_).normalizePathname().pathname();
             
             if(href1 == href2) {
                 return self.items[i];
@@ -15053,21 +15031,26 @@ define('readium_shared_js/models/media_overlay',["./smil_model"], function(SmilM
  *
  * @class Models.MediaOverlay
  * @constructor
- * @param {Models.Package} _package EPUB package
- */
-var MediaOverlay = function(_package) {
+ * @param {Models.Package} packageModel  EPUB package
+*/
+
+var MediaOverlay = function(packageModel) {
 
     /**
      * The parent package object
      *
      * @property package
      * @type Models.Package
-     */
-    this.package = _package;
+     */    
+    this.package = packageModel;
 
     /**
      * Checks if a parallel smil node exists at a given timecode. 
      * Returns the first corresponding node found in a smil model found, or undefined.
+     *
+     * @method     parallelAt
+     * @param      {number} timeMilliseconds
+     * @return     {Smil.ParNode}  
      */
 
     this.parallelAt = function(timeMilliseconds)
@@ -15370,13 +15353,13 @@ var MediaOverlay = function(_package) {
  *
  * @method MediaOverlay.fromDTO
  * @param {Object} moDTO Media overlay data object (raw JSON, as returned by a parser)
- * @param {Models.Package} package EPUB package object
+ * @param {Models.Package} packageModel EPUB package object
  * @return {Models.MediaOverlay}
 */
 
-MediaOverlay.fromDTO = function(moDTO, pack) {
+MediaOverlay.fromDTO = function(moDTO, packageModel) {
 
-    var mo = new MediaOverlay(pack);
+    var mo = new MediaOverlay(packageModel);
 
     if(!moDTO) {
         return mo;
@@ -16213,13 +16196,6 @@ var ReflowableView = function(options, reader){
 
         _$epubHtml.css("column-axis", (_htmlBodyIsVerticalWritingMode ? "vertical" : "horizontal"));
 
-        //apply hyphens auto
-        _$htmlBody.css('hyphens', 'auto');
-        _$htmlBody.css('-o-hyphens', 'auto');
-        _$htmlBody.css('-ms-hyphens', 'auto');
-        _$htmlBody.css('-moz-hyphens', 'auto');
-        _$htmlBody.css('-webkit-hyphens', 'auto');
-
         //
         // /////////
         // //Columns Debugging
@@ -16232,7 +16208,7 @@ var ReflowableView = function(options, reader){
         // ////
 
         self.applyBookStyles();
-        resizeImages(_currentSpineItem);
+        resizeImages();
 
         updateColumnGap();
 
@@ -16433,19 +16409,9 @@ var ReflowableView = function(options, reader){
 
     function onPaginationChanged_(initiator, paginationRequest_spineItem, paginationRequest_elementId) {
         _paginationInfo.currentPageIndex = _paginationInfo.currentSpreadIndex * _paginationInfo.visibleColumnCount;
-        _paginationInfo.pageOffset = Math.round((_paginationInfo.columnWidth + _paginationInfo.columnGap) * _paginationInfo.visibleColumnCount * _paginationInfo.currentSpreadIndex);
-
+        _paginationInfo.pageOffset = (_paginationInfo.columnWidth + _paginationInfo.columnGap) * _paginationInfo.visibleColumnCount * _paginationInfo.currentSpreadIndex;
+        
         redraw();
-
-        if (!paginationRequest_elementId) {
-            var elementInPage = Array.prototype.filter.call(_$htmlBody[0].querySelectorAll("div[id], p[id], span[id]"), function (element) {
-                return !/^no/.test(element.id) && element.getBoundingClientRect().right <= window.screen.availWidth;
-            });
-
-            if (elementInPage && elementInPage.length > 0) {
-                paginationRequest_elementId = elementInPage.pop().id;
-            }
-        }
 
         _.defer(function () {
 
@@ -16461,8 +16427,6 @@ var ReflowableView = function(options, reader){
                 elementId: paginationRequest_elementId
             });
         });
-
-        self.emit(Globals.InternalEvents.CURRENT_VIEW_PAGINATION_CHANGED, { paginationInfo: self.getPaginationInfo(), initiator: initiator, spineItem: paginationRequest_spineItem, elementId: paginationRequest_elementId } );
     }
     var onPaginationChanged = _.debounce(onPaginationChanged_, 100);
 
@@ -16636,7 +16600,7 @@ var ReflowableView = function(options, reader){
         _$epubHtml.css("min-height", _lastViewPortSize.height + "px");
         _$epubHtml.css("max-height", _lastViewPortSize.height + "px");
 
-        // normalise spacing to avoid interference with column-isation
+        //normalise spacing to avoid interference with column-isation
         _$epubHtml.css('margin', 0);
         _$epubHtml.css('padding', 0);
         _$epubHtml.css('border', 0);
@@ -16648,12 +16612,9 @@ var ReflowableView = function(options, reader){
         _$htmlBody.css('margin', 0);
         _$htmlBody.css('padding', 0);
 
-        // body must be 100% height so children can use % heights
-        _$htmlBody.css("height", "100%");
-
         _paginationInfo.rightToLeft = _spine.isRightToLeft();
 
-        _paginationInfo.columnWidth = ((_htmlBodyIsVerticalWritingMode ? _lastViewPortSize.height : _lastViewPortSize.width) - _paginationInfo.columnGap * (_paginationInfo.visibleColumnCount - 1)) / _paginationInfo.visibleColumnCount;
+        _paginationInfo.columnWidth = Math.round(((_htmlBodyIsVerticalWritingMode ? _lastViewPortSize.height : _lastViewPortSize.width) - _paginationInfo.columnGap * (_paginationInfo.visibleColumnCount - 1)) / _paginationInfo.visibleColumnCount);
 
         var useColumnCountNotWidth = _paginationInfo.visibleColumnCount > 1; // column-count == 1 does not work in Chrome, and is not needed anyway (HTML width is full viewport width, no Firefox video flickering)
         if (useColumnCountNotWidth) {
@@ -16661,9 +16622,9 @@ var ReflowableView = function(options, reader){
             _$epubHtml.css("column-width", "auto");
             _$epubHtml.css("column-count", _paginationInfo.visibleColumnCount);
         } else {
-            _$epubHtml.css("width", (_htmlBodyIsVerticalWritingMode ? _lastViewPortSize.width : Math.round(_paginationInfo.columnWidth)) + "px");
+            _$epubHtml.css("width", (_htmlBodyIsVerticalWritingMode ? _lastViewPortSize.width : _paginationInfo.columnWidth) + "px");
             _$epubHtml.css("column-count", "auto");
-            _$epubHtml.css("column-width", Math.round(_paginationInfo.columnWidth) + "px");
+            _$epubHtml.css("column-width", _paginationInfo.columnWidth + "px");
         }
 
         _$epubHtml.css("column-fill", "auto");
@@ -16797,7 +16758,7 @@ var ReflowableView = function(options, reader){
     {
         if (_currentOpacity != -1)
         {
-            _$epubHtml[0].style.opacity = _currentOpacity;
+            _$epubHtml.css('opacity', _currentOpacity);
         }
         _currentOpacity = -1;
     }
@@ -16837,34 +16798,34 @@ var ReflowableView = function(options, reader){
     }
 
     //we need this styles for css columnizer not to chop big images
-    function resizeImages(currentSpineItem) {
+    function resizeImages() {
+
         if(!_$epubHtml) {
             return;
         }
 
-        $('img, svg', _$epubHtml).each(function() {
-            var element = this;
+        var $elem;
+        var height;
+        var width;
 
-            if (currentSpineItem.index === 0) {
-                element.style['width'] = 'auto';
-                element.style['height'] = 'auto';
-                element.style['max-width'] = '100%';
-                element.style['max-height'] = '99vh';
-            } else {
-                // if we set max-width/max-height to 100% columnizing engine chops images embedded in the text
-                // (but not if we set it to 99-98%) go figure.
-                // TODO: CSS min-w/h is content-box, not border-box (does not take into account padding + border)? => images may still overrun?
-                element.style['max-width'] = '99%';
-                element.style['max-height'] = '99%';
+        $('img, svg', _$epubHtml).each(function(){
 
-                if(!element.style['height']) {
-                    element.style['height'] = 'auto';
-                }
+            $elem = $(this);
 
-                if(!element.style['width']) {
-                    element.style['width'] = 'auto';
-                }
+            // if we set max-width/max-height to 100% columnizing engine chops images embedded in the text
+            // (but not if we set it to 99-98%) go figure.
+            // TODO: CSS min-w/h is content-box, not border-box (does not take into account padding + border)? => images may still overrun?
+            $elem.css('max-width', '98%');
+            $elem.css('max-height', '98%');
+
+            if(!$elem.css('height')) {
+                $elem.css('height', 'auto');
             }
+
+            if(!$elem.css('width')) {
+                $elem.css('width', 'auto');
+            }
+
         });
     }
 
@@ -17712,16 +17673,31 @@ define('readium_shared_js/views/external_agent_support',["../globals", "undersco
             }
         }
 
+        function determineCanonicalLinkHref(contentWindow) {
+            // Only grab the href if there's no potential cross-domain violation
+            // and the reader application URL has a CFI value in a 'goto' query param.
+            var isSameDomain = Object.keys(contentWindow).indexOf('document') !== -1;
+            if (isSameDomain && contentWindow.location.search.match(/goto=.*cfi/i)) {
+                return contentWindow.location.href.split("#")[0];
+            }
+        }
+
+        function getContentDocumentCanonicalLink(contentDocument) {
+            var contentDocWindow = contentDocument.defaultView;
+            if (contentDocWindow && (contentDocWindow.parent|| contentDocWindow.top)) {
+                var parentWindowCanonicalHref = determineCanonicalLinkHref(contentDocWindow.parent);
+                var topWindowCanonicalHref = determineCanonicalLinkHref(contentDocWindow.top);
+                return topWindowCanonicalHref || parentWindowCanonicalHref;
+            }
+        }
+
         function injectAppUrlAsCanonicalLink(contentDocument, spineItem) {
             if (contentDocument.defaultView && contentDocument.defaultView.parent) {
-                var parentWindow = contentDocument.defaultView.parent;
-                var isParentInSameDomain = Object.keys(parentWindow).indexOf('document') !== -1;
-                // Only do this if there's no potential cross-domain violation
-                // and the reader application URL has a CFI value in a 'goto' query param.
-                if (isParentInSameDomain && parentWindow.location.search.match(/goto=.*cfi/i)) {
+                var canonicalLinkHref = getContentDocumentCanonicalLink(contentDocument);
+                if (canonicalLinkHref) {
                     var link = contentDocument.createElement('link');
                     link.setAttribute('rel', 'canonical');
-                    link.setAttribute('href', parentWindow.location.href);
+                    link.setAttribute('href', canonicalLinkHref);
                     contentDocument.head.appendChild(link);
                     contentDocumentStates[spineItem.idref].canonicalLinkElement = link;
                 }
@@ -17797,13 +17773,10 @@ define('readium_shared_js/views/external_agent_support',["../globals", "undersco
 
             if (contentDocument && state) {
 
-                if (state.canonicalLinkElement &&
-                    contentDocument.defaultView &&
-                    contentDocument.defaultView.parent) {
-                    var parentWindow = contentDocument.defaultView.parent;
-                    var isParentInDifferentDomain = 'document' in Object.keys(parentWindow);
-                    if (!isParentInDifferentDomain) {
-                        state.canonicalLinkElement.setAttribute('href', parentWindow.location.href);
+                if (state.canonicalLinkElement) {
+                    var canonicalLinkHref = getContentDocumentCanonicalLink(contentDocument);
+                    if (canonicalLinkHref) {
+                        state.canonicalLinkElement.setAttribute('href', canonicalLinkHref);
                     }
                 }
 
@@ -17914,12 +17887,6 @@ var ReaderView = function (options) {
     else {
         _iframeLoader = new IFrameLoader({mathJaxUrl: options.mathJaxUrl});
     }
-    _iframeLoader.on(Globals.Events.SCRIPT_NAVIGATION_DETECTED, function (url) {
-      var rootUrl = self.package().rootUrl;
-      var relativePath = url.slice(url.indexOf(rootUrl) + rootUrl.length + 1);
-      console.warn('SCRIPT_NAVIGATION_DETECTED', relativePath);
-      self.openContentUrl(relativePath);
-    });
 
 
     _needsFixedLayoutScalerWorkAround = options.needsFixedLayoutScalerWorkAround;
@@ -18383,17 +18350,6 @@ var ReaderView = function (options) {
     };
 
     /**
-     *
-     * @param deltaX
-     * @param deltaY
-     */
-    this.moveInPage = function (deltaX, deltaY) {
-        if (self.isCurrentViewFixedLayout()) {
-            _currentView.moveInPage(deltaX, deltaY);
-        }
-    };
-
-    /**
      * Returns the current view scale as a percentage
      *
      * @returns {number}
@@ -18557,25 +18513,6 @@ var ReaderView = function (options) {
         openPageRequest.setLastPage();
 
         openPage(openPageRequest, 1);
-    };
-
-    /**
-     * Opens the next spine item.
-     */
-    this.openChapterNext = function (paginationInfo) {
-      var lastOpenPage = paginationInfo.openPages[paginationInfo.openPages.length - 1];
-
-      var currentSpineItem = _spine.getItemById(lastOpenPage.idref);
-      var nextSpineItem = _spine.nextItem(currentSpineItem);
-
-      if (!nextSpineItem) {
-        return;
-      }
-
-      var openPageRequest = new PageOpenRequest(nextSpineItem, self);
-      openPageRequest.setFirstPage();
-
-      openPage(openPageRequest, 2);
     };
 
     function getSpineItem(idref) {
@@ -19362,8 +19299,8 @@ var ReaderView = function (options) {
             Globals.logEvent("MEDIA_OVERLAY_STATUS_CHANGED", "ON", "reader_view.js (via BackgroundAudioTrackManager)");
             
             if (!value.smilIndex) return;
-            var package = readerView.package();
-            var smil = package.media_overlay.smilAt(value.smilIndex);
+            var packageModel = readerView.package();
+            var smil = packageModel.media_overlay.smilAt(value.smilIndex);
             if (!smil || !smil.spineItemId) return;
 
             var needUpdate = false;

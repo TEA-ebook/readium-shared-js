@@ -1,4 +1,4 @@
-//  Created by Boris Schneiderman.
+    //  Created by Boris Schneiderman.
 //  Copyright (c) 2014 Readium Foundation and/or its licensees. All rights reserved.
 //  
 //  Redistribution and use in source and binary forms, with or without modification, 
@@ -23,14 +23,37 @@
 //  OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED 
 //  OF THE POSSIBILITY OF SUCH DAMAGE.
 
-ReadiumSDK.Collections.StyleCollection = function() {
+define(["./style"], function(Style) {
+
+/**
+ *
+ * @class Models.StyleCollection
+ * @return StyleCollection
+ * @constructor
+ */
+
+var StyleCollection = function() {
 
     var _styles = [];
+
+    /**
+     * Clears the collection.
+     *
+     * @method     clear
+     */
 
     this.clear = function() {
         _styles.length = 0;
 
     };
+
+    /**
+     * Finds the style of a selected item
+     *
+     * @method     findStyle
+     * @param      selector
+     * @return     {Models.Style}
+     */
 
     this.findStyle = function(selector) {
 
@@ -44,6 +67,15 @@ ReadiumSDK.Collections.StyleCollection = function() {
         return undefined;
     };
 
+    /**
+     * Adds a style to the collection
+     *
+     * @method     addStyle
+     * @param      selector
+     * @param      declarations
+     * @return     {Models.Style}
+     */
+
     this.addStyle = function(selector, declarations) {
 
         var style = this.findStyle(selector);
@@ -52,12 +84,19 @@ ReadiumSDK.Collections.StyleCollection = function() {
             style.setDeclarations(declarations);
         }
         else {
-            style = new ReadiumSDK.Models.Style(selector, declarations);
+            style = new Style(selector, declarations);
             _styles.push(style);
         }
 
         return style;
     };
+
+    /**
+     * Removes a style from the collection
+     *
+     * @method     addStyle
+     * @param      selector
+     */
 
     this.removeStyle = function(selector) {
         
@@ -72,9 +111,22 @@ ReadiumSDK.Collections.StyleCollection = function() {
         }
     };
 
+    /**
+     * Gets all styles
+     *
+     * @method     getStyles
+     * @return     {Array}
+     */
+
     this.getStyles = function() {
         return _styles;
     };
+
+    /**
+     * Resets the styles
+     *
+     * @method     resetStyleValues
+     */
 
     this.resetStyleValues = function() {
 
@@ -94,3 +146,5 @@ ReadiumSDK.Collections.StyleCollection = function() {
     }
 
 };
+    return StyleCollection;
+});

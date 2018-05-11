@@ -22,8 +22,13 @@
 //  OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED 
 //  OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-ReadiumSDK.Views.InternalLinksSupport = function(reader) {
+define(['jquery', '../helpers', 'readium_cfi_js', 'URIjs'], function($, Helpers, epubCfi, URI) {
+/**
+ *
+ * @param reader
+ * @constructor
+ */
+var InternalLinksSupport = function(reader) {
 
     var self = this;
 
@@ -70,7 +75,7 @@ ReadiumSDK.Views.InternalLinksSupport = function(reader) {
 
         var absPath = absoluteOpfUri.toString();
 
-        absPath = ReadiumSDK.Helpers.RemoveFromString(absPath, "#" +  fullCfi);
+        absPath = Helpers.RemoveFromString(absPath, "#" +  fullCfi);
 
         readOpfFile(absPath, function(opfText) {
 
@@ -111,6 +116,7 @@ ReadiumSDK.Views.InternalLinksSupport = function(reader) {
 
     function readOpfFile(path, callback) {
 
+        //TODO: this should use readium-js resource fetcher (file / URI access abstraction layer), as right now this fails with packed EPUBs  
         $.ajax({
             // encoding: "UTF-8",
             // mimeType: "text/plain; charset=UTF-8",
@@ -137,7 +143,7 @@ ReadiumSDK.Views.InternalLinksSupport = function(reader) {
     function isDeepLikHref(uri) {
 
         var fileName = uri.filename();
-        return fileName && ReadiumSDK.Helpers.EndsWith(fileName, ".opf");
+        return fileName && Helpers.EndsWith(fileName, ".opf");
     }
 
     function processLinkWithHash(hrefUri, spineItem) {
@@ -149,10 +155,13 @@ ReadiumSDK.Views.InternalLinksSupport = function(reader) {
         //reference to another file
         if(fileName) {
             var normalizedUri = new URI(hrefUri, spineItem.href);
-            var newSpineItem = reader.spine().getItemByHref(normalizedUri.pathname());
+            
+            var pathname = decodeURIComponent(normalizedUri.pathname());
+            
+            var newSpineItem = reader.spine().getItemByHref(pathname);
 
             if(!newSpineItem) {
-                console.error("spine item with href=" + normalizedUri.pathname() + " not found");
+                console.error("spine item with href=" + pathname + " not found");
                 return;
             }
 
@@ -213,3 +222,6 @@ ReadiumSDK.Views.InternalLinksSupport = function(reader) {
     }
 
 };
+
+return InternalLinksSupport;
+});

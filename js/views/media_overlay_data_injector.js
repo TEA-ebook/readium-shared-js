@@ -1,4 +1,35 @@
-ReadiumSDK.Views.MediaOverlayDataInjector = function (mediaOverlay, mediaOverlayPlayer) {
+//  Copyright (c) 2014 Readium Foundation and/or its licensees. All rights reserved.
+//  
+//  Redistribution and use in source and binary forms, with or without modification, 
+//  are permitted provided that the following conditions are met:
+//  1. Redistributions of source code must retain the above copyright notice, this 
+//  list of conditions and the following disclaimer.
+//  2. Redistributions in binary form must reproduce the above copyright notice, 
+//  this list of conditions and the following disclaimer in the documentation and/or 
+//  other materials provided with the distribution.
+//  3. Neither the name of the organization nor the names of its contributors may be 
+//  used to endorse or promote products derived from this software without specific 
+//  prior written permission.
+//  
+//  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
+//  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED 
+//  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. 
+//  IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, 
+//  INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, 
+//  BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, 
+//  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF 
+//  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE 
+//  OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED 
+//  OF THE POSSIBILITY OF SUCH DAMAGE.
+
+define (["jquery", "underscore", "../helpers", "../models/smil_iterator", "rangy", 'readium_cfi_js'], function($, _, Helpers, SmilIterator, rangy, epubCfi) {
+/**
+ *
+ * @param mediaOverlay
+ * @param mediaOverlayPlayer
+ * @constructor
+ */
+var MediaOverlayDataInjector = function (mediaOverlay, mediaOverlayPlayer) {
 
     this.attachMediaOverlayData = function ($iframe, spineItem, mediaOverlaySettings) {
 
@@ -20,9 +51,10 @@ ReadiumSDK.Views.MediaOverlayDataInjector = function (mediaOverlay, mediaOverlay
             else {
                 $body.data("mediaOverlayClick", {ping: "pong"});
 
-                var clickEvent = 'ontouchstart' in document.documentElement ? 'touchstart' : 'click';
-                $body.bind(clickEvent, function (event)
+                var touchClickMOEventHandler = function (event)
                 {
+                    //console.debug("MO TOUCH-DOWN: "+event.type);
+                    
                     var elem = $(this)[0]; // body
                     elem = event.target; // body descendant
 
@@ -166,8 +198,8 @@ console.log("MO CLICKED LINK");
 
                                     var range = rangy.createRange(elem.ownerDocument); //createNativeRange
                                     range.setStartAndEnd(
-                                        infoStart.textNode[0], infoStart.textOffset,
-                                        infoEnd.textNode[0], infoEnd.textOffset
+                                        infoStart.textNode, infoStart.textOffset,
+                                        infoEnd.textNode, infoEnd.textOffset
                                     );
         
                                     if (range.isPointInRange(pos.node, pos.offset))
@@ -231,7 +263,18 @@ console.debug("MO readaloud attr: " + readaloud);
 
                     mediaOverlayPlayer.touchInit();
                     return true;
-                });
+                };
+
+                var touchClickMOEventHandler_ = _.debounce(touchClickMOEventHandler, 200);
+                
+                if ('ontouchstart' in document.documentElement)
+                {
+                  $body[0].addEventListener("touchstart", touchClickMOEventHandler_, false);
+                }
+                $body[0].addEventListener("mousedown", touchClickMOEventHandler_, false);
+
+                //var clickEvent = 'ontouchstart' in document.documentElement ? 'touchstart' : 'click';
+                //$body.bind(clickEvent, touchClickMOEventHandler);
             }
         }
 
@@ -279,7 +322,7 @@ console.debug("MO readaloud attr: " + readaloud);
 
                    if (file && fragmentId)
                    {
-                       var textRelativeRef = ReadiumSDK.Helpers.ResolveContentRef(file, smil.href);
+                       var textRelativeRef = Helpers.ResolveContentRef(file, smil.href);
                        var same = textRelativeRef === spineItem.href;
                        if (same)
                        {                       
@@ -290,7 +333,7 @@ console.debug("MO readaloud attr: " + readaloud);
                                console.error("seq.textref !element? " + root.textref);
                            }
 
-                           // var selector = "#" + ReadiumSDK.Helpers.escapeJQuerySelector(fragmentId);
+                           // var selector = "#" + Helpers.escapeJQuerySelector(fragmentId);
                            // var $element = $(selector, element.ownerDocument.documentElement);
                            // if ($element)
                            // {
@@ -314,7 +357,7 @@ console.debug("MO readaloud attr: " + readaloud);
 
 //console.debug("[[MO ATTACH]] " + spineItem.idref + " /// " + spineItem.media_overlay_id + " === " + smil.id);
 
-        var iter = new ReadiumSDK.Models.SmilIterator(smil);
+        var iter = new SmilIterator(smil);
         
         var fakeOpfRoot = "/99!";
         var epubCfiPrefix = "epubcfi";
@@ -325,7 +368,7 @@ console.debug("MO readaloud attr: " + readaloud);
 
             if (true) { //iter.currentPar.text.srcFragmentId (includes empty frag ID)
 
-                var textRelativeRef = ReadiumSDK.Helpers.ResolveContentRef(iter.currentPar.text.srcFile, iter.smil.href);
+                var textRelativeRef = Helpers.ResolveContentRef(iter.currentPar.text.srcFile, iter.smil.href);
 
                 var same = textRelativeRef === spineItem.href;
                 if (same) {
@@ -366,7 +409,7 @@ console.debug("MO readaloud attr: " + readaloud);
                 ["MathJax_Message"]);
 //console.log(infoEnd);
 
-                                    var cfiTextParent = infoStart.textNode[0].parentNode;
+                                    var cfiTextParent = infoStart.textNode.parentNode;
 
                                     iter.currentPar.cfi = {
                                         smilTextSrcCfi: iter.currentPar.text.srcFragmentId,
@@ -461,7 +504,7 @@ console.debug("MO readaloud attr: " + readaloud);
                         else
                         {
                             $element = $($iframe[0].contentDocument.getElementById(selectId));
-                            //$element = $("#" + ReadiumSDK.Helpers.escapeJQuerySelector(iter.currentPar.text.srcFragmentId), contentDocElement);
+                            //$element = $("#" + Helpers.escapeJQuerySelector(iter.currentPar.text.srcFragmentId), contentDocElement);
                         }
                     }
 
@@ -515,3 +558,6 @@ console.debug("MO readaloud attr: " + readaloud);
         }
     }
 };
+
+return MediaOverlayDataInjector;
+});

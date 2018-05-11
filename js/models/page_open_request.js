@@ -23,7 +23,8 @@
 //  OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED 
 //  OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/*
+define(function() {
+/**
  * Representation of opening page request
  * Provides the spine item to be opened and one of the following properties:
  *  spineItemPageIndex {Number},
@@ -32,19 +33,30 @@
  *  firstPage {bool},
  *  lastPage {bool}
  *
- * @param {ReadiumSDK.Models.SpineItem} spineItem
- *
+ * @class Models.PageOpenRequest
  * @constructor
+ * @param {Models.SpineItem} spineItem
+ * @param {object} [initiator]
+ *
+
  */
-ReadiumSDK.Models.PageOpenRequest = function(spineItem, initiator) {
+var PageOpenRequest = function(spineItem, initiator) {
 
     this.spineItem = spineItem;
     this.spineItemPageIndex = undefined;
     this.elementId = undefined;
     this.elementCfi = undefined;
+    this.firstVisibleCfi = undefined;
+    this.lastVisibleCfi = undefined;
     this.firstPage = false;
     this.lastPage = false;
     this.initiator = initiator;
+
+    /**
+     * Resets the reading system
+     *
+     * @method     reset
+     */
 
     this.reset = function() {
         this.spineItemPageIndex = undefined;
@@ -54,31 +66,76 @@ ReadiumSDK.Models.PageOpenRequest = function(spineItem, initiator) {
         this.lastPage = false;
     };
 
+    /**
+     * Sets the first page of the book
+     *
+     * @method     setFirstPage
+     */
+
     this.setFirstPage = function() {
         this.reset();
         this.firstPage = true;
     };
+
+    /**
+     * Sets the last page of the book
+     *
+     * @method     setLastPage
+     */
 
     this.setLastPage = function() {
         this.reset();
         this.lastPage = true;
     };
 
+    /**
+     * Sets the index of the book
+     *
+     * @method     setPageIndex
+     * @param      pageIndex
+     */
+
     this.setPageIndex = function(pageIndex) {
         this.reset();
         this.spineItemPageIndex = pageIndex;
     };
 
+    /**
+     * Sets the ID of the current element
+     *
+     * @method     setElementId
+     * @param      {number} elementId 
+     */
+
     this.setElementId = function(elementId) {
         this.reset();
         this.elementId = elementId;
     };
+    
+    /**
+     * Sets the CFI of the current element
+     *
+     * @method     setElementCfi
+     * @param      elementCfi
+     */
 
     this.setElementCfi = function(elementCfi) {
-
         this.reset();
         this.elementCfi = elementCfi;
     };
 
+    // Used by ReflowView to better keep track of the current page
+    // using just a bookmark to firstVisibleElement makes the current
+    // page gradually shift to the beginning of the chapter. By bookmarking
+    // both the first and last visible elements, we can keep track of the 
+    // "middle" of the visible area.
+    this.setFirstAndLastVisibleCfi = function(firstVisibleCfi, lastVisibleCfi) {
+        this.reset();
+        this.firstVisibleCfi = firstVisibleCfi;
+        this.lastVisibleCfi = lastVisibleCfi;
+    }
 
 };
+
+return PageOpenRequest;
+});

@@ -26,74 +26,117 @@
 //  OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED 
 //  OF THE POSSIBILITY OF SUCH DAMAGE.
 
-ReadiumSDK.Views.IFrameLoader = function() {
+define(["jquery", "underscore", 'URIjs'], function($, _, URI) {
+/**
+ *
+ * @constructor
+ */
+var IFrameLoader = function() {
 
     var self = this;
     var eventListeners = {};
 
 
-    this.addIFrameEventListener = function(eventName, callback, context) {
+    this.addIFrameEventListener = function (eventName, callback, context) {
 
-        if(eventListeners[eventName] == undefined) {
+        if (eventListeners[eventName] == undefined) {
             eventListeners[eventName] = [];
         }
 
         eventListeners[eventName].push({callback: callback, context: context});
     };
 
-    this.updateIframeEvents = function(iframe) {
+    this.updateIframeEvents = function (iframe) {
 
-        _.each(eventListeners, function(value, key){
-            for(var i = 0, count = value.length; i< count; i++) {
-                $(iframe.contentWindow).off(key);
+        _.each(eventListeners, function (value, key) {
+            $(iframe.contentWindow).off(key);
+            for (var i = 0, count = value.length; i < count; i++) {
                 $(iframe.contentWindow).on(key, value[i].callback, value[i].context);
             }
         });
     };
 
+    this.loadIframe = function (iframe, src, callback, context, attachedData) {
 
-    this.loadIframe = function(iframe, src, callback, context) {
+        if (!iframe.baseURI) {
+            if (typeof location !== 'undefined') {
+                iframe.baseURI = location.href + "";
+            }
+            console.error("!iframe.baseURI => " + iframe.baseURI);
+        }
+    
+        console.log("EPUB doc iframe src:");
+        console.log(src);
+        console.log("EPUB doc iframe base URI:");
+        console.log(iframe.baseURI);
+        
+        iframe.setAttribute("data-baseUri", iframe.baseURI);
+        iframe.setAttribute("data-src", src);
 
-        var isWaitingForFrameLoad = true;
+        var loadedDocumentUri = new URI(src).absoluteTo(iframe.baseURI).search('').hash('').toString();
 
-        iframe.onload = function() {
+        self._loadIframeWithUri(iframe, attachedData, loadedDocumentUri, function () {
+            
+            callback.call(context, true, attachedData);
+        });
+    };
 
-            iframe.onload = undefined;
+    this._loadIframeWithUri = function (iframe, attachedData, contentUri, callback) {
 
-            isWaitingForFrameLoad = false;
+        iframe.onload = function () {
 
+            var doc = iframe.contentDocument || iframe.contentWindow.document;
+            $('svg', doc).on("load", function(){
+                console.log('SVG loaded');
+            });
+            
             self.updateIframeEvents(iframe);
 
-            try
-            {
-                iframe.contentWindow.navigator.epubReadingSystem = navigator.epubReadingSystem;
-                // console.debug("epubReadingSystem name:"
-                //     + iframe.contentWindow.navigator.epubReadingSystem.name
-                //     + " version:"
-                //     + iframe.contentWindow.navigator.epubReadingSystem.version
-                //     + " is loaded to iframe");
+            var mathJax = iframe.contentWindow.MathJax;
+            if (mathJax) {
+                
+                console.log("MathJax VERSION: " + mathJax.cdnVersion + " // " + mathJax.fileversion + " // " + mathJax.version);
+    
+                var useFontCache = true; // default in MathJax
+                
+                // Firefox fails to render SVG otherwise
+                if (mathJax.Hub.Browser.isFirefox) {
+                    useFontCache = false;
+                }
+                
+                // Chrome 49+ fails to render SVG otherwise
+                // https://github.com/readium/readium-js/issues/138
+                if (mathJax.Hub.Browser.isChrome) {
+                    useFontCache = false;
+                }
+                
+                // Edge fails to render SVG otherwise
+                // https://github.com/readium/readium-js-viewer/issues/394#issuecomment-185382196
+                if (window.navigator.userAgent.indexOf("Edge") > 0) {
+                    useFontCache = false;
+                }
+                
+                mathJax.Hub.Config({showMathMenu:false, messageStyle: "none", showProcessingMessages: true, SVG:{useFontCache:useFontCache}});
+                
+                // If MathJax is being used, delay the callback until it has completed rendering
+                var mathJaxCallback = _.once(callback);
+                try {
+                    mathJax.Hub.Queue(mathJaxCallback);
+                } catch (err) {
+                    console.error("MathJax fail!");
+                    callback();
+                }
+                // Or at an 8 second timeout, which ever comes first
+                //window.setTimeout(mathJaxCallback, 8000);
+            } else {
+                callback();
             }
-            catch(ex)
-            {
-                console.log("epubReadingSystem INJECTION ERROR! " + ex.message);
-            }
-
-            callback.call(context, true);
-
         };
 
-        //yucks! iframe doesn't trigger onerror event - there is no reliable way to know that iframe finished
-        // attempt tot load resource (successfully or not;
-        window.setTimeout(function(){
-
-            if(isWaitingForFrameLoad) {
-
-                isWaitingForFrameLoad = false;
-                callback.call(context, false);
-            }
-
-        }, 8000);
-
-        iframe.src = src;
+        iframe.setAttribute("src", contentUri);
     };
+
 };
+
+return IFrameLoader;
+});

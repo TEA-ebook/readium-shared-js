@@ -26,12 +26,20 @@
 //  OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED 
 //  OF THE POSSIBILITY OF SUCH DAMAGE.
 
-ReadiumSDK.Views.MediaOverlayPlayer = function(reader, onStatusChanged) {
+define(["../globals", "jquery", "../helpers", "./audio_player", "./media_overlay_element_highlighter", "../models/smil_iterator", "rangy", 'readium_cfi_js', './scroll_view'],
+    function(Globals, $, Helpers, AudioPlayer, MediaOverlayElementHighlighter, SmilIterator, rangy, epubCfi, ScrollView) {
+/**
+ *
+ * @param reader
+ * @param onStatusChanged
+ * @constructor
+ */
+var MediaOverlayPlayer = function(reader, onStatusChanged) {
 
 
     var _smilIterator = undefined;
 
-    var _audioPlayer = new ReadiumSDK.Views.AudioPlayer(onStatusChanged, onAudioPositionChanged, onAudioEnded, onPlay, onPause);
+    var _audioPlayer = new AudioPlayer(onStatusChanged, onAudioPositionChanged, onAudioEnded, onPlay, onPause);
 
     var _ttsIsPlaying = false;
     var _currentTTS = undefined;
@@ -44,6 +52,7 @@ ReadiumSDK.Views.MediaOverlayPlayer = function(reader, onStatusChanged) {
     var _embeddedIsPlaying = false;
     var _currentEmbedded = undefined;
 
+
     this.isPlaying = function()
     {
         return _audioPlayer.isPlaying() || _ttsIsPlaying || _embeddedIsPlaying || _blankPagePlayer;
@@ -53,7 +62,14 @@ ReadiumSDK.Views.MediaOverlayPlayer = function(reader, onStatusChanged) {
     var _package = reader.package();
     var _settings = reader.viewerSettings();
     var self = this;
-    var _elementHighlighter = new ReadiumSDK.Views.MediaOverlayElementHighlighter(reader);
+    var _elementHighlighter = new MediaOverlayElementHighlighter(reader);
+
+    reader.on(Globals.Events.READER_VIEW_DESTROYED, function(){
+        Globals.logEvent("READER_VIEW_DESTROYED", "ON", "media_overlay_player.js");
+        
+        self.reset();
+    });
+
 
     this.applyStyles = function()
     {
@@ -76,8 +92,12 @@ ReadiumSDK.Views.MediaOverlayPlayer = function(reader, onStatusChanged) {
         _audioPlayer.setVolume(_settings.mediaOverlaysVolume / 100.0);
     };
     self.onSettingsApplied();
-    //ReadiumSDK.
-    reader.on(ReadiumSDK.Events.SETTINGS_APPLIED, this.onSettingsApplied, this);
+    
+    reader.on(Globals.Events.SETTINGS_APPLIED, function() {
+        
+        Globals.logEvent("SETTINGS_APPLIED", "ON", "media_overlay_player.js");
+        this.onSettingsApplied();
+    }, this);
 
     /*
     var lastElement = undefined;
@@ -86,15 +106,15 @@ ReadiumSDK.Views.MediaOverlayPlayer = function(reader, onStatusChanged) {
 
     var _wasPlayingAtDocLoadStart = false;
     this.onDocLoadStart = function() {
-        // 1) ReadiumSDK.Events.CONTENT_DOCUMENT_LOAD_START
+        // 1) Globals.Events.CONTENT_DOCUMENT_LOAD_START
         // (maybe 2-page fixed-layout or reflowable spread == 2 documents == 2x events)
         // MOPLayer.onDocLoad()
         
-        // 2) ReadiumSDK.Events.CONTENT_DOCUMENT_LOADED
+        // 2) Globals.Events.CONTENT_DOCUMENT_LOADED
         // (maybe 2-page fixed-layout or reflowable spread == 2 documents == 2x events)
         //_mediaOverlayDataInjector.attachMediaOverlayData($iframe, spineItem, _viewerSettings);
         
-        // 3) ReadiumSDK.Events.PAGINATION_CHANGED (layout finished, notified before rest of app, just once)
+        // 3) Globals.Events.PAGINATION_CHANGED (layout finished, notified before rest of app, just once)
         // MOPLayer.onPageChanged()
 
         var wasPlaying = self.isPlaying();
@@ -105,8 +125,15 @@ ReadiumSDK.Views.MediaOverlayPlayer = function(reader, onStatusChanged) {
         }
     };
     
+    var _lastPaginationData = undefined;
+    
     this.onPageChanged = function(paginationData) {
-
+        
+        _lastPaginationData = paginationData;
+        
+        var wasPausedBecauseNoAutoNextSmil = _wasPausedBecauseNoAutoNextSmil;
+        _wasPausedBecauseNoAutoNextSmil = false;
+        
         var wasPlayingAtDocLoadStart = _wasPlayingAtDocLoadStart;
         _wasPlayingAtDocLoadStart = false;
 
@@ -165,7 +192,7 @@ ReadiumSDK.Views.MediaOverlayPlayer = function(reader, onStatusChanged) {
                         try
                         {
                             var cfi = parts[0] + parts[1];
-                            var $element = reader.getElementByCfi(spineItem, cfi,
+                            var $element = reader.getElementByCfi(spineItem.idref, cfi,
                 ["cfi-marker", "mo-cfi-highlight"],
                 [],
                 ["MathJax_Message"]);
@@ -191,7 +218,7 @@ ReadiumSDK.Views.MediaOverlayPlayer = function(reader, onStatusChanged) {
                         {
                             //var cfi = "epubcfi(" + partial + ")";
                             //var $element = EPUBcfi.getTargetElementWithPartialCFI(cfi, DOC);
-                            var $element = reader.getElementByCfi(spineItem, partial,
+                            var $element = reader.getElementByCfi(spineItem.idref, partial,
                 ["cfi-marker", "mo-cfi-highlight"],
                 [],
                 ["MathJax_Message"]);
@@ -217,14 +244,14 @@ ReadiumSDK.Views.MediaOverlayPlayer = function(reader, onStatusChanged) {
                 {
                     if (paginationData.initiator == self && !paginationData.elementId)
                     {
-                        var $element = reader.getElement(spineItem, "body");
+                        var $element = reader.getElement(spineItem.idref, "body");
                         element = ($element && $element.length > 0) ? $element[0] : undefined;
                     }
                     else
                     {
-                        var $element = reader.getElementById(spineItem, paginationData.elementId);
+                        var $element = reader.getElementById(spineItem.idref, paginationData.elementId);
                         element = ($element && $element.length > 0) ? $element[0] : undefined;
-                        //("#" + ReadiumSDK.Helpers.escapeJQuerySelector(paginationData.elementId))
+                        //("#" + Globals.Helpers.escapeJQuerySelector(paginationData.elementId))
                     }
                     
                     if (element)
@@ -255,11 +282,15 @@ ReadiumSDK.Views.MediaOverlayPlayer = function(reader, onStatusChanged) {
 
                 if (paginationData.elementId && element)
                 {
-                    if (wasPlaying)
+                    if (wasPlaying || wasPausedBecauseNoAutoNextSmil)
                     {
                         paginationData.elementIdResolved = element;
                         self.toggleMediaOverlayRefresh(paginationData);
                     }
+                }
+                else if (wasPlaying || wasPausedBecauseNoAutoNextSmil)
+                {
+                    self.toggleMediaOverlay();
                 }
                 return;
             }
@@ -339,7 +370,7 @@ ReadiumSDK.Views.MediaOverlayPlayer = function(reader, onStatusChanged) {
         }
         else
         {
-            if(!wasPlaying)
+            if(!wasPlaying && !wasPausedBecauseNoAutoNextSmil)
             {
                 self.reset();
                 return;
@@ -370,7 +401,7 @@ ReadiumSDK.Views.MediaOverlayPlayer = function(reader, onStatusChanged) {
         var parSmil = par.getSmil();
         if(!_smilIterator || _smilIterator.smil != parSmil)
         {
-            _smilIterator = new ReadiumSDK.Models.SmilIterator(parSmil);
+            _smilIterator = new SmilIterator(parSmil);
         }
         else {
             _smilIterator.reset();
@@ -420,7 +451,8 @@ ReadiumSDK.Views.MediaOverlayPlayer = function(reader, onStatusChanged) {
     }
 
     function playCurrentPar() {
-
+        _wasPlayingScrolling = false;
+        
         if (!_smilIterator || !_smilIterator.currentPar)
         {
             console.error("playCurrentPar !_smilIterator || !_smilIterator.currentPar ???");
@@ -538,11 +570,11 @@ ReadiumSDK.Views.MediaOverlayPlayer = function(reader, onStatusChanged) {
 
                 if (rangy)
                 {
-                    //infoStart.textNode[0].parentNode.ownerDocument
+                    //infoStart.textNode.parentNode.ownerDocument
                     var range = rangy.createRange(doc); //createNativeRange
                     range.setStartAndEnd(
-                        infoStart.textNode[0], infoStart.textOffset,
-                        infoEnd.textNode[0], infoEnd.textOffset
+                        infoStart.textNode, infoStart.textOffset,
+                        infoEnd.textNode, infoEnd.textOffset
                     );
                     _currentTTS = range.toString(); //.text()
                 }
@@ -578,7 +610,7 @@ ReadiumSDK.Views.MediaOverlayPlayer = function(reader, onStatusChanged) {
 //console.debug("### MO PAR OFFSET: " + clipBeginOffset);
             }
 
-            var audioContentRef = ReadiumSDK.Helpers.ResolveContentRef(_smilIterator.currentPar.audio.src, _smilIterator.smil.href);
+            var audioContentRef = Helpers.ResolveContentRef(_smilIterator.currentPar.audio.src, _smilIterator.smil.href);
 
             var audioSource = _package.resolveRelativeUrlMO(audioContentRef);
 
@@ -605,7 +637,7 @@ ReadiumSDK.Views.MediaOverlayPlayer = function(reader, onStatusChanged) {
 
 //console.debug("nextSmil: " + nextSmil.href + " /// " + nextSmil.id);
 
-            _smilIterator = new ReadiumSDK.Models.SmilIterator(nextSmil);
+            _smilIterator = new SmilIterator(nextSmil);
             if(_smilIterator.currentPar) {
                 if (!goNext)
                 {
@@ -687,6 +719,22 @@ ReadiumSDK.Views.MediaOverlayPlayer = function(reader, onStatusChanged) {
         }
 
         var goNext = position > audio.clipEnd;
+
+        var doNotNextSmil = !_autoNextSmil && from !== 6 && goNext;
+
+        var spineItemIdRef = (_smilIterator && _smilIterator.smil && _smilIterator.smil.spineItemId) ? _smilIterator.smil.spineItemId : ((_lastPaginationData && _lastPaginationData.spineItem && _lastPaginationData.spineItem.idref) ? _lastPaginationData.spineItem.idref : undefined);
+        if (doNotNextSmil && spineItemIdRef && _lastPaginationData && _lastPaginationData.paginationInfo && _lastPaginationData.paginationInfo.openPages && _lastPaginationData.paginationInfo.openPages.length > 1)
+        {
+            //var iPage = _lastPaginationData.paginationInfo.isRightToLeft ? _lastPaginationData.paginationInfo.openPages.length - 1 : 0;
+            var iPage = 0;
+            
+            var openPage = _lastPaginationData.paginationInfo.openPages[iPage];
+            if (spineItemIdRef === openPage.idref)
+            {
+                doNotNextSmil = false;
+            }
+        }
+        
         if (goNext)
         {
             _smilIterator.next();
@@ -715,7 +763,16 @@ ReadiumSDK.Views.MediaOverlayPlayer = function(reader, onStatusChanged) {
 
 //console.debug("NEXT SMIL ON AUDIO POS");
         
-            nextSmil(goNext);
+            if (doNotNextSmil)
+            {
+                _wasPausedBecauseNoAutoNextSmil = true;
+                self.reset();
+                //self.pause();
+            }
+            else
+            {
+                nextSmil(goNext);
+            }
             return;
         }
 
@@ -744,6 +801,8 @@ ReadiumSDK.Views.MediaOverlayPlayer = function(reader, onStatusChanged) {
             {
                 console.log("MO SKIP: " + parent.epubtype);
 
+                self.pause();
+
                 var pos = goNext ? _smilIterator.currentPar.audio.clipEnd + 0.1 : DIRECTION_MARK - 1;
 
                 onAudioPositionChanged(pos, from, true); //noLetPlay
@@ -771,7 +830,18 @@ ReadiumSDK.Views.MediaOverlayPlayer = function(reader, onStatusChanged) {
                         if (!_smilIterator.currentPar)
                         {
     //console.debug("adjustParToSeqSyncGranularity nextSmil(goNext)");
-                            nextSmil(goNext);
+
+                            if (doNotNextSmil)
+                            {
+                                _wasPausedBecauseNoAutoNextSmil = true;
+                                self.reset();
+                                //self.pause();
+                            }
+                            else
+                            {
+                                nextSmil(goNext);
+                            }
+                            
                             return;
                         }
                     }
@@ -860,14 +930,7 @@ ReadiumSDK.Views.MediaOverlayPlayer = function(reader, onStatusChanged) {
 
     this.touchInit = function()
     {
-        var todo = _audioPlayer.touchInit();
-        if (todo)
-        {
-            if (_enableHTMLSpeech)
-            {
-                speakStart("o", 0);
-            }
-        }
+        return _audioPlayer.touchInit();
     };
 
     var tokeniseTTS = function(element)
@@ -1041,7 +1104,8 @@ ReadiumSDK.Views.MediaOverlayPlayer = function(reader, onStatusChanged) {
 
         if (!_enableHTMLSpeech)
         {
-            reader.trigger(ReadiumSDK.Events.MEDIA_OVERLAY_TTS_SPEAK, {tts: txt}); // resume if txt == undefined
+            Globals.logEvent("MEDIA_OVERLAY_TTS_SPEAK", "EMIT", "media_overlay_player.js");
+            reader.emit(Globals.Events.MEDIA_OVERLAY_TTS_SPEAK, {tts: txt}); // resume if txt == undefined
             return;
         }
 
@@ -1333,12 +1397,20 @@ console.debug("TTS resume");
 
     var speakStop = function()
     {
-        onStatusChanged({isPlaying: false});
+        var wasPlaying = _ttsIsPlaying;
+
+        if (wasPlaying) {
+            onStatusChanged({isPlaying: false});
+        }
+        
         _ttsIsPlaying = false;
 
         if (!_enableHTMLSpeech)
         {
-            reader.trigger(ReadiumSDK.Events.MEDIA_OVERLAY_TTS_STOP, undefined);
+            if (wasPlaying) {
+                Globals.logEvent("MEDIA_OVERLAY_TTS_STOP", "EMIT", "media_overlay_player.js");
+                reader.emit(Globals.Events.MEDIA_OVERLAY_TTS_STOP, undefined);
+            }
             return;
         }
 
@@ -1351,7 +1423,7 @@ console.debug("TTS resume");
     function onPlay() {
         onPause();
 
-        _timerTick = setInterval(function() {
+        var func = function() {
 
             if (!_smilIterator || !_smilIterator.currentPar)
             {
@@ -1377,7 +1449,7 @@ console.debug("TTS resume");
 
             var smilIndex = smil.mo.smil_models.indexOf(smil);
 
-            var smilIterator = new ReadiumSDK.Models.SmilIterator(smil);
+            var smilIterator = new SmilIterator(smil);
             var parIndex = -1;
             while (smilIterator.currentPar)
             {
@@ -1390,8 +1462,11 @@ console.debug("TTS resume");
             }
 
             onStatusChanged({playPosition: playPosition, smilIndex: smilIndex, parIndex: parIndex});
+        };
 
-        }, 1500);
+        setTimeout(func, 500);
+
+        _timerTick = setInterval(func, 1500);
     }
 
     function onPause() {
@@ -1486,7 +1561,10 @@ console.debug("TTS resume");
                 {
                     _elementHighlighter.highlightElement(_smilIterator.currentPar, _package.media_overlay.activeClass, _package.media_overlay.playbackActiveClass);
 
-                    reader.insureElementVisibility(_smilIterator.currentPar.getSmil().spineItemId, _smilIterator.currentPar.element, self);
+                    if (!_wasPlayingScrolling)
+                    {
+                        reader.insureElementVisibility(_smilIterator.currentPar.getSmil().spineItemId, _smilIterator.currentPar.element, self);
+                    }
                 }
             
                 return;
@@ -1497,7 +1575,10 @@ console.debug("TTS resume");
                 {
                     _elementHighlighter.highlightCfi(_smilIterator.currentPar, _package.media_overlay.activeClass, _package.media_overlay.playbackActiveClass);
 
-                    reader.insureElementVisibility(_smilIterator.currentPar.getSmil().spineItemId, _smilIterator.currentPar.cfi.cfiTextParent, self);
+                    if (!_wasPlayingScrolling)
+                    {
+                        reader.insureElementVisibility(_smilIterator.currentPar.getSmil().spineItemId, _smilIterator.currentPar.cfi.cfiTextParent, self);
+                    }
                 }
                 
                 return;
@@ -1512,7 +1593,7 @@ console.debug("TTS resume");
         //else: single SMIL per multiple XHTML? ==> open new spine item
         
         /*
-        var textRelativeRef = ReadiumSDK.Helpers.ResolveContentRef(_smilIterator.currentPar.text.srcFile, _smilIterator.smil.href);
+        var textRelativeRef = Globals.Helpers.ResolveContentRef(_smilIterator.currentPar.text.srcFile, _smilIterator.smil.href);
 console.debug("textRelativeRef: " + textRelativeRef);
         if (textRelativeRef)
         {
@@ -1616,25 +1697,36 @@ console.debug("textAbsoluteRef: " + textAbsoluteRef);
     };
 
     this.resetBlankPage = function() {
+        var wasPlaying = false;
+        
         if (_blankPagePlayer)
         {
+            wasPlaying = true;
+            
             var timer = _blankPagePlayer;
             _blankPagePlayer = undefined;
             clearTimeout(timer);
         }
         _blankPagePlayer = undefined;
 
-        onStatusChanged({isPlaying: false});
+        if (wasPlaying) {
+            onStatusChanged({isPlaying: false});
+        }
     };
 
     this.resetEmbedded = function() {
+        var wasPlaying = _embeddedIsPlaying;
+        
         if (_currentEmbedded)
         {
             $(_currentEmbedded).off("ended", self.onEmbeddedEnd);
             _currentEmbedded.pause();
         }
         _currentEmbedded = undefined;
-        onStatusChanged({isPlaying: false});
+        
+        if (wasPlaying) {
+            onStatusChanged({isPlaying: false});
+        }
         _embeddedIsPlaying = false;
     };
 
@@ -1648,7 +1740,6 @@ console.debug("textAbsoluteRef: " + textAbsoluteRef);
         _smilIterator = undefined;
         _skipAudioEnded = false;
     };
-
 
     this.play = function ()
     {
@@ -1684,6 +1775,8 @@ console.debug("textAbsoluteRef: " + textAbsoluteRef);
 
     this.pause = function()
     {
+        _wasPlayingScrolling = false;
+        
         if (_blankPagePlayer)
         {
             this.resetBlankPage();
@@ -1797,7 +1890,7 @@ console.debug("textAbsoluteRef: " + textAbsoluteRef);
         /*
         if (_currentPagination && _currentPagination.isFixedLayout && _currentPagination.openPages && _currentPagination.openPages.length > 0)
         {
-            var combinedPath = ReadiumSDK.Helpers.ResolveContentRef(contentRefUrl, sourceFileHref);
+            var combinedPath = Globals.Helpers.ResolveContentRef(contentRefUrl, sourceFileHref);
 
             var hashIndex = combinedPath.indexOf("#");
             var hrefPart;
@@ -1845,18 +1938,18 @@ console.debug("textAbsoluteRef: " + textAbsoluteRef);
         this.toggleMediaOverlayRefresh(undefined);
     };
 
+    var _wasPlayingScrolling = false;
+
     this.toggleMediaOverlayRefresh = function(paginationData)
     {
-
 //console.debug("moData SMIL: " + moData.par.getSmil().href + " // " + + moData.par.getSmil().id);
 
         var spineItems = reader.getLoadedSpineItems();
 
-        //paginationData.pageProgressionDirection === "rtl"
+        //paginationData.isRightToLeft
         var rtl = reader.spine().isRightToLeft();
 
         //paginationData.spineItemCount
-
         //paginationData.openPages
         //{spineItemPageIndex: , spineItemPageCount: , idref: , spineItemIndex: }
 
@@ -1864,9 +1957,18 @@ console.debug("textAbsoluteRef: " + textAbsoluteRef);
         var wasPlaying = self.isPlaying();
         if(wasPlaying && _smilIterator)
         {
-            self.pause();
+            var isScrollView = paginationData.initiator && paginationData.initiator instanceof ScrollView;
+            if (isScrollView && _settings.mediaOverlaysPreservePlaybackWhenScroll)
+            {
+                _wasPlayingScrolling = true;
+                return;
+            }
+            
             playingPar = _smilIterator.currentPar;
+            self.pause();
         }
+        
+        _wasPlayingScrolling = false;
 
         //paginationData && paginationData.elementId
         //paginationData.initiator != self
@@ -1900,8 +2002,8 @@ console.debug("textAbsoluteRef: " + textAbsoluteRef);
 
                 if (id)
                 {
-                    var $element = reader.getElementById(spineItem, id);
-                    //var $element = reader.getElement(spineItem, "#" + ReadiumSDK.Helpers.escapeJQuerySelector(id));
+                    var $element = reader.getElementById(spineItem.idref, id);
+                    //var $element = reader.getElement(spineItem.idref, "#" + ReadiumSDK.Helpers.escapeJQuerySelector(id));
                     element = ($element && $element.length > 0) ? $element[0] : undefined;
                 }
                 else if (spineItem.isFixedLayout())
@@ -1909,11 +2011,11 @@ console.debug("textAbsoluteRef: " + textAbsoluteRef);
                     if (paginationData && paginationData.paginationInfo && paginationData.paginationInfo.openPages)
                     {
                         // openPages are sorted by spineItem index, so the smallest index on display is the one we need to play (page on the left in LTR, or page on the right in RTL progression)
-                        var index = 0; // paginationData.paginationInfo.pageProgressionDirection === "ltr" ? 0 : paginationData.paginationInfo.openPages.length - 1;
+                        var index = 0; // !paginationData.paginationInfo.isRightToLeft ? 0 : paginationData.paginationInfo.openPages.length - 1;
                     
                         if (paginationData.paginationInfo.openPages[index] && paginationData.paginationInfo.openPages[index].idref && paginationData.paginationInfo.openPages[index].idref === spineItem.idref)
                         {
-                            var $element = reader.getElement(spineItem, "body");
+                            var $element = reader.getElement(spineItem.idref, "body");
                             element = ($element && $element.length > 0) ? $element[0] : undefined;
                         }
                     }
@@ -1998,7 +2100,7 @@ console.debug("textAbsoluteRef: " + textAbsoluteRef);
         var parSmil = zPar.getSmil();
         if(!_smilIterator || _smilIterator.smil != parSmil)
         {
-            _smilIterator = new ReadiumSDK.Models.SmilIterator(parSmil);
+            _smilIterator = new SmilIterator(parSmil);
         }
         else
         {
@@ -2034,4 +2136,13 @@ console.debug("textAbsoluteRef: " + textAbsoluteRef);
     {
         return _smilIterator && _smilIterator.currentPar && _smilIterator.currentPar.cfi;
     };
+    
+    var _wasPausedBecauseNoAutoNextSmil = false;
+    var _autoNextSmil = true;
+    this.setAutomaticNextSmil = function(autoNext)
+    {
+        _autoNextSmil = autoNext;
+    };
 };
+    return MediaOverlayPlayer;
+});

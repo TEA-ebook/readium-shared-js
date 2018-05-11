@@ -23,31 +23,152 @@
 //  OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED 
 //  OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/*
-Used to report pagination state back to the host application
+define(function() {
 
-@class ReadiumSDK.Models.CurrentPagesInfo
-
-@constructor
-
-@param {Number} spineItemCount Number of spine items
-@param {boolean} isFixedLayout is fixed or reflowable spine item
-@param {string} pageProgressionDirection ltr | rtl
+/**
+ * Used to report pagination state back to the host application
+ *
+ * @class Models.CurrentPagesInfo
+ *
+ * @constructor
+ *
+ * @param {Models.Spine} spine
+ * @param {boolean} isFixedLayout is fixed or reflowable spine item
+ * @return CurrentPagesInfo
 */
 
-ReadiumSDK.Models.CurrentPagesInfo = function(spineItemCount, isFixedLayout, pageProgressionDirection) {
+var CurrentPagesInfo = function(spine, isFixedLayout) {
 
 
-    this.pageProgressionDirection = pageProgressionDirection;
+    /**
+     * The reading direction
+     *
+     * @property isRightToLeft
+     * @type bool
+     */
+
+    this.isRightToLeft = spine.isRightToLeft();
+    
+    /**
+     * Is the ebook fixed layout or not?
+     *
+     * @property isFixedLayout
+     * @type bool
+     */
+
     this.isFixedLayout = isFixedLayout;
-    this.spineItemCount = spineItemCount;
+    
+    /**
+     * Counts the number of spine items
+     *
+     * @property spineItemCount
+     * @type number
+     */    
+
+    this.spineItemCount = spine.items.length
+    
+    /**
+     * returns an array of open pages, each array item is a data structure (plain JavaScript object) with the following fields: spineItemPageIndex, spineItemPageCount, idref, spineItemIndex (as per the parameters of the addOpenPage() function below)
+     *
+     * @property openPages
+     * @type array
+     */
+
     this.openPages = [];
+
+    /**
+     * Adds an page item to the openPages array
+     *
+     * @method     addOpenPage
+     * @param      {number} spineItemPageIndex
+     * @param      {number} spineItemPageCount
+     * @param      {string} idref
+     * @param      {number} spineItemIndex   
+     */
 
     this.addOpenPage = function(spineItemPageIndex, spineItemPageCount, idref, spineItemIndex) {
         this.openPages.push({spineItemPageIndex: spineItemPageIndex, spineItemPageCount: spineItemPageCount, idref: idref, spineItemIndex: spineItemIndex});
 
         this.sort();
     };
+
+    /**
+     * Checks if navigation to the page on the left is possible (depending on page-progression-direction: previous page in LTR mode, next page in RTL mode)
+     *
+     * @method     canGoLeft
+     * @return bool true if turning to the left page is possible 
+     */
+
+    this.canGoLeft = function () {
+        return this.isRightToLeft ? this.canGoNext() : this.canGoPrev();
+    };
+
+    /**
+     * Checks if navigation to the page on the right is possible (depending on page-progression-direction: next page in LTR mode, previous page in RTL mode)
+     *
+     * @method     canGoRight
+     * @return bool true if turning to the right page is possible 
+     */
+
+    this.canGoRight = function () {
+        return this.isRightToLeft ? this.canGoPrev() : this.canGoNext();
+    };
+
+    /**
+     * Checks if navigation to the next page is possible (depending on page-progression-direction: right page in LTR mode, left page in RTL mode)
+     *
+     * @method     canGoNext
+     * @return bool true if turning to the next page is possible 
+     */
+
+    this.canGoNext = function() {
+
+        if(this.openPages.length == 0)
+            return false;
+
+        var lastOpenPage = this.openPages[this.openPages.length - 1];
+
+        // TODO: handling of non-linear spine items ("ancillary" documents), allowing page turn within the reflowable XHTML, but preventing previous/next access to sibling spine items. Also needs "go back" feature to navigate to source hyperlink location that led to the non-linear document.
+        // See https://github.com/readium/readium-shared-js/issues/26
+
+        // Removed, needs to be implemented properly as per above.
+        // See https://github.com/readium/readium-shared-js/issues/108
+        // if(!spine.isValidLinearItem(lastOpenPage.spineItemIndex))
+        //     return false;
+
+        return lastOpenPage.spineItemIndex < spine.last().index || lastOpenPage.spineItemPageIndex < lastOpenPage.spineItemPageCount - 1;
+    };
+
+    /**
+     * Checks if navigation to the previous page is possible (depending on page-progression-direction: left page in LTR mode, right page in RTL mode)
+     *
+     * @method     canGoPrev
+     * @return bool true if turning to the previous page is possible 
+     */
+
+    this.canGoPrev = function() {
+
+        if(this.openPages.length == 0)
+            return false;
+
+        var firstOpenPage = this.openPages[0];
+
+        // TODO: handling of non-linear spine items ("ancillary" documents), allowing page turn within the reflowable XHTML, but preventing previous/next access to sibling spine items. Also needs "go back" feature to navigate to source hyperlink location that led to the non-linear document.
+        // See https://github.com/readium/readium-shared-js/issues/26
+
+        // Removed, needs to be implemented properly as per above.
+        // //https://github.com/readium/readium-shared-js/issues/108
+        // if(!spine.isValidLinearItem(firstOpenPage.spineItemIndex))
+        //     return false;
+
+        return spine.first().index < firstOpenPage.spineItemIndex || 0 < firstOpenPage.spineItemPageIndex;
+    };
+
+    /**
+     * Sorts the openPages array based on spineItemIndex and spineItemPageIndex
+     *
+     * @method     sort
+     */
 
     this.sort = function() {
 
@@ -57,10 +178,13 @@ ReadiumSDK.Models.CurrentPagesInfo = function(spineItemCount, isFixedLayout, pag
                 return a.spineItemIndex - b.spineItemIndex;
             }
 
-            return a.pageIndex - b.pageIndex;
+            return a.spineItemPageIndex - b.spineItemPageIndex;
 
         });
 
     };
 
 };
+
+return CurrentPagesInfo;
+});

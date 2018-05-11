@@ -27,101 +27,116 @@
 //  OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-(function(){
+define(['jquery'],function($) {
 
-    var _iOS = navigator.userAgent.match(/(iPad|iPhone|iPod)/g) ? true : false;
-    var _Android = navigator.userAgent.toLowerCase().indexOf('android') > -1;
-    var _isMobile = _iOS || _Android;
-
-    //var _isReadiumJS = typeof window.requirejs !== "undefined";
-
-    var DEBUG = false;
-
-    var _audioElement = new Audio();
-    
-    if (DEBUG)
+    /**
+     *
+     * @param onStatusChanged
+     * @param onPositionChanged
+     * @param onAudioEnded
+     * @param onAudioPlay
+     * @param onAudioPause
+     * @constructor
+     */
+    var AudioPlayer = function(onStatusChanged, onPositionChanged, onAudioEnded, onAudioPlay, onAudioPause)
     {
-        _audioElement.addEventListener("load", function()
-            {
-                console.debug("0) load");
-            }
-        );
+        var _iOS = navigator.userAgent.match(/(iPad|iPhone|iPod)/g) ? true : false;
+        var _Android = navigator.userAgent.toLowerCase().indexOf('android') > -1;
+        var _isMobile = _iOS || _Android;
 
-        _audioElement.addEventListener("loadstart", function()
-            {
-                console.debug("1) loadstart");
-            }
-        );
+        //var _isReadiumJS = typeof window.requirejs !== "undefined";
 
-        _audioElement.addEventListener("durationchange", function()
-            {
-                console.debug("2) durationchange");
-            }
-        );
+        var DEBUG = false;
 
-        _audioElement.addEventListener("loadedmetadata", function()
-            {
-                console.debug("3) loadedmetadata");
-            }
-        );
+        var _audioElement = new Audio();
+        
+        if (DEBUG)
+        {
+            _audioElement.addEventListener("load", function()
+                {
+                    console.debug("0) load");
+                }
+            );
 
-        _audioElement.addEventListener("loadeddata", function()
-            {
-                console.debug("4) loadeddata");
-            }
-        );
+            _audioElement.addEventListener("loadstart", function()
+                {
+                    console.debug("1) loadstart");
+                }
+            );
 
-        _audioElement.addEventListener("progress", function()
-            {
-                console.debug("5) progress");
-            }
-        );
+            _audioElement.addEventListener("durationchange", function()
+                {
+                    console.debug("2) durationchange");
+                }
+            );
 
-        _audioElement.addEventListener("canplay", function()
-            {
-                console.debug("6) canplay");
-            }
-        );
+            _audioElement.addEventListener("loadedmetadata", function()
+                {
+                    console.debug("3) loadedmetadata");
+                }
+            );
 
-        _audioElement.addEventListener("canplaythrough", function()
-            {
-                console.debug("7) canplaythrough");
-            }
-        );
+            _audioElement.addEventListener("loadeddata", function()
+                {
+                    console.debug("4) loadeddata");
+                }
+            );
 
-        _audioElement.addEventListener("play", function()
-            {
-                console.debug("8) play");
-            }
-        );
+            _audioElement.addEventListener("progress", function()
+                {
+                    console.debug("5) progress");
+                }
+            );
 
-        _audioElement.addEventListener("pause", function()
-            {
-                console.debug("9) pause");
-            }
-        );
+            _audioElement.addEventListener("canplay", function()
+                {
+                    console.debug("6) canplay");
+                }
+            );
 
-        _audioElement.addEventListener("ended", function()
-            {
-                console.debug("10) ended");
-            }
-        );
+            _audioElement.addEventListener("canplaythrough", function()
+                {
+                    console.debug("7) canplaythrough");
+                }
+            );
 
-        _audioElement.addEventListener("seeked", function()
-            {
-                console.debug("X) seeked");
-            }
-        );
+            _audioElement.addEventListener("play", function()
+                {
+                    console.debug("8) play");
+                }
+            );
 
-        _audioElement.addEventListener("timeupdate", function()
-            {
-                console.debug("Y) timeupdate");
-            }
-        );
-    }
+            _audioElement.addEventListener("pause", function()
+                {
+                    console.debug("9) pause");
+                }
+            );
 
-    ReadiumSDK.Views.AudioPlayer = function(onStatusChanged, onPositionChanged, onAudioEnded, onAudioPlay, onAudioPause)
-    {
+            _audioElement.addEventListener("ended", function()
+                {
+                    console.debug("10) ended");
+                }
+            );
+
+            _audioElement.addEventListener("seeked", function()
+                {
+                    console.debug("X) seeked");
+                }
+            );
+
+            _audioElement.addEventListener("timeupdate", function()
+                {
+                    console.debug("Y) timeupdate");
+                }
+            );
+
+            _audioElement.addEventListener("seeking", function()
+                {
+                    console.debug("Z) seeking");
+                }
+            );
+        }
+
         var self = this;
      
         //_audioElement.setAttribute("preload", "auto");
@@ -155,7 +170,7 @@
         }
     
     
-        var _volume = 100.0;
+        var _volume = 1.0;
         this.setVolume = function(volume)
         {
             _volume = volume;
@@ -260,7 +275,7 @@
                     {
                         if (DEBUG)
                         {
-                            console.debug("interval timer skipped (still seeking...)");
+//console.debug("interval timer skipped (still seeking...)");
                         }
                                          
                         _intervalTimerSkips++;
@@ -271,15 +286,26 @@
                         }
                         return;
                     }
-    
-                    var currentTime = _audioElement.currentTime;
+                    
+                    var currentTime = undefined;
+                    try
+                    {
+                        currentTime = _audioElement.currentTime;
+                    }
+                    catch (ex)
+                    {
+                        console.error(ex.message);
+                    }
     
     //                if (DEBUG)
     //                {
     //                    console.debug("currentTime: " + currentTime);
     //                }
     
-                    onPositionChanged(currentTime, 1);
+                    if (currentTime)
+                    {
+                        onPositionChanged(currentTime, 1);
+                    }
                 }, 20);
         }
     
@@ -342,7 +368,7 @@
             _audioElement.load();
     
             return true;
-        }
+        };
     
         var _playId = 0;
     
@@ -487,15 +513,36 @@
         };
     
         var _readyEvent = _Android ? "canplaythrough" : "canplay";
-        function onReadyToSeek(event)
+        function onReadyToSeek_(event)
         {
-            $(_audioElement).off(_readyEvent, onReadyToSeek);
-            
             if (DEBUG)
             {
                 console.debug("onReadyToSeek #" + event.data.playId);
             }
             playSeekCurrentTime(event.data.seekBegin, event.data.playId, true);
+        }
+        function onReadyToSeek(event)
+        {
+            $(_audioElement).off(_readyEvent, onReadyToSeek);
+            
+            if (!_Android)
+            {
+                onReadyToSeek_(event);
+            }
+            else
+            {
+                if (DEBUG)
+                {
+                    console.debug("onReadyToSeek ANDROID ... waiting a bit ... #" + event.data.playId);
+                }
+                
+                //self.play();
+                playToForcePreload();
+                
+                setTimeout(function() {
+                    onReadyToSeek_(event);
+                }, 1000);
+            }
         }
     
         function playSeekCurrentTime(newCurrentTime, playId, isNewSrc)
@@ -554,7 +601,7 @@
                 }, 5);
             }
         }
-    
+        
         var MAX_SEEK_RETRIES = 10;
         var _seekedEvent1 = _iOS ? "canplaythrough" : "seeked"; //"progress"
         var _seekedEvent2 = _iOS ? "timeupdate" : "seeked";
@@ -610,18 +657,15 @@
                     setTimeout(function()
                     {
                         onSeeked(event);
-                    }, 50);
+                    }, _Android ? 1000 : 200);
                 }
     
                 setTimeout(function()
                 {
+                    _audioElement.pause();
                     try
                     {
-                        _audioElement.pause();
-                        setTimeout(function()
-                        {
-                            _audioElement.currentTime = event.data.newCurrentTime;
-                        }, 0);
+                        _audioElement.currentTime = event.data.newCurrentTime;
                     }
                     catch (ex)
                     {
@@ -631,11 +675,7 @@
                         {
                             try
                             {
-                                _audioElement.pause();
-                                setTimeout(function()
-                                {
-                                    _audioElement.currentTime = event.data.newCurrentTime;
-                                }, 0);
+                                _audioElement.currentTime = event.data.newCurrentTime;
                             }
                             catch (ex)
                             {
@@ -690,4 +730,5 @@
         }
     };
 
-})()
+    return AudioPlayer;
+});

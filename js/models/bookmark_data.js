@@ -23,17 +23,20 @@
 //  OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED 
 //  OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
+define(function() {
 /**
- @class ReadiumSDK.Models.BookmarkData
+ * @class Models.BookmarkData
  */
-ReadiumSDK.Models.BookmarkData = function(idref, contentCFI) {
+var BookmarkData = function(idref, contentCFI) {
+
+    var self = this;
 
     /**
      * spine item idref
      * @property idref
      * @type {string}
      */
+
     this.idref = idref;
 
     /**
@@ -41,6 +44,28 @@ ReadiumSDK.Models.BookmarkData = function(idref, contentCFI) {
      * @property contentCFI
      * @type {string}
      */
+    
     this.contentCFI = contentCFI;
 
+    /**
+     * serialize to string
+     * @return JSON string representation
+     */
+    
+    this.toString = function(){
+        return JSON.stringify(self);
+    }
+
 };
+
+/**
+ * Deserialize from string
+ * @param str
+ * @returns {ReadiumSDK.Models.BookmarkData}
+ */
+BookmarkData.fromString = function(str) {
+    var obj = JSON.parse(str);
+    return new BookmarkData(obj.idref,obj.contentCFI);
+};
+return BookmarkData;
+});

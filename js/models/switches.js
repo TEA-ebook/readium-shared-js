@@ -24,18 +24,30 @@
 //  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE 
 //  OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED 
 //  OF THE POSSIBILITY OF SUCH DAMAGE.
-
-ReadiumSDK.Models.Switches = function() {
+define(["jquery", "underscore"], function($, _) {
+/** 
+ * Switches in the epub publication.
+ * 
+ * @class Models.Switches
+ * @constructor
+ */
+var Switches = function() {
 
 };
 
 // Description: Parse the epub "switch" tags and hide
 // cases that are not supported
-ReadiumSDK.Models.Switches.apply = function(dom) {
 
+/**
+ *
+ * Static Switches.apply method.
+ * 
+ * @method Switches.apply
+ * @param dom
+ */
 
-    // helper method, returns true if a given case node
-    // is supported, false otherwise
+Switches.apply = function(dom) {
+
     function isSupported(caseNode) {
 
         var ns = caseNode.attributes["required-namespace"];
@@ -48,29 +60,39 @@ ReadiumSDK.Models.Switches.apply = function(dom) {
         // all the xmlns that readium is known to support
         // TODO this is going to require maintenance
         var supportedNamespaces = ["http://www.w3.org/1998/Math/MathML"];
-        return _.include(supportedNamespaces, ns);
+        return _.include(supportedNamespaces, ns.value);
     }
 
-    $('switch', dom).each( function() {
+    var getQuery = ((window.navigator.userAgent.indexOf("Trident") > 0) || (window.navigator.userAgent.indexOf("Edge") > 0))
+        ? function (elementName) { return 'epub\\:' + elementName; }
+        : function (elementName) { return elementName; };
+
+    _.each(dom.querySelectorAll(getQuery('switch')), function(switchNode) {
 
         // keep track of whether or now we found one
         var found = false;
 
-        $('case', this).each(function() {
+        _.each(switchNode.querySelectorAll(getQuery('case')), function(caseNode) {
 
-            if( !found && isSupported(this) ) {
+            if( !found && isSupported(caseNode) ) {
                 found = true; // we found the node, don't remove it
             }
             else {
-                $(this).remove(); // remove the node from the dom
-//                    $(this).prop("hidden", true);
+                $(caseNode).remove(); // remove the node from the dom
             }
+
         });
 
-        if(found) {
+        if (found) {
+
             // if we found a supported case, remove the default
-            $('default', this).remove();
-//                $('default', this).prop("hidden", true);
+            _.each(switchNode.querySelectorAll(getQuery('default')), function(defaultNode) {
+                $(defaultNode).remove();
+            });
+
         }
-    })
+
+    });
 };
+    return Switches;
+});

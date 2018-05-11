@@ -1,4 +1,4 @@
-//  Created by Boris Schneiderman.
+  //  Created by Boris Schneiderman.
 //  Copyright (c) 2014 Readium Foundation and/or its licensees. All rights reserved.
 //  
 //  Redistribution and use in source and binary forms, with or without modification, 
@@ -23,31 +23,55 @@
 //  OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED 
 //  OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/*
+define(function() {
+/**
+ * Spread the page 
  *
- *
- *
- * @param {ReadiumSDK.Models.Spine} spine
+ * @class  Models.Spread
  * @constructor
+ * @param spine 
+ * @param {Boolean} isSyntheticSpread 
+ *
  */
-
-ReadiumSDK.Models.Spread = function(spine, orientation) {
+var Spread = function(spine, isSyntheticSpread) {
 
     var self = this;
 
-    this.orientation = orientation;
     this.spine = spine;
-
+    
     this.leftItem = undefined;
     this.rightItem = undefined;
     this.centerItem = undefined;
 
-    var _isSyntheticSpread = true;
+    var _isSyntheticSpread = isSyntheticSpread;
+
+    /**
+     * Sets whether or not this is a synthetic spread
+     *
+     * @method     setSyntheticSpread
+     * @param      {Bool} isSyntheticSpread
+     */
 
     this.setSyntheticSpread = function(isSyntheticSpread) {
         _isSyntheticSpread = isSyntheticSpread;
     };
 
+    /**
+     * Checks out if the spread is synthetic
+     *
+     * @method     isSyntheticSpread
+     * @return     {Bool} true if this is a 2-page synthetic spread
+     */
+
+    this.isSyntheticSpread = function() {
+        return _isSyntheticSpread;
+    };
+
+    /**
+     * Opens the first spine item (FXL page)
+     *
+     * @method     openFirst
+     */
 
     this.openFirst = function() {
 
@@ -59,6 +83,12 @@ ReadiumSDK.Models.Spread = function(spine, orientation) {
         }
     };
 
+    /**
+     * Opens the last spine item (FXL page)
+     *
+     * @method     openLast
+     */
+
     this.openLast = function() {
 
         if( this.spine.items.length == 0 ) {
@@ -69,6 +99,13 @@ ReadiumSDK.Models.Spread = function(spine, orientation) {
         }
     };
 
+    /**
+     * Opens a spine item (FXL page)
+     *
+     * @method     openItem
+     * @param      {Models.SpineItem} item
+     */
+
     this.openItem = function(item) {
 
         resetItems();
@@ -76,16 +113,25 @@ ReadiumSDK.Models.Spread = function(spine, orientation) {
         var position = getItemPosition(item);
         setItemToPosition(item, position);
 
-        if(position != ReadiumSDK.Models.Spread.POSITION_CENTER) {
-            var neighbour = getNeighbourItem(item, true);
+        if(position != Spread.POSITION_CENTER && this.spine.isValidLinearItem(item.index)) { // && item.isRenditionSpreadAllowed() not necessary, see getItemPosition() below
+            var neighbour = getNeighbourItem(item);
             if(neighbour) {
                 var neighbourPos = getItemPosition(neighbour);
-                if(neighbourPos != position && position != ReadiumSDK.Models.Spread.POSITION_CENTER)  {
+                if(neighbourPos != position
+                    && neighbourPos != Spread.POSITION_CENTER
+                    && !neighbour.isReflowable()
+                    && neighbour.isRenditionSpreadAllowed())  {
                     setItemToPosition(neighbour, neighbourPos);
                 }
             }
         }
     };
+
+    /**
+     * Resets the spine items (FXL pages, left + right + center) to undefined
+     *
+     * @method     resetItems
+     */
 
     function resetItems() {
 
@@ -94,45 +140,63 @@ ReadiumSDK.Models.Spread = function(spine, orientation) {
         self.centerItem = undefined;
     }
 
+    /**
+     * Sets the spine item (FXL page) to a position (left, right or center)
+     *
+     * @method     setItemToPosition
+     * @param      {Models.SpineItem} item
+     * @param      {Spread.POSITION_CENTER | Spread.POSITION_LEFT | Spread.POSITION_RIGHT} position
+     */
+
     function setItemToPosition(item, position) {
 
-        if(position == ReadiumSDK.Models.Spread.POSITION_LEFT) {
+        if(position == Spread.POSITION_LEFT) {
             self.leftItem = item;
         }
-        else if (position == ReadiumSDK.Models.Spread.POSITION_RIGHT) {
+        else if (position == Spread.POSITION_RIGHT) {
             self.rightItem = item;
         }
         else {
 
-            if(position != ReadiumSDK.Models.Spread.POSITION_CENTER) {
+            if(position != Spread.POSITION_CENTER) {
                 console.error("Unrecognized position value");
             }
 
             self.centerItem = item;
         }
-
     }
 
+    /**
+     * Returns the position of a spine item / FXL page (left, center or right)
+     *
+     * @method     getItemPosition
+     * @param      {Models.SpineItem} item
+     * @return     {Spread.POSITION_CENTER | Spread.POSITION_LEFT | Spread.POSITION_RIGHT}
+     */
+
     function getItemPosition(item) {
-
+        
+        // includes !item.isRenditionSpreadAllowed() ("rendition:spread-none") ==> force center position
         if(!_isSyntheticSpread) {
-            return ReadiumSDK.Models.Spread.POSITION_CENTER;
-        }
-
-        if(!ReadiumSDK.Helpers.isRenditionSpreadPermittedForItem(item, self.orientation)) {
-            return ReadiumSDK.Models.Spread.POSITION_CENTER;
+            return Spread.POSITION_CENTER;
         }
 
         if(item.isLeftPage()) {
-            return ReadiumSDK.Models.Spread.POSITION_LEFT;
+            return Spread.POSITION_LEFT;
         }
 
         if (item.isRightPage()) {
-            return ReadiumSDK.Models.Spread.POSITION_RIGHT;
+            return Spread.POSITION_RIGHT;
         }
 
-        return ReadiumSDK.Models.Spread.POSITION_CENTER;
+        return Spread.POSITION_CENTER;
     }
+
+    /**
+     * Opens the next item
+     *
+     * @method     openNext
+     */ 
 
     this.openNext = function() {
 
@@ -152,6 +216,12 @@ ReadiumSDK.Models.Spread = function(spine, orientation) {
         }
     };
 
+    /**
+     * Opens the previous item
+     *
+     * @method     openPrev
+     */ 
+
     this.openPrev = function() {
 
         var items = this.validItems();
@@ -170,6 +240,13 @@ ReadiumSDK.Models.Spread = function(spine, orientation) {
         }
     };
 
+    /**
+     * Returns an sorrted array of spine items (as per their order in the spine) that are currently in the FXL page layout
+     *
+     * @method     validItems
+     * @return     {array} 
+     */ 
+
     this.validItems = function() {
 
         var arr = [];
@@ -184,6 +261,14 @@ ReadiumSDK.Models.Spread = function(spine, orientation) {
 
         return arr;
     };
+
+    /**
+     * Gets the neighbour spine item in the FXL page layout (on left or right of the current item)
+     *
+     * @method     getNeighbourItem
+     * @param      {Models.SpineItem} item
+     * @return     {Models.SpineItem} item
+     */ 
 
     function getNeighbourItem(item) {
 
@@ -200,6 +285,9 @@ ReadiumSDK.Models.Spread = function(spine, orientation) {
 
 };
 
-ReadiumSDK.Models.Spread.POSITION_LEFT = "left";
-ReadiumSDK.Models.Spread.POSITION_RIGHT = "right";
-ReadiumSDK.Models.Spread.POSITION_CENTER = "center";
+Spread.POSITION_LEFT = "left";
+Spread.POSITION_RIGHT = "right";
+Spread.POSITION_CENTER = "center";
+
+return Spread;
+});

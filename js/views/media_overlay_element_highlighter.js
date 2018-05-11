@@ -26,7 +26,13 @@
 //  OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED 
 //  OF THE POSSIBILITY OF SUCH DAMAGE.
 
-ReadiumSDK.Views.MediaOverlayElementHighlighter = function(reader) {
+define(['jquery', 'rangy', 'readium_cfi_js'], function($, rangy, epubCfi) {
+/**
+ *
+ * @param reader
+ * @constructor
+ */
+var MediaOverlayElementHighlighter = function(reader) {
 
     this.includeParWhenAdjustingToSeqSyncGranularity = true;
 
@@ -296,8 +302,8 @@ ReadiumSDK.Views.MediaOverlayElementHighlighter = function(reader) {
 //console.log(infoEnd);
             
             _rangyRange.setStartAndEnd(
-                infoStart.textNode[0], infoStart.textOffset,
-                infoEnd.textNode[0], infoEnd.textOffset
+                infoStart.textNode, infoStart.textOffset,
+                infoEnd.textNode, infoEnd.textOffset
             );
             
             if (false && // we use CssClassApplier instead, because surroundContents() has no trivial undoSurroundContents() function (inc. text nodes normalisation, etc.)
@@ -332,13 +338,29 @@ ReadiumSDK.Views.MediaOverlayElementHighlighter = function(reader) {
                 _rangyCSS.applyToRange(_rangyRange);
             }
         }
-        else
+        else if (_reader.plugins.highlights) // same API, newer implementation
         {
             try
             {
                 //var id = $hel.data("mediaOverlayData").par.getSmil().spineItemId;
                 var id = par.getSmil().spineItemId;
-                _reader.addHighlight(id, par.cfi.partialRangeCfi, HIGHLIGHT_ID,
+                _reader.plugins.highlights.addHighlight(id, par.cfi.partialRangeCfi, HIGHLIGHT_ID,
+                "highlight", //"underline"
+                undefined // styles
+                            );
+            }
+            catch(error)
+            {
+                console.error(error);
+            }
+        }
+        else if (_reader.plugins.annotations) // legacy
+        {
+            try
+            {
+                //var id = $hel.data("mediaOverlayData").par.getSmil().spineItemId;
+                var id = par.getSmil().spineItemId;
+                _reader.plugins.annotations.addHighlight(id, par.cfi.partialRangeCfi, HIGHLIGHT_ID,
                 "highlight", //"underline"
                 undefined // styles
                             );
@@ -422,11 +444,36 @@ ReadiumSDK.Views.MediaOverlayElementHighlighter = function(reader) {
                 //_rangyCSS = undefined;
                 _rangyRange = undefined;
             }
-            else
+            else if (_reader.plugins.highlights) // same API, new implementation
             {
                 try
                 {
-                    _reader.removeHighlight(HIGHLIGHT_ID);
+                    _reader.plugins.highlights.removeHighlight(HIGHLIGHT_ID);
+        
+                    var toRemove = undefined;
+                    while ((toRemove = doc.getElementById("start-" + HIGHLIGHT_ID)) !== null)
+                    {
+            console.log("toRemove START");
+            console.log(toRemove);
+                        toRemove.parentNode.removeChild(toRemove);
+                    }
+                    while ((toRemove = doc.getElementById("end-" + HIGHLIGHT_ID)) !== null)
+                    {
+            console.log("toRemove END");
+            console.log(toRemove);
+                        toRemove.parentNode.removeChild(toRemove);
+                    }
+                }
+                catch(error)
+                {
+                    console.error(error);
+                }
+            }
+            else if (_reader.plugins.annotations) // legacy
+            {
+                try
+                {
+                    _reader.plugins.annotations.removeHighlight(HIGHLIGHT_ID);
         
                     var toRemove = undefined;
                     while ((toRemove = doc.getElementById("start-" + HIGHLIGHT_ID)) !== null)
@@ -512,3 +559,5 @@ ReadiumSDK.Views.MediaOverlayElementHighlighter = function(reader) {
         return par;
     };
 };
+    return MediaOverlayElementHighlighter;
+});

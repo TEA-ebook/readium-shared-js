@@ -94,7 +94,9 @@ var ReflowableView = function(options, reader){
         currentPageIndex: 0,
         columnWidth : undefined,
         pageOffset : 0,
-        columnCount: 0
+        columnCount: 0,
+        documentSize: 0,
+        documentHeight: 0
     };
 
     this.render = function(){
@@ -294,6 +296,7 @@ var ReflowableView = function(options, reader){
         }
 
         if(!success) {
+            console.debug("onIFrameLoad error");
             _$iframe.css("opacity", "1");
             _deferredPageRequest = undefined;
             return;
@@ -596,12 +599,14 @@ var ReflowableView = function(options, reader){
     }
 
     function onPaginationChanged_(initiator, paginationRequest_spineItem, paginationRequest_elementId) {
+        console.debug("onPaginationChanged");
         _paginationInfo.currentPageIndex = _paginationInfo.currentSpreadIndex * _paginationInfo.visibleColumnCount;
         _paginationInfo.pageOffset = (_paginationInfo.columnWidth + _paginationInfo.columnGap) * _paginationInfo.visibleColumnCount * _paginationInfo.currentSpreadIndex;
         
         redraw();
 
         _.defer(function () {
+            console.debug("onPaginationChanged deferred");
 
             if (_lastPageRequest == undefined) {
                 self.saveCurrentPosition();
@@ -832,6 +837,10 @@ var ReflowableView = function(options, reader){
             console.error("Column count zero?!");
         }
 
+        var bodyElement = _$htmlBody[0];
+        _paginationInfo.documentSize = $(bodyElement).text().length;
+        _paginationInfo.documentHeight = $(bodyElement).height();
+
         var totalGaps = (_paginationInfo.columnCount-1) * _paginationInfo.columnGap;
         var colWidthCheck = (dim - totalGaps) / _paginationInfo.columnCount;
         colWidthCheck = Math.round(colWidthCheck);
@@ -963,7 +972,7 @@ var ReflowableView = function(options, reader){
 
         for(var i = 0, count = pageIndexes.length; i < count; i++) {
 
-            paginationInfo.addOpenPage(pageIndexes[i], _paginationInfo.columnCount, _currentSpineItem.idref, _currentSpineItem.index);
+            paginationInfo.addOpenPage(pageIndexes[i], _paginationInfo.columnCount, _currentSpineItem.idref, _currentSpineItem.index, _paginationInfo.documentSize, _paginationInfo.currentSpreadIndex);
         }
 
         return paginationInfo;

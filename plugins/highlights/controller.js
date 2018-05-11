@@ -147,6 +147,8 @@ function($, _, Class, HighlightHelpers, HighlightGroup) {
             var range;
             var selectedElements;
 
+	    console.log('controller:addHighlight called');
+
             var contentDoc = this.context.document;
             //get transform scale of content document
             var scale = 1.0;
@@ -174,10 +176,13 @@ function($, _, Class, HighlightHelpers, HighlightGroup) {
             }
             this.scale = scale;
 
+	    console.log('controller:addHighlight scale='+scale);
+
             // form fake full CFI to satisfy getRangeTargetNodes
             var arbitraryPackageDocCFI = "/99!"
             var fullFakeCFI = "epubcfi(" + arbitraryPackageDocCFI + CFI + ")";
             if (this.epubCFI.Interpreter.isRangeCfi(fullFakeCFI)) {
+		console.log('controller:addHighlight isRangeCfi');
                 CFIRangeInfo = this.epubCFI.getRangeTargetElements(fullFakeCFI, contentDoc, ["cfi-marker", "cfi-blacklist", "mo-cfi-highlight"], [], ["MathJax_Message", "MathJax_SVG_Hidden"]);
 
                 var startNode = CFIRangeInfo.startElement,
@@ -194,6 +199,7 @@ function($, _, Class, HighlightHelpers, HighlightGroup) {
                 range.setEnd(endNode, CFIRangeInfo.endOffset);
                 selectedElements = range.getNodes();
             } else {
+		console.log('controller:addHighlight !isRangeCfi');
                 var element = this.epubCFI.getTargetElement(fullFakeCFI, contentDoc, ["cfi-marker", "cfi-blacklist", "mo-cfi-highlight"], [], ["MathJax_Message", "MathJax_SVG_Hidden"]);
                 selectedElements = [element ? element[0] : null];
                 range = null;
@@ -236,20 +242,36 @@ function($, _, Class, HighlightHelpers, HighlightGroup) {
             return CFI;
         },
 
+        // this returns the selected text
+        getCurrentSelectionText: function() {
+            var currentSelection = this._getCurrentSelectionRange();
+
+            var selectedText;
+            if (currentSelection) {
+                selectedText = currentSelection.toString();
+            }
+            return selectedText;
+        },
+
         addSelectionHighlight: function(id, type, styles, clearSelection) {
+	    console.log('controller:addSelectionHightlight called id='+id+' type='+type+' styles='+styles+' clearSelection='+clearSelection);
             var CFI = this.getCurrentSelectionCFI();
+	    console.log('controller:addSelectionHighlight CFI='+CFI);
             if (CFI) {
 
                 // if clearSelection is true
                 if (clearSelection) {
+		    console.log('controller:addSelectionHighlight clearSelection is set');
                     var iframeDocument = this.context.document;
                     if (iframeDocument.getSelection) {
                         var currentSelection = iframeDocument.getSelection();
                         currentSelection.collapseToStart();
                     }
                 }
+		console.log('controller:addSelectionHighlight calling addHighlight()');
                 return this.addHighlight(CFI, id, type, styles);
             } else {
+		console.log('controller:addSelectionHighlight nothing selected!');
                 throw new Error("Nothing selected");
             }
         },
@@ -344,6 +366,7 @@ function($, _, Class, HighlightHelpers, HighlightGroup) {
 
         _addHighlightHelper: function(CFI, annotationId, type, styles, highlightedNodes,
             range, startNode, endNode, offsetTop, offsetLeft) {
+	    console.log('addHighlightHelper: offsetTop='+offsetTop+' offsetLeft='+offsetLeft);
             if (!offsetTop) {
                 offsetTop = this.offsetTopAddition;
             }
@@ -366,6 +389,7 @@ function($, _, Class, HighlightHelpers, HighlightGroup) {
 
             annotationId = annotationId.toString();
             if (this.annotationHash[annotationId]) {
+	    	console.log('addHighlightHelper: that annotation id already exists');
                 throw new Error("That annotation id already exists; annotation not added");
             }
 

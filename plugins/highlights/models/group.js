@@ -458,8 +458,10 @@ function($, _, Class, TextLineInferrer, HighlightView, HighlightBorderView, High
         },
 
         renderHighlights: function(viewportElement) {
+	    console.log('group:renderHighlights called');
             // higlight group is live, it just doesn't need to be visible, yet.
             if (!this.visible) {
+		console.log('group:renderHighlights not visible');
                 return;
             }
 

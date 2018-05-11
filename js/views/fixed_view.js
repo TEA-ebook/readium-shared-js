@@ -593,15 +593,19 @@ var FixedView = function(options, reader){
 
     this.bookmarkCurrentPage = function() {
 
+	console.log('fixed_view/bookmarkCurrentPage called');
         var views = getDisplayingViews();
         var loadedSpineItems = this.getLoadedSpineItems();
 
         if (views.length > 0) {
+	    console.log('fixed_view/bookmarkCurrentPage views.length>0');
             return views[0].getFirstVisibleCfi();
         } else if (loadedSpineItems.length > 0) {
+	    console.log('fixed_view/bookmarkCurrentPage new BookmarkData');
             return new BookmarkData(this.getLoadedSpineItems()[0].idref, null);
         }
 
+	console.log('fixed_view/bookmarkCurrentPage undefined');
         return undefined;
     };
 

@@ -1087,7 +1087,10 @@ var ReaderView = function (options) {
      *          {null} If a bookmark could not be created successfully.
      */
     this.bookmarkCurrentPage = function() {
+	console.log('reader_view:bookmarkCurrentPage called');
         var bookmark = _currentView.bookmarkCurrentPage();
+	console.log('reader_view:bookmarkCurrentPage bookmark='+bookmark);
+	console.log('reader_view:bookmarkCurrentPage is bookmark null ?'+(bookmark ? 'NO' : 'YES'));
         return bookmark ? bookmark.toString() : null;
     };
 

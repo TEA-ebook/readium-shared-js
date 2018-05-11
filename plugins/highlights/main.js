@@ -140,6 +140,10 @@ define(['readium_js_plugins', 'readium_shared_js/globals', './manager'], functio
             return _highlightsManager.getHighlight(id);
         };
 
+        this.getCurrentSelectionText = function() {
+            return _highlightsManager.getCurrentSelectionText();
+        };
+
         /**
          * Update annotation by the id, reapplies CSS styles to the existing annotaion
          *

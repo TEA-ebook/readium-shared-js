@@ -140,15 +140,29 @@ var HighlightsManager = function (proxyObj, options) {
         return undefined;
     };
 
-    this.addSelectionHighlight = function(id, type, styles, clearSelection) {
+    this.getCurrentSelectionText = function() {
         for(var spine in liveAnnotations) {
             var annotationsForView = liveAnnotations[spine];
+            return annotationsForView.getCurrentSelectionText();
+        }
+        return undefined;
+    };
+
+    this.addSelectionHighlight = function(id, type, styles, clearSelection) {
+	console.log('addSelectionHighlight: called with id='+id+' type='+type);
+        for(var spine in liveAnnotations) {
+	    console.log('addSelectionHighlight: spine found in liveAnnotations');
+            var annotationsForView = liveAnnotations[spine];
             if (annotationsForView.getCurrentSelectionCFI()) {
+		console.log('addSelectionHighlight: got current CFI');
                 var annotation = annotationsForView.addSelectionHighlight(
                     id, type, styles, clearSelection);
+		console.log('addSelectionHighlight: annotation is null ?' + (annotation ? 'NO':'YES'));
+		console.log('addSelectionHighlight: idref='+spines[spine].idref+' CFI='+annotation.CFI);
                 return new BookmarkData(spines[spine].idref, annotation.CFI);
             }
         }
+	console.log('addSelectionHighlight: ends with no CFI');
         return undefined;
     };
 

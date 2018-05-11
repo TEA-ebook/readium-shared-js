@@ -1039,7 +1039,7 @@ var ScrollView = function (options, isContinuousScroll, reader) {
     };
 
     this.bookmarkCurrentPage = function () {
-        
+    	console.log('scroll_view:bookmarkCurrentPage called');    
         return self.getFirstVisibleCfi();
     };
 

@@ -86,8 +86,8 @@ var CurrentPagesInfo = function(spine, isFixedLayout) {
      * @param      {number} spineItemIndex   
      */
 
-    this.addOpenPage = function(spineItemPageIndex, spineItemPageCount, idref, spineItemIndex) {
-        this.openPages.push({spineItemPageIndex: spineItemPageIndex, spineItemPageCount: spineItemPageCount, idref: idref, spineItemIndex: spineItemIndex});
+    this.addOpenPage = function(spineItemPageIndex, spineItemPageCount, idref, spineItemIndex, docsize, docheight) {
+        this.openPages.push({spineItemPageIndex: spineItemPageIndex, spineItemPageCount: spineItemPageCount, idref: idref, spineItemIndex: spineItemIndex, documentSize: docsize, documentHeight:docheight});
 
         this.sort();
     };

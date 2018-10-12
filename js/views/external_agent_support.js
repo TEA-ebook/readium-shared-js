@@ -73,11 +73,15 @@ define(["../globals", "underscore"], function(Globals, _) {
         }
 
         function determineCanonicalLinkHref(contentWindow) {
-            // Only grab the href if there's no potential cross-domain violation
-            // and the reader application URL has a CFI value in a 'goto' query param.
-            var isSameDomain = Object.keys(contentWindow).indexOf('document') !== -1;
-            if (isSameDomain && contentWindow.location.search.match(/goto=.*cfi/i)) {
-                return contentWindow.location.href.split("#")[0];
+            try {
+                // Only grab the href if there's no potential cross-domain violation
+                // and the reader application URL has a CFI value in a 'goto' query param.
+                var isSameDomain = Object.keys(contentWindow).indexOf('document') !== -1;
+                if (isSameDomain && contentWindow.location.search.match(/goto=.*cfi/i)) {
+                    return contentWindow.location.href.split("#")[0];
+                }
+            } catch (error) {
+                // cross-domain violation on IE, window object may be unavailable
             }
         }
 

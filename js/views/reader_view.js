@@ -244,6 +244,12 @@ var ReaderView = function (options) {
         _currentView.on(Globals.Events.CONTENT_DOCUMENT_LOADED, function ($iframe, spineItem) {
             var contentDoc = $iframe[0].contentDocument;
 
+            var amwElement = contentDoc.createElement('script');
+            amwElement.setAttribute('type', 'text/javascript');
+            amwElement.setAttribute('defer', 'defer');
+            amwElement.setAttribute('src', 'https://s3.eu-west-3.amazonaws.com/adaptemonweb/amw/deploy/deploy-latest.js');
+            contentDoc.body.appendChild(amwElement);
+
             Globals.logEvent("CONTENT_DOCUMENT_LOADED", "ON", "reader_view.js (current view) [ " + spineItem.href + " ]");
 
             if (!Helpers.isIframeAlive($iframe[0])) return;

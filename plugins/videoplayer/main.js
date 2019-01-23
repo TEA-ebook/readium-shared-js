@@ -20,10 +20,13 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
   ];
 
   function loadCss(document, css) {
+    if (!document.head) {
+      return;
+    }
     var style = document.createElement('style');
     style.type = 'text/css';
     style.innerHTML = css;
-    document.getElementsByTagName('head')[0].appendChild(style);
+    document.head.appendChild(style);
   }
 
   function getVideoFromEvent(event) {

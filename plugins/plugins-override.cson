@@ -1,10 +1,10 @@
 plugins:
   include: [
+    'annotations',
+    'gestures',
     'nocopy',
-    'videoplayer',
-    'gestures'
+    'videoplayer'
   ]
   exclude: [
-    'annotations',
-    'highlights'
+    'hypothesis'
   ]

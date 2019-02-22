@@ -57,6 +57,9 @@ define(["../globals", "underscore"], function(Globals, _) {
         });
 
         function appendMetaTag(_document, property, content) {
+            if (!_document.head) {
+                return;
+            }
             var tag = _document.createElement('meta');
             tag.setAttribute('name', property);
             tag.setAttribute('content', content);

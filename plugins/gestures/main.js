@@ -66,13 +66,6 @@ function setGesturesHandler(reader, window) {
     if (event.target.hasAttribute('href') || (event.target.parentNode.hasAttribute && event.target.parentNode.hasAttribute('href'))) {
       $(event.target).click();
     } else {
-      if (event.tapCount === 2) {
-        var textSelected = window.getSelection().toString();
-        if (textSelected.length > 0) {
-          reader.trigger(ReadiumSDK.Events.TEXT_SELECTED, event, textSelected);
-        }
-      }
-
       reader.trigger(ReadiumSDK.Events.GESTURE_TAP, event);
     }
   };

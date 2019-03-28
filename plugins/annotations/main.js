@@ -26,7 +26,7 @@ define(['readium_js_plugins'], function (Plugins) {
     });
 
     this.loadAnnotations = function (annotationList) {
-      annotations = annotationList;
+      annotations = annotationList || [];
 
       if (spine) {
         spineAnnotations = annotationList.filter(annotation => annotation.range.idref === spine.idref);

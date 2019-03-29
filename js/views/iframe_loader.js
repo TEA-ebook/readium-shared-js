@@ -88,7 +88,7 @@ var IFrameLoader = function() {
             // prevent epub own programmatic navigation
             if (iframe.src !== "" && iframe.contentWindow !== null && iframe.src !== iframe.contentWindow.location.href) {
               $(iframe).contents().empty();
-              self.emit(Globals.Events.SCRIPT_NAVIGATION_DETECTED, iframe.contentWindow.location.href);
+              self.emit(ReadiumSDK.Events.SCRIPT_NAVIGATION_DETECTED, iframe.contentWindow.location.href);
               return;
             }
 

@@ -14,7 +14,9 @@ define(['readium_js_plugins'], function (Plugins) {
     reader.on(ReadiumSDK.Events.CONTENT_DOCUMENT_LOADED, function ($iframe) {
       iframe = $iframe[0];
       spine = reader.getLoadedSpineItems()[0];
-      spineAnnotations = annotations.filter(annotation => annotation.range.idref === spine.idref);
+      spineAnnotations = annotations.filter(function (annotation) {
+        return annotation.range.idref === spine.idref;
+      });
 
       addAnnotationsZone(iframe.contentDocument);
 
@@ -29,7 +31,9 @@ define(['readium_js_plugins'], function (Plugins) {
       annotations = annotationList || [];
 
       if (spine) {
-        spineAnnotations = annotationList.filter(annotation => annotation.range.idref === spine.idref);
+        spineAnnotations = annotationList.filter(function (annotation) {
+          return annotation.range.idref === spine.idref;
+        });
         displayAnnotations(iframe.contentDocument, spineAnnotations);
       }
     };
@@ -69,9 +73,9 @@ define(['readium_js_plugins'], function (Plugins) {
         var annotationRange = reader.getDomRangeFromRangeCfi(annotation.range);
 
         var rectList = annotationRange.getClientRects();
-        var lineHeight = Math.min.apply(null, Array.from(rectList).map(r => r.height));
+        var lineHeight = Math.min.apply(null, Array.from(rectList).map(function (r) { return r.height; }));
 
-        Array.from(rectList).forEach(rect => {
+        Array.from(rectList).forEach(function (rect) {
           if (rect.height > lineHeight) {
             return;
           }
@@ -88,10 +92,10 @@ define(['readium_js_plugins'], function (Plugins) {
     const div = document.createElement('div');
     div.id = ANNOTATIONS_ZONE_ID;
     div.style.position = 'fixed';
-    div.style.left = `0`;
-    div.style.top = `0`;
-    div.style.width = `100vw`;
-    div.style.height = `100vh`;
+    div.style.left = '0';
+    div.style.top = '0';
+    div.style.width = '100vw';
+    div.style.height = '100vh';
     div.style.zIndex = '-10';
     div.style.pointerEvents = 'none';
     document.body.append(div);
@@ -103,10 +107,10 @@ define(['readium_js_plugins'], function (Plugins) {
     const div = document.createElement('div');
     div.classList.add('annotation');
     div.style.position = 'fixed';
-    div.style.left = `${left}px`;
-    div.style.top = `${top}px`;
-    div.style.width = `${width}px`;
-    div.style.height = `${height}px`;
+    div.style.left = left + 'px';
+    div.style.top = top + 'px';
+    div.style.width = width + 'px';
+    div.style.height = height + 'px';
     div.style.zIndex = '-10';
     div.style.opacity = '0.4';
     div.style.pointerEvents = 'none';
@@ -115,6 +119,8 @@ define(['readium_js_plugins'], function (Plugins) {
   }
 
   function cleanMarkers(document) {
-    Array.from(document.getElementsByClassName('annotation')).forEach(el => el.parentNode.removeChild(el));
+    Array.from(document.getElementsByClassName('annotation')).forEach(function (el) {
+      return el.parentNode.removeChild(el);
+    });
   }
 });

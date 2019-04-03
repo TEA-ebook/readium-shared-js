@@ -2,7 +2,6 @@ define(['readium_js_plugins'], function (Plugins) {
 
   var ANNOTATIONS_ZONE_ID = 'annotations-zone';
 
-  var lastSelectedText = '';
   var annotations = [];
   var iframe;
   var spine;
@@ -46,16 +45,22 @@ define(['readium_js_plugins'], function (Plugins) {
         var selection = iframeWindow.getSelection();
         var selectedText = selection.toString().trim();
 
-        if (selectedText.length > 0 && selectedText !== lastSelectedText) {
+        if (selectedText.length > 0) {
           var cfiRange = reader.getRangeCfiFromDomRange(selection.getRangeAt(0));
+          var rangeParts = cfiRange.contentCFI.split(',');
+          var currentSpine = reader.spine().getItemById(cfiRange.idref);
+          console.log(currentSpine);
 
           reader.emit(ReadiumSDK.Events.TEXT_SELECTED, {
             text: selectedText,
-            range: {contentCFI: cfiRange.contentCFI, idref: cfiRange.idref},
+            range: {
+              contentCFI: cfiRange.contentCFI,
+              idref: cfiRange.idref,
+              start: 'epubcfi(' + currentSpine.cfi + rangeParts[0] + rangeParts[1] + ')',
+              end: 'epubcfi(' + currentSpine.cfi + rangeParts[0] + rangeParts[2] + ')'
+            },
             event: {x: event.clientX, y: event.clientY}
           });
-
-          lastSelectedText = selectedText;
         }
       });
     }
@@ -75,8 +80,9 @@ define(['readium_js_plugins'], function (Plugins) {
         var rectList = annotationRange.getClientRects();
         var lineHeight = Math.min.apply(null, Array.from(rectList).map(function (r) { return r.height; }));
 
-        Array.from(rectList).forEach(function (rect) {
-          if (rect.height > lineHeight) {
+        var filteredRectList = [ ...new Set(Array.from(rectList).map(r => JSON.stringify(r.toJSON())))].map(r => JSON.parse(r));
+        filteredRectList.forEach(function (rect) {
+          if (rect.height > 2 * lineHeight) {
             return;
           }
           if (rect.left < 0 || (rect.left + rect.width) > document.documentElement.clientWidth) {
@@ -122,5 +128,6 @@ define(['readium_js_plugins'], function (Plugins) {
     Array.from(document.getElementsByClassName('annotation')).forEach(function (el) {
       return el.parentNode.removeChild(el);
     });
+    iframe.contentWindow.getSelection().empty();
   }
 });

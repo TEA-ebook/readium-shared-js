@@ -14,7 +14,7 @@ define(['readium_js_plugins'], function (Plugins) {
       iframe = $iframe[0];
       spine = reader.getLoadedSpineItems()[0];
       spineAnnotations = annotations.filter(function (annotation) {
-        return annotation.range.idref === spine.idref;
+        return annotation.range.start.containerRef === spine.idref;
       });
 
       addAnnotationsZone(iframe.contentDocument);
@@ -31,7 +31,7 @@ define(['readium_js_plugins'], function (Plugins) {
 
       if (spine) {
         spineAnnotations = annotationList.filter(function (annotation) {
-          return annotation.range.idref === spine.idref;
+          return annotation.range.start.containerRef === spine.idref;
         });
         displayAnnotations(iframe.contentDocument, spineAnnotations);
       }
@@ -41,7 +41,7 @@ define(['readium_js_plugins'], function (Plugins) {
       var document = iframe.contentDocument.documentElement;
       var iframeWindow = iframe.contentWindow;
 
-      document.addEventListener('mouseup', function (event) {
+      document.addEventListener('mouseup', function () {
         var selection = iframeWindow.getSelection();
         var selectedText = selection.toString().trim();
 
@@ -49,17 +49,20 @@ define(['readium_js_plugins'], function (Plugins) {
           var cfiRange = reader.getRangeCfiFromDomRange(selection.getRangeAt(0));
           var rangeParts = cfiRange.contentCFI.split(',');
           var currentSpine = reader.spine().getItemById(cfiRange.idref);
-          console.log(currentSpine);
 
           reader.emit(ReadiumSDK.Events.TEXT_SELECTED, {
             text: selectedText,
             range: {
               contentCFI: cfiRange.contentCFI,
-              idref: cfiRange.idref,
-              start: 'epubcfi(' + currentSpine.cfi + rangeParts[0] + rangeParts[1] + ')',
-              end: 'epubcfi(' + currentSpine.cfi + rangeParts[0] + rangeParts[2] + ')'
-            },
-            event: {x: event.clientX, y: event.clientY}
+              start: {
+                cfi: 'epubcfi(' + currentSpine.cfi + rangeParts[0] + rangeParts[1] + ')',
+                containerRef: cfiRange.idref
+              },
+              end: {
+                cfi: 'epubcfi(' + currentSpine.cfi + rangeParts[0] + rangeParts[2] + ')',
+                containerRef: cfiRange.idref
+              }
+            }
           });
         }
       });

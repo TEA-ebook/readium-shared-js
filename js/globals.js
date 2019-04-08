@@ -81,6 +81,7 @@ var Globals = {
         SCRIPT_NAVIGATION_DETECTED: "ScriptNavigationDetected",
         MOUSE_MOVE: "MouseMove",
         TEXT_SELECTED: "TextSelected",
+        ANNOTATION_CLICK: "AnnotationClick",
         REMOTE_DECRYPT_DATA: "RemoteDecryptData",
         SEND_DATA: "SendData"
     },

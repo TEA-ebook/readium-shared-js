@@ -7,6 +7,8 @@ define(['readium_js_plugins'], function (Plugins) {
         whitelist: []
     };
 
+    var currentCopyCharCount = 0;
+
     Plugins.register("nocopy", function (api) {
 
         var blockContext = function (event) {
@@ -17,8 +19,10 @@ define(['readium_js_plugins'], function (Plugins) {
 
         var handleCopy = function (event) {
             const text = document.querySelector('iframe').contentWindow.getSelection().toString();
-            if (text.length > config.copyCharCount) {
+            if (text.length > config.copyCharCount - currentCopyCharCount) {
                 event.preventDefault();
+            } else {
+              currentCopyCharCount += text.length;
             }
         };
 

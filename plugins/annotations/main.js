@@ -52,18 +52,17 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
         if (selectedText.length > 0) {
           var cfiRange = reader.getRangeCfiFromDomRange(selection.getRangeAt(0));
           var rangeParts = cfiRange.contentCFI.split(',');
-          var currentSpine = reader.spine().getItemById(cfiRange.idref);
 
           reader.emit(ReadiumSDK.Events.TEXT_SELECTED, {
             text: selectedText,
             range: {
               contentCFI: cfiRange.contentCFI,
               start: {
-                cfi: 'epubcfi(' + currentSpine.cfi + rangeParts[0] + rangeParts[1] + ')',
+                partialCfi: rangeParts[0] + rangeParts[1],
                 containerRef: cfiRange.idref
               },
               end: {
-                cfi: 'epubcfi(' + currentSpine.cfi + rangeParts[0] + rangeParts[2] + ')',
+                partialCfi: rangeParts[0] + rangeParts[2],
                 containerRef: cfiRange.idref
               }
             },

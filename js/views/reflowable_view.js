@@ -1238,6 +1238,10 @@ var ReflowableView = function(options, reader){
     this.getNearestCfiFromElement = function(element) {
         return createBookmarkFromCfi(_navigationLogic.getNearestCfiFromElement(element));
     };
+
+    this.getIframes = function () {
+        return [_$iframe[0]];
+    };
 };
     return ReflowableView;
 });

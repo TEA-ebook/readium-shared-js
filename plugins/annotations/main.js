@@ -4,41 +4,30 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
   var NOTES_ZONE_ID = 'annotations-notes-zone';
 
   var annotations = [];
-  var iframe;
-  var spine;
-  var spineAnnotations = [];
+  var lastPaginationData;
 
   Plugins.register('annotations', function (api) {
     var reader = api.reader;
 
     reader.on(ReadiumSDK.Events.CONTENT_DOCUMENT_LOADED, function ($iframe) {
-      iframe = $iframe[0];
-      loadCss(iframe.contentDocument, css);
+      var iframe = $iframe[0];
 
-      spine = reader.getLoadedSpineItems()[0];
-      spineAnnotations = annotations.filter(function (annotation) {
-        return annotation.range.start.containerRef === spine.idref;
-      });
+      loadCss(iframe.contentDocument, css);
 
       addHightlightsZone(iframe.contentDocument);
       addNotesZone(iframe.contentDocument);
 
       handleSelection(iframe);
+    });
 
-      reader.on(ReadiumSDK.Events.PAGINATION_CHANGED, function () {
-        displayAnnotations(iframe.contentDocument, spineAnnotations);
-      });
+    reader.on(ReadiumSDK.Events.PAGINATION_CHANGED, function (data) {
+      lastPaginationData = data;
+      displayAnnotations();
     });
 
     this.loadAnnotations = function (annotationList) {
       annotations = annotationList || [];
-
-      if (spine) {
-        spineAnnotations = annotationList.filter(function (annotation) {
-          return annotation.range.start.containerRef === spine.idref;
-        });
-        displayAnnotations(iframe.contentDocument, spineAnnotations);
-      }
+      displayAnnotations();
     };
 
     function handleSelection(iframe) {
@@ -72,48 +61,67 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
       });
     }
 
-    function displayAnnotations(document, annotations) {
-      if (!document) {
+    function displayAnnotations() {
+      if (!lastPaginationData) {
         return;
       }
 
-      // clean highlights
-      var highlightsZone = document.getElementById(HIGHLIGHTS_ZONE_ID);
-      cleanMarkers(highlightsZone);
+      var iframes = reader.getCurrentView().getIframes();
+      var openPages = lastPaginationData.paginationInfo.openPages;
 
-      // clean notes
-      var notesZone = document.getElementById(NOTES_ZONE_ID);
-      cleanMarkers(notesZone);
+      var index = 0;
+      Array.from(iframes).forEach(function (iframe) {
+        var page = openPages[index];
+        var idref = page.idref;
 
-      // empty current selection
-      iframe.contentWindow.getSelection().empty();
-
-      annotations.forEach(function (annotation) {
-        var annotationRange = reader.getDomRangeFromRangeCfi(annotation.range);
-        var rectList = annotationRange.getClientRects();
-
-        //console.time('sortRectList');
-        var filteredRectList = [ ...new Set(Array.from(rectList).map(r => JSON.stringify(r.toJSON())))].map(r => JSON.parse(r));
-        //console.timeEnd('sortRectList');
-
-        var lineHeight = Math.min.apply(null, filteredRectList.map(function (r) { return r.height; }));
-
-        var lastRect = rectList[rectList.length - 1];
-        var annotationElement = drawAnnotation(document, highlightsZone, lastRect.left + lastRect.width, lastRect.top);
-
-        filteredRectList.forEach(function (rect) {
-          if (rect.height > 2 * lineHeight) {
-            return;
-          }
-          if (rect.left < 0 || (rect.left + rect.width) > document.documentElement.clientWidth) {
-            return;
-          }
-          drawElement(document, annotationElement, annotation.color, rect.left, rect.top, rect.width, rect.height);
+        var spineAnnotations = annotations.filter(function (annotation) {
+          return annotation.range.start.containerRef === idref;
         });
-        if (annotation.note) {
-          drawNote(document, notesZone, onNoteClick.bind(annotation), lastRect.left + lastRect.width, lastRect.top);
-        }
+
+        // clean highlights
+        var highlightsZone = iframe.contentDocument.getElementById(HIGHLIGHTS_ZONE_ID);
+        cleanMarkers(highlightsZone);
+
+        // clean notes
+        var notesZone = iframe.contentDocument.getElementById(NOTES_ZONE_ID);
+        cleanMarkers(notesZone);
+
+        // empty current selection
+        iframe.contentWindow.getSelection().empty();
+
+        spineAnnotations.forEach(function (annotation) {
+          var cfis = annotationRangeToSeparateCfis(annotation.range);
+          var annotationRange = reader.getDomRangeFromRangeCfi(cfis.start, cfis.end);
+          var rectList = annotationRange.getClientRects();
+
+          //console.time('sortRectList');
+          var filteredRectList = [...new Set(Array.from(rectList).map(r => JSON.stringify(r.toJSON())))].map(r => JSON.parse(r));
+          //console.timeEnd('sortRectList');
+
+          var lineHeight = Math.min.apply(null, filteredRectList.map(function (r) {
+            return r.height;
+          }));
+
+          var lastRect = rectList[rectList.length - 1];
+          var annotationElement = drawAnnotation(document, highlightsZone, lastRect.left + lastRect.width, lastRect.top);
+
+          filteredRectList.forEach(function (rect) {
+            if (rect.height > 2 * lineHeight) {
+              return;
+            }
+            if (rect.left < 0 || (rect.left + rect.width) > document.documentElement.clientWidth) {
+              return;
+            }
+            drawElement(iframe.contentDocument, annotationElement, annotation.color, rect.left, rect.top, rect.width, rect.height);
+          });
+          if (annotation.note) {
+            drawNote(iframe.contentDocument, notesZone, onNoteClick.bind(annotation), lastRect.left + lastRect.width, lastRect.top);
+          }
+        });
+
+        index++;
       });
+
     }
 
     function onNoteClick(event) {
@@ -187,5 +195,19 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
     style.type = 'text/css';
     style.innerHTML = css;
     document.head.appendChild(style);
+  }
+
+  function annotationRangeToSeparateCfis(annotationRange) {
+    const rangeParts = annotationRange.contentCFI.split(',');
+    return {
+      start: {
+        contentCFI: rangeParts[0] + rangeParts[1],
+        idref: annotationRange.start.containerRef
+      },
+      end: {
+        contentCFI: rangeParts[0] + rangeParts[2],
+        idref: annotationRange.end.containerRef
+      }
+    }
   }
 });

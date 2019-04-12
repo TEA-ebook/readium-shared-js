@@ -901,6 +901,10 @@ var FixedView = function(options, reader){
 
     };
 
+    this.getIframes = function () {
+        return Array.from(_$el[0].querySelectorAll('iframe'));
+    };
+
 };
     return FixedView;
 });

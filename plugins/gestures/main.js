@@ -55,6 +55,10 @@ function setupHammer(Hammer, reader, iframe, element) {
 
 function setGesturesHandler(reader, window) {
   onSwipe = function (event) {
+    if (window.getSelection().toString().length > 0) {
+      return;
+    }
+
     if (event.direction === Hammer.DIRECTION_LEFT) {
       reader.trigger(ReadiumSDK.Events.GESTURE_SWIPE_LEFT, event);
     } else if (event.direction === Hammer.DIRECTION_RIGHT) {

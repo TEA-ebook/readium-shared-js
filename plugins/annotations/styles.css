@@ -15,7 +15,7 @@
 }
 
 .annotation-element {
-  background-color: rgba(255, 255, 0, 0.18);
+  background-color: rgba(255, 255, 0, 0.18) !important;
   opacity: 1;
   pointer-events: none;
   position: fixed;

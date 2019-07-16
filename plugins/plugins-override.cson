@@ -3,7 +3,8 @@ plugins:
     'annotations',
     'gestures',
     'nocopy',
-    'videoplayer'
+    'videoplayer',
+    'audioplayer'
   ]
   exclude: [
     'hypothesis'

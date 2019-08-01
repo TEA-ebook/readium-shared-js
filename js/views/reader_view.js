@@ -94,6 +94,9 @@ var ReaderView = function (options) {
     _iframeLoader.on(Globals.Events.SCRIPT_NAVIGATION_DETECTED, function (url) {
       var rootUrl = self.package().rootUrl;
       var relativePath = url.slice(url.indexOf(rootUrl) + rootUrl.length + 1);
+      if (relativePath.length === 0) {
+        return;
+      }
       console.warn('SCRIPT_NAVIGATION_DETECTED', relativePath);
       self.openContentUrl(relativePath);
     });

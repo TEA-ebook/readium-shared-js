@@ -140,7 +140,8 @@ var IFrameLoader = function() {
             }
         };
 
-        iframe.setAttribute("src", contentUri);
+        iframe.contentWindow.location.replace(contentUri);
+
     };
 
 };

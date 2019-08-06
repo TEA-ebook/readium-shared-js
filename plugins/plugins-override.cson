@@ -2,6 +2,7 @@ plugins:
   include: [
     'annotations',
     'gestures',
+    'highlighter',
     'nocopy',
     'videoplayer'
   ]

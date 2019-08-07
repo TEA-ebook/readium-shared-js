@@ -2,29 +2,49 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
 
   const HIGHLIGHTS_ZONE_ID = 'highlights-zone';
 
+  let highlightRequest = null;
+  let lastPaginationData = null;
+
   Plugins.register('highlighter', function (api) {
     const reader = api.reader;
 
-    let cfiToHighlight = null;
-
     reader.on(ReadiumSDK.Events.CONTENT_DOCUMENT_LOADED, function ($iframe) {
-      var iframe = $iframe[0];
+      const iframe = $iframe[0];
 
       loadCss(iframe.contentDocument, css);
 
       addHightlightsZone(iframe.contentDocument);
-
-      if (cfiToHighlight !== null) {
-        drawHighlight(cfiToHighlight, 6);
-      }
     });
 
-    this.highlight = function (cfi) {
-      cfiToHighlight = cfi;
-      reader.openSpineItemElementCfi(cfi.idref, cfi.contentCFI);
+    reader.on(ReadiumSDK.Events.PAGINATION_CHANGED, function (data) {
+      lastPaginationData = data;
+      drawHighlight();
+    });
+
+    this.highlight = function (cfi, charCount) {
+      highlightRequest = {cfi, charCount};
+      drawHighlight();
     };
 
-    function drawHighlight(cfi, length) {
+    this.clearHighlight = function () {
+      highlightRequest = null;
+    };
+
+    function drawHighlight() {
+      const openPages = lastPaginationData.paginationInfo.openPages;
+      const page = openPages[0];
+      if (!page) {
+        return;
+      }
+      if (highlightRequest === null) {
+        return;
+      }
+
+      const {cfi, charCount} = highlightRequest;
+      if (page.idref !== highlightRequest.cfi.idref) {
+        return;
+      }
+
       const iframes = reader.getCurrentView().getIframes();
       iframes.forEach(iframe => {
         const zone = iframe.contentDocument.getElementById(HIGHLIGHTS_ZONE_ID);
@@ -33,7 +53,7 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
         const index = cfi.contentCFI.match(/:(\d*)/);
         const range = reader.getDomRangeFromRangeCfi(
           cfi,
-          {idref: cfi.idref, contentCFI: cfi.contentCFI.replace(/:(\d*)/, `:${parseInt(index[1], 10) + length}`)}
+          {idref: cfi.idref, contentCFI: cfi.contentCFI.replace(/:(\d*)/, `:${parseInt(index[1], 10) + charCount}`)}
         );
 
         const rectList = range.getClientRects();
@@ -52,7 +72,7 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
           drawElement(iframe.contentDocument, zone, 'yellow', rect.left, rect.top, rect.width, rect.height);
         });
       });
-    };
+    }
   });
 
   function loadCss(document, css) {

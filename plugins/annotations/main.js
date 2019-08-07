@@ -72,6 +72,10 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
       var index = 0;
       Array.from(iframes).forEach(function (iframe) {
         var page = openPages[index];
+        if (!page) {
+          return;
+        }
+
         var idref = page.idref;
 
         var spineAnnotations = annotations.filter(function (annotation) {

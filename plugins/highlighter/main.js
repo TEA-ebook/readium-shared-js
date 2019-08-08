@@ -32,23 +32,30 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
 
     function drawHighlight() {
       const openPages = lastPaginationData.paginationInfo.openPages;
-      const page = openPages[0];
-      if (!page) {
+      if (openPages.length === 0) {
         return;
       }
+
       if (highlightRequest === null) {
         return;
       }
 
       const {cfi, charCount} = highlightRequest;
-      if (page.idref !== highlightRequest.cfi.idref) {
+      const pageIndex = openPages.map(p => p.idref).indexOf(highlightRequest.cfi.idref);
+      if (pageIndex === -1) {
         return;
       }
 
       const iframes = reader.getCurrentView().getIframes();
-      iframes.forEach(iframe => {
+      for (let iframeIndex = 0; iframeIndex < iframes.length; iframeIndex++) {
+        const iframe = iframes[iframeIndex];
+
         const zone = iframe.contentDocument.getElementById(HIGHLIGHTS_ZONE_ID);
         cleanHighlights(zone);
+
+        if (pageIndex !== iframeIndex) {
+          continue;
+        }
 
         const index = cfi.contentCFI.match(/:(\d*)/);
         const range = reader.getDomRangeFromRangeCfi(
@@ -71,7 +78,7 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
           }
           drawElement(iframe.contentDocument, zone, 'yellow', rect.left, rect.top, rect.width, rect.height);
         });
-      });
+      }
     }
   });
 

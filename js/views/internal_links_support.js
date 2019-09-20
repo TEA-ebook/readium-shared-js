@@ -185,11 +185,14 @@ var InternalLinksSupport = function(reader) {
             // Check for both href and xlink:href attribute and get value
             var href;
             if (clickEvent.currentTarget.attributes["xlink:href"]) {
-                
                 href = clickEvent.currentTarget.attributes["xlink:href"].value;
             }
-            else {
+            else if (clickEvent.currentTarget.attributes["href"]) {
                 href = clickEvent.currentTarget.attributes["href"].value;
+            }
+
+            if (!href) {
+                return;
             }
 
             var overrideClickEvent = false;

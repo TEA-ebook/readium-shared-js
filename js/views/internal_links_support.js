@@ -212,7 +212,7 @@ var InternalLinksSupport = function(reader) {
 
             } else {
                 // It's an absolute URL to a remote site - open it in a separate window outside the reader
-                window.open(href, '_blank');
+                reader.emit(ReadiumSDK.Events.OPEN_EXTERNAL_LINK, href);
                 overrideClickEvent = true;
             }
 

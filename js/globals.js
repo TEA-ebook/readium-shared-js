@@ -83,7 +83,8 @@ var Globals = {
         TEXT_SELECTED: "TextSelected",
         ANNOTATION_CLICK: "AnnotationClick",
         REMOTE_DECRYPT_DATA: "RemoteDecryptData",
-        SEND_DATA: "SendData"
+        SEND_DATA: "SendData",
+        OPEN_EXTERNAL_LINK: "OpenExternalLink"
     },
 
     InternalEvents: {

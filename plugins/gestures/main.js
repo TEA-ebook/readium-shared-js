@@ -17,6 +17,9 @@ define(['readium_js_plugins', 'jquery', 'hammer'], function (Plugins, $, Hammer)
 
       // mouse events
       doc.addEventListener('mousemove', function (event) {
+        if (event.movementX === 0 || event.movementY === 0) {
+          return;
+        }
         api.reader.trigger(ReadiumSDK.Events.MOUSE_MOVE, event);
       }, false);
     });

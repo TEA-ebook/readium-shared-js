@@ -29,8 +29,9 @@ define([], function() {
  * @constructor
  * @param selector
  * @param declarations
+ * @param className
  */
-var Style = function(selector, declarations) {
+var Style = function(selector, declarations, className) {
 
     /**
      * Initializing the selector
@@ -51,21 +52,35 @@ var Style = function(selector, declarations) {
     this.declarations = declarations;
 
     /**
+     * CSS class name to add on the element
+     *
+     * @property selector
+     * @type
+     */
+    this.className = className;
+
+    /**
      * Set the declarations array
      *
      * @method setDeclarations
      * @param {Object} declarations
      */
-
     this.setDeclarations = function(declarations) {
-
         for(var prop in declarations) {
             if(declarations.hasOwnProperty(prop)) {
                 this.declarations[prop] = declarations[prop];
             }
         }
+    };
 
-    }
+    /**
+     * Set the class name for the Style
+     *
+     * @param className
+     */
+    this.setClassName = function(className) {
+        this.className = className;
+    };
 };
     return Style;
 });

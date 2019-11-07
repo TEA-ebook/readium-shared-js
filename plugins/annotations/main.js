@@ -98,23 +98,16 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
           var annotationRange = reader.getDomRangeFromRangeCfi(cfis.start, cfis.end);
           var rectList = annotationRange.getClientRects();
 
-          //console.time('sortRectList');
-          var filteredRectList = [...new Set(Array.from(rectList).map(r => JSON.stringify(r.toJSON())))].map(r => JSON.parse(r));
-          //console.timeEnd('sortRectList');
-
-          var lineHeight = Math.min.apply(null, filteredRectList.map(function (r) {
-            return r.height;
-          }));
+          console.time('filterRectList');
+          var filteredRectList = filterRectList(rectList);
+          console.timeEnd('filterRectList');
 
           var lastRect = rectList[rectList.length - 1];
           var annotationElement = drawAnnotation(document, highlightsZone, lastRect.left + lastRect.width, lastRect.top);
 
           filteredRectList.forEach(function (rect) {
-            if (rect.height > 2 * lineHeight) {
-              return;
-            }
             if (rect.left < 0 || (rect.left + rect.width) > document.documentElement.clientWidth) {
-              return;
+              //return;
             }
             drawElement(iframe.contentDocument, annotationElement, annotation.color, rect.left, rect.top, rect.width, rect.height);
           });
@@ -213,5 +206,31 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
         idref: annotationRange.end.containerRef
       }
     }
+  }
+
+  function filterRectList(rectList) {
+    const list = Array.from(rectList);
+    const sortedList = list.sort((a, b) => {
+      if (a.width === b.width) {
+        return 0;
+      }
+      return a.width > b.width ? 1 : -1;
+    });
+
+    const finalList = [];
+    while (sortedList.length > 0) {
+      const rect = sortedList.shift();
+      if (!sortedList.some(refRect => {
+        return refRect.top <= rect.top
+          && refRect.bottom >= rect.bottom
+          && refRect.left <= rect.left
+          && refRect.right >= rect.right
+          && rect.width <= refRect.width
+          && rect.height <= refRect.height;
+      })) {
+        finalList.push(rect);
+      }
+    }
+    return finalList;
   }
 });

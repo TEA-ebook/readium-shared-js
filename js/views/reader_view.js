@@ -934,7 +934,7 @@ var ReaderView = function (options) {
 
         for (var i = 0; i < count; i++) {
             if (styles[i].declarations) {
-                _bookStyles.addStyle(styles[i].selector, styles[i].declarations);
+                _bookStyles.addStyle(styles[i].selector, styles[i].declarations, styles[i].className);
             }
             else {
                 _bookStyles.removeStyle(styles[i].selector);

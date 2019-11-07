@@ -62,7 +62,7 @@ var ReflowableView = function(options, reader){
 
     var _cfiClassBlacklist = ["cfi-marker", "mo-cfi-highlight", "resize-sensor", "resize-sensor-expand", "resize-sensor-shrink", "resize-sensor-inner", "js-hypothesis-config", "js-hypothesis-embed"];
     var _cfiElementBlacklist = ["hypothesis-adder"];
-    var _cfiIdBlacklist = ["MathJax_Message", "MathJax_SVG_Hidden", "annotations-zone"];
+    var _cfiIdBlacklist = ["MathJax_Message", "MathJax_SVG_Hidden", "annotations-highlights-zone", "annotations-notes-zone", "highlights-zone"];
 
     var _$htmlBody;
 

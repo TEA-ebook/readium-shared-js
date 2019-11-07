@@ -73,18 +73,20 @@ var StyleCollection = function() {
      * @method     addStyle
      * @param      selector
      * @param      declarations
+     * @param      className
      * @return     {Models.Style}
      */
 
-    this.addStyle = function(selector, declarations) {
+    this.addStyle = function(selector, declarations, className) {
 
         var style = this.findStyle(selector);
 
         if(style) {
             style.setDeclarations(declarations);
+            style.setClassName(className);
         }
         else {
-            style = new Style(selector, declarations);
+            style = new Style(selector, declarations, className);
             _styles.push(style);
         }
 

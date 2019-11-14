@@ -1,6 +1,8 @@
 define(['readium_js_plugins', 'jquery', 'hammer'], function (Plugins, $, Hammer) {
 
   Plugins.register('gestures', function (api) {
+    var plugin = this;
+
     api.reader.on(ReadiumSDK.Events.CONTENT_DOCUMENT_LOADED, function ($iframe) {
       var doc = $iframe[0].contentDocument.documentElement;
       var iframe = $iframe[0].contentWindow;
@@ -13,7 +15,7 @@ define(['readium_js_plugins', 'jquery', 'hammer'], function (Plugins, $, Hammer)
       });
 
       // set hammer's document root
-      setupHammer(Hammer, api.reader, iframe, doc);
+      setupHammer(plugin, Hammer, api.reader, iframe, doc);
 
       // mouse events
       doc.addEventListener('mousemove', function (event) {
@@ -23,13 +25,29 @@ define(['readium_js_plugins', 'jquery', 'hammer'], function (Plugins, $, Hammer)
         api.reader.trigger(ReadiumSDK.Events.MOUSE_MOVE, event);
       }, false);
     });
+
+    plugin.enablePanMove = function () {
+      plugin.panMoveDisabled = false;
+    };
+
+    plugin.disablePanMove = function () {
+      plugin.panMoveDisabled = true;
+    };
+
+    plugin.enableSwipe = function () {
+      plugin.swipeDisabled = false;
+    };
+
+    plugin.disableSwipe = function () {
+      plugin.swipeDisabled = true;
+    };
   });
 
 });
 
-var onSwipe, onTap, onPinch, onPanMove, onPress;
+var onSwipe, onTap, onPinch, onPinchMove, onPanMove, onPress;
 
-function setupHammer(Hammer, reader, iframe, element) {
+function setupHammer(context, Hammer, reader, iframe, element) {
   setGesturesHandler(reader, iframe);
 
   var hammertime = new Hammer(element, {
@@ -39,18 +57,18 @@ function setupHammer(Hammer, reader, iframe, element) {
     }
   });
 
-  hammertime.get('swipe').set({ threshold: 10, velocity: 0.3, direction: Hammer.DIRECTION_HORIZONTAL });
-  hammertime.get('pinch').set({ enable: true });
-  hammertime.get('pan').set({ threshold: 1 });
-  hammertime.get('tap').set({ interval: 400, posThreshold: 100, threshold: 10 });
+  hammertime.get('swipe').set({threshold: 10, velocity: 0.3, direction: Hammer.DIRECTION_HORIZONTAL});
+  hammertime.get('pinch').set({enable: true});
+  hammertime.get('pan').set({threshold: 1});
+  hammertime.get('tap').set({interval: 400, posThreshold: 100, threshold: 10});
 
   // set up the hammer gesture events swiping handlers
-  hammertime.on('swipeleft', onSwipe);
-  hammertime.on('swiperight', onSwipe);
+  hammertime.on('swipeleft', onSwipe.bind(context));
+  hammertime.on('swiperight', onSwipe.bind(context));
   hammertime.on('tap', onTap);
   hammertime.on('pinchin', onPinch);
   hammertime.on('pinchout', onPinch);
-  hammertime.on('panmove', onPanMove);
+  hammertime.on('panmove', onPanMove.bind(context));
   hammertime.on('press', onPress);
 
   return hammertime;
@@ -58,6 +76,9 @@ function setupHammer(Hammer, reader, iframe, element) {
 
 function setGesturesHandler(reader, window) {
   onSwipe = function (event) {
+    if (this.swipeDisabled === true) {
+      return;
+    }
     if (window.getSelection().toString().length > 0) {
       return;
     }
@@ -90,6 +111,9 @@ function setGesturesHandler(reader, window) {
   };
 
   onPanMove = function (event) {
+    if (this.panMoveDisabled === true) {
+      return;
+    }
     reader.moveInPage(-1 * event.deltaX, -1 * event.deltaY);
   };
 

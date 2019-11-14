@@ -8,6 +8,7 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
 
   Plugins.register('annotations', function (api) {
     var reader = api.reader;
+    var plugin = this;
 
     reader.on(ReadiumSDK.Events.CONTENT_DOCUMENT_LOADED, function ($iframe) {
       var iframe = $iframe[0];
@@ -23,18 +24,44 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
     reader.on(ReadiumSDK.Events.PAGINATION_CHANGED, function (data) {
       lastPaginationData = data;
       displayAnnotations();
+
+      if (plugin.textSelectionDisabled === true) {
+        setCssProperty('userSelect', 'none');
+        setCssProperty('cursor', 'move');
+      }
     });
 
-    this.loadAnnotations = function (annotationList) {
+    plugin.loadAnnotations = function (annotationList) {
       annotations = annotationList || [];
       displayAnnotations();
     };
+
+    plugin.enableTextSelection = function () {
+      plugin.textSelectionDisabled = false;
+      setCssProperty('userSelect', 'auto');
+      setCssProperty('cursor', 'auto');
+    };
+
+    plugin.disableTextSelection = function () {
+      plugin.textSelectionDisabled = true;
+      setCssProperty('userSelect', 'none');
+      setCssProperty('cursor', 'move');
+    };
+
+    function setCssProperty(property, value) {
+      reader.getCurrentView().getIframes().forEach(frame => {
+        frame.contentDocument.body.style[property] = value;
+      });
+    }
 
     function handleSelection(iframe) {
       var document = iframe.contentDocument.documentElement;
       var iframeWindow = iframe.contentWindow;
 
       document.addEventListener('mouseup', function (event) {
+        if (plugin.textSelectionDisabled) {
+          return;
+        }
         var selection = iframeWindow.getSelection();
         var selectedText = selection.toString().trim();
 
@@ -98,9 +125,7 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
           var annotationRange = reader.getDomRangeFromRangeCfi(cfis.start, cfis.end);
           var rectList = annotationRange.getClientRects();
 
-          console.time('filterRectList');
           var filteredRectList = filterRectList(rectList);
-          console.timeEnd('filterRectList');
 
           var lastRect = rectList[rectList.length - 1];
           var annotationElement = drawAnnotation(document, highlightsZone, lastRect.left + lastRect.width, lastRect.top);

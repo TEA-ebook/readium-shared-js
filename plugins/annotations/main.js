@@ -204,6 +204,9 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
   }
 
   function cleanMarkers(zone) {
+    if (!zone) {
+      return;
+    }
     while (zone.firstChild) {
       zone.removeChild(zone.firstChild);
     }

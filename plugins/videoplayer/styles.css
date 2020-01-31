@@ -2,42 +2,44 @@
     -webkit-box-align: center;
     -ms-flex-align: center;
     align-items: center;
-    background-color: rgb(225, 225, 225);
-    bottom: 0;
+    background: linear-gradient(to bottom, rgba(6, 6, 6, 0.05) 0%, rgba(0, 0, 0, 0.95) 100%) 0 0 no-repeat;
+    bottom: 40px;
     display: -webkit-box;
     display: -ms-flexbox;
     display: flex;
-    height: 35px;
+    height: 40px;
     -webkit-box-pack: justify;
     -ms-flex-pack: justify;
     justify-content: space-between;
-    left: -1px;
-    line-height: 35px;
+    line-height: 40px;
+    max-height: 40px;
     opacity: 1;
-    overflow: hidden;
-    position: absolute;
+    overflow: visible;
+    position: relative;
     -webkit-transition: all 250ms ease-in-out;
     -moz-transition: all 250ms ease-in-out;
     -ms-transition: all 250ms ease-in-out;
     transition: all 250ms ease-in-out;
-    width: 102%;
+    width: 100%;
     -webkit-backface-visibility: hidden;
     -webkit-transform: translateZ(0);
 }
 
 .video-control {
-    -ms-flex-item-align: baseline;
-    align-self: baseline;
     background-color: transparent;
     border: 0;
-    color: #5a5a5a;
+    color: white;
     font-size: 20px;
     height: 100%;
-    line-height: 30px;
+    line-height: 40px;
     margin-left: 5px;
     outline: 0;
     padding: 0;
     width: 30px;
+}
+
+.seek-bar {
+  width: 85%;
 }
 
 .video-control:last-child {

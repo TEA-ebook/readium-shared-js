@@ -116,6 +116,12 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
 
       var videos = [].slice.call(doc.querySelectorAll('video'));
       videos.forEach(function (video) {
+        if (browserSupportsControlsList()) {
+          video.setAttribute('controls', '');
+          video.setAttribute('controlslist', 'nodownload disablePictureInPicture');
+          return;
+        }
+
         // remove native controls
         video.removeAttribute('controls');
 
@@ -130,8 +136,12 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
         var playButton = controlsElement.querySelector('.play-icon');
         if (playButton) {
           playButton.addEventListener('click', playPause, false);
-          video.addEventListener('play', function (event) { togglePlayPause(event.target, playButton); }, false);
-          video.addEventListener('pause', function (event) { togglePlayPause(event.target, playButton); }, false);
+          video.addEventListener('play', function (event) {
+            togglePlayPause(event.target, playButton);
+          }, false);
+          video.addEventListener('pause', function (event) {
+            togglePlayPause(event.target, playButton);
+          }, false);
         }
 
         // handle fullscreen button
@@ -172,3 +182,8 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
 
   return config;
 });
+
+function browserSupportsControlsList() {
+  var video = document.createElement('video');
+  return ('controlsList' in video);
+}

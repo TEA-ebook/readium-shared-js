@@ -60,7 +60,22 @@ define(['readium_js_plugins', 'readium_shared_js/globals', './manager'], functio
                 idx+keyword.length, ["cfi-marker", "cfi-blacklist", "mo-cfi-highlight"], [], ["MathJax_Message", "MathJax_SVG_Hidden"]
             );
 
-            resArray.push(rangeCFIComponent);
+            var idx_before = idx-100;
+            if (idx_before<0)
+              idx_before = 0;
+            var idx_before_end = idx_before+100;
+            if (idx_before_end>=idx)
+              idx_before_end = idx;
+            if (idx_before_end<0)
+              idx_before_end = 0;
+            var idx_after = idx+keyword.length;
+            var idx_after_end = idx_after+100;
+            if (idx_after_end>element.nodeValue.length)
+              idx_after_end = element.nodeValue.length;
+
+            var search_result = {range: rangeCFIComponent, before: element.nodeValue.substring(idx_before,idx_before_end), after: element.nodeValue.substring(idx_after,idx_after_end)};
+
+            resArray.push(search_result);
 
             valueStartIndex = idx+keyword.length;
             value = value.substring(valueStartIndex);
@@ -85,7 +100,7 @@ define(['readium_js_plugins', 'readium_shared_js/globals', './manager'], functio
       var resultArray = [];
       this.FindAllOccurencesOfStringForElement(document.body, keyword.toLowerCase(), resultArray);
       resultArray.sort(function(a,b) {
-        cmp = EPUBcfi.compareCFIs("epubcfi("+a+")","epubcfi("+b+")");
+        cmp = EPUBcfi.compareCFIs("epubcfi("+a.range+")","epubcfi("+b.range+")");
         return cmp[0];
       });
       return JSON.stringify(resultArray);

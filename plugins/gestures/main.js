@@ -92,7 +92,7 @@ function setGesturesHandler(reader, window) {
 
   onTap = function (event) {
     if (event.target.hasAttribute('href') || (event.target.parentNode.hasAttribute && event.target.parentNode.hasAttribute('href'))) {
-      $(event.target).click();
+      //$(event.target).click();
     } else {
       reader.trigger(ReadiumSDK.Events.GESTURE_TAP, event);
     }

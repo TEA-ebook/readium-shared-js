@@ -25,22 +25,22 @@
 //  OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 //  OF THE POSSIBILITY OF SUCH DAMAGE.
 define(["./globals", 'underscore', "jquery", "jquerySizes", "./models/spine_item", 'URIjs'], function(Globals, _, $, JQuerySizes, SpineItem, URI) {
-    
+
 (function()
 {
 /* jshint strict: true */
 /* jshint -W034 */
     "use strict";
-    
+
     if(window.performance)
     {
         if (window.performance.now)
         {
             return;
         }
-        
+
         var vendors = ['webkitNow', 'mozNow', 'msNow', 'oNow'];
-        
+
         for (var i = 0; i < vendors.length; i++)
         {
             if (vendors[i] in window.performance)
@@ -53,9 +53,9 @@ define(["./globals", 'underscore', "jquery", "jquerySizes", "./models/spine_item
     else
     {
         window.performance = {};
-        
+
     }
-    
+
     if(Date.now)
     {
         window.performance.now = function()
@@ -64,7 +64,7 @@ define(["./globals", 'underscore', "jquery", "jquerySizes", "./models/spine_item
         };
         return;
     }
-    
+
     window.performance.now = function()
     {
         return +(new Date());
@@ -250,7 +250,7 @@ Helpers.Rect.fromElement = function ($element) {
  * @param $epubHtml: The html that is to have font attributes added.
  * @param fontSize: The font size that is to be added to the element at all locations.
  * @param fontObj: The font Object containing at minimum the URL, and fontFamilyName (In fields url and fontFamily) respectively. Pass in null's on the object's fields to signal no font.
- * @param callback: function invoked when "done", which means that if there are asynchronous operations such as font-face loading via injected stylesheets, then the UpdateHtmlFontAttributes() function returns immediately but the caller should wait for the callback function call if fully-loaded font-face *stylesheets* are required on the caller's side (note that the caller's side may still need to detect *actual font loading*, via the FontLoader API or some sort of ResizeSensor to indicate that the updated font-family has been used to render the document). 
+ * @param callback: function invoked when "done", which means that if there are asynchronous operations such as font-face loading via injected stylesheets, then the UpdateHtmlFontAttributes() function returns immediately but the caller should wait for the callback function call if fully-loaded font-face *stylesheets* are required on the caller's side (note that the caller's side may still need to detect *actual font loading*, via the FontLoader API or some sort of ResizeSensor to indicate that the updated font-family has been used to render the document).
  */
 
 Helpers.UpdateHtmlFontAttributes = function ($epubHtml, fontSize, fontObj, callback) {
@@ -265,7 +265,7 @@ Helpers.UpdateHtmlFontAttributes = function ($epubHtml, fontSize, fontObj, callb
     var changeFontFamily = NOTHING;
 
     var fontLoadCallback = function() {
-            
+
         var perf = false;
 
         // TODO: very slow on Firefox!
@@ -291,7 +291,7 @@ Helpers.UpdateHtmlFontAttributes = function ($epubHtml, fontSize, fontObj, callb
                 //fontFamilyStyle = $(style);
             }
         }
-        
+
         // The code below does not work because jQuery $element.css() on html.body somehow "resets" the font: CSS directive by removing it entirely (font-family: works with !important, but unfortunately further deep inside the DOM there may be CSS applied with the font: directive, which somehow seems to take precedence! ... as shown in Chrome's developer tools)
         // ...thus why we use the above routine instead, to insert a new head>style element
         // // var doc = $epubHtml[0].ownerDocument;
@@ -303,7 +303,7 @@ Helpers.UpdateHtmlFontAttributes = function ($epubHtml, fontSize, fontObj, callb
         // // });
         // $body.css("font-family", "");
         // if (changeFontFamily == ADD) {
-            
+
         //     var existing = $body.attr("style");
         //     $body[0].setAttribute("style",
         //         existing + " ; font-family: '" + fontObj.fontFamily + "' !important ;" + " ; font: regular 100% '" + fontObj.fontFamily + "' !important ;");
@@ -328,7 +328,7 @@ Helpers.UpdateHtmlFontAttributes = function ($epubHtml, fontSize, fontObj, callb
         for (var i = 0; i < $textblocks.length; i++) {
 
             var ele = $textblocks[i];
-            
+
             var fontSizeAttr = ele.getAttribute('data-original-font-size');
             if (fontSizeAttr) {
                 // early exit, original values already set.
@@ -336,7 +336,7 @@ Helpers.UpdateHtmlFontAttributes = function ($epubHtml, fontSize, fontObj, callb
             }
 
             var style = win.getComputedStyle(ele);
-            
+
             var originalFontSize = parseInt(style.fontSize);
             ele.setAttribute('data-original-font-size', originalFontSize);
 
@@ -345,7 +345,7 @@ Helpers.UpdateHtmlFontAttributes = function ($epubHtml, fontSize, fontObj, callb
             if (originalLineHeight) {
                 ele.setAttribute('data-original-line-height', originalLineHeight);
             }
-            
+
             // var fontFamilyAttr = ele.getAttribute('data-original-font-family');
             // if (!fontFamilyAttr) {
             //     var originalFontFamily = style.fontFamily;
@@ -358,7 +358,7 @@ Helpers.UpdateHtmlFontAttributes = function ($epubHtml, fontSize, fontObj, callb
         for (var i = 0; i < $textblocks.length; i++) {
             var ele = $textblocks[i];
 
-            // TODO: group the 3x potential $(ele).css() calls below to avoid multiple jQuery style mutations 
+            // TODO: group the 3x potential $(ele).css() calls below to avoid multiple jQuery style mutations
 
             var fontSizeAttr = ele.getAttribute('data-original-font-size');
             var originalFontSize = fontSizeAttr ? Number(fontSizeAttr) : 0;
@@ -371,7 +371,7 @@ Helpers.UpdateHtmlFontAttributes = function ($epubHtml, fontSize, fontObj, callb
             if (originalLineHeight) {
                 $(ele).css("line-height", (originalLineHeight * factor) + 'px');
             }
-            
+
             // var fontFamilyAttr = ele.getAttribute('data-original-font-family');
             // switch(changeFontFamily){
             //     case NOTHING:
@@ -387,20 +387,20 @@ Helpers.UpdateHtmlFontAttributes = function ($epubHtml, fontSize, fontObj, callb
 
         $epubHtml.css("font-size", fontSize + "%");
 
-        
-        
+
+
         if (perf) {
             var time2 = window.performance.now();
-        
+
             // Firefox: 80+
             // Chrome: 4-10
             // Edge: 15-34
             // IE: 10-15
             // https://readium.firebase.com/?epub=..%2Fepub_content%2Faccessible_epub_3&goto=%7B%22idref%22%3A%22id-id2635343%22%2C%22elementCfi%22%3A%22%2F4%2F2%5Bbuilding_a_better_epub%5D%2F10%2F44%2F6%2C%2F1%3A334%2C%2F1%3A335%22%7D
-            
+
             var diff = time2-time1;
             console.log(diff);
-            
+
             // setTimeout(function(){
             //     alert(diff);
             // }, 2000);
@@ -417,7 +417,7 @@ Helpers.UpdateHtmlFontAttributes = function ($epubHtml, fontSize, fontObj, callb
             changeFontFamily = ADD;
 
             setTimeout(function(){
-                
+
                 link = $("<link/>", {
                     "id" : FONT_FAMILY_ID,
                     "data-fontfamily" : fontObj.fontFamily,
@@ -425,7 +425,7 @@ Helpers.UpdateHtmlFontAttributes = function ($epubHtml, fontSize, fontObj, callb
                     "type" : "text/css"
                 });
                 docHead.append(link);
-                    
+
                 link.attr({
                     "href" : fontObj.url
                 });
@@ -433,7 +433,7 @@ Helpers.UpdateHtmlFontAttributes = function ($epubHtml, fontSize, fontObj, callb
         }
         else if(dataFontFamily != fontObj.fontFamily){
             changeFontFamily = ADD;
-        
+
             link.attr({
                 "data-fontfamily" : fontObj.fontFamily,
                 "href" : fontObj.url
@@ -794,7 +794,7 @@ Helpers.setStyles = function (styles, $element) {
 
                 stylings.push({selector: style.selector, cssProps: cssProperties});
             }
-            
+
         } else { // HTML element
             if (style.selector) {
                 $(style.selector, $element).css(style.declarations);
@@ -815,8 +815,8 @@ Helpers.setStyles = function (styles, $element) {
             // we remove before re-adding from scratch
             doc.head.removeChild(bookStyleElement[0]);
         }
-        
-        var cssStylesheet = "";
+
+        var cssStylesheet = "p { overflow-wrap: break-word; }";
 
         if (stylingGlobal.length > 0) {
             cssStylesheet += ' body, body::after, body::before, body *, body *::after, body *::before { ' + stylingGlobal + ' } ';

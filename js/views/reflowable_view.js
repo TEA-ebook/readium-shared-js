@@ -711,6 +711,10 @@ var ReflowableView = function(options, reader){
 // console.debug("TRYING SPREAD INSTEAD OF SINGLE...");
         }
 
+        if (_$viewport.width() / _$viewport.height() < 1) {
+          isDoublePageSyntheticSpread = 0; // force single page on vertical viewport
+        }
+
         _paginationInfo.visibleColumnCount = isDoublePageSyntheticSpread ? 2 : 1;
 
         if (_htmlBodyIsVerticalWritingMode)

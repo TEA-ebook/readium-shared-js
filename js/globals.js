@@ -84,7 +84,8 @@ var Globals = {
         ANNOTATION_CLICK: "AnnotationClick",
         REMOTE_DECRYPT_DATA: "RemoteDecryptData",
         SEND_DATA: "SendData",
-        OPEN_EXTERNAL_LINK: "OpenExternalLink"
+        OPEN_EXTERNAL_LINK: "OpenExternalLink",
+        MOUSE_WHEEL: "MouseWheel"
     },
 
     InternalEvents: {

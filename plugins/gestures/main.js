@@ -24,6 +24,15 @@ define(['readium_js_plugins', 'jquery', 'hammer'], function (Plugins, $, Hammer)
         }
         api.reader.trigger(ReadiumSDK.Events.MOUSE_MOVE, event);
       }, false);
+
+      iframe.addEventListener('wheel', function (event) {
+        if (event.ctrlKey || event.metaKey) {
+          var iframes = api.reader.getCurrentView().getIframes();
+          var pageIndex = iframes.indexOf(event.view.frameElement);
+          event.preventDefault();
+          api.reader.trigger(ReadiumSDK.Events.MOUSE_WHEEL, event, {index: pageIndex, count: iframes.length});
+        }
+      }, {passive: false});
     });
 
     plugin.enablePanMove = function () {
@@ -114,6 +123,7 @@ function setGesturesHandler(reader, window) {
     if (this.panMoveDisabled === true) {
       return;
     }
+    console.log(event.deltaX, event.deltaY);
     reader.moveInPage(-1 * event.deltaX, -1 * event.deltaY);
   };
 

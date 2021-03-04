@@ -318,8 +318,15 @@ var FixedView = function(options, reader){
     }
 
     this.moveInPage = function(deltaX, deltaY) {
-        _$viewport.scrollTop(_$viewport.scrollTop() + deltaY);
-        _$viewport.scrollLeft(_$viewport.scrollLeft() + deltaX);
+        const scrollHorizontalAvailable = _$viewport[0].clientWidth !== _$viewport[0].scrollWidth;
+        if (scrollHorizontalAvailable) {
+            _$viewport.scrollLeft(_$viewport.scrollLeft() + deltaX);
+        }
+
+        const scrollVerticalAvailable = _$viewport[0].clientHeight !== _$viewport[0].scrollHeight;
+        if (scrollVerticalAvailable) {
+            _$viewport.scrollTop(_$viewport.scrollTop() + deltaY);
+        }
     };
 
     function resizeBook(viewportIsResizing) {

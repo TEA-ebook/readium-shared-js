@@ -123,7 +123,8 @@ function setGesturesHandler(reader, window) {
     if (this.panMoveDisabled === true) {
       return;
     }
-    console.log(event.deltaX, event.deltaY);
+    event.preventDefault();
+    console.log(event.additionalEvent, event.deltaX, event.deltaY);
     reader.moveInPage(-1 * event.deltaX, -1 * event.deltaY);
   };
 

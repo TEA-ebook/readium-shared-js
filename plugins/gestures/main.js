@@ -112,6 +112,7 @@ function setGesturesHandler(reader, window) {
   };
 
   onPinch = function (event) {
+    event.preventDefault();
     if (event.eventType === Hammer.INPUT_END) {
       reader.trigger(ReadiumSDK.Events.GESTURE_PINCH, event);
     } else if (event.eventType === Hammer.INPUT_MOVE) {

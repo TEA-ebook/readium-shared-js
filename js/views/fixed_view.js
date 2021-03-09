@@ -329,6 +329,11 @@ var FixedView = function(options, reader){
         }
     };
 
+    this.centerPage = function () {
+      const viewport = _$viewport[0];
+      viewport.scrollTo((viewport.scrollWidth - viewport.clientWidth) / 2, (viewport.scrollHeight - viewport.clientHeight) / 2);
+    };
+
     function resizeBook(viewportIsResizing) {
 
         updatePageSwitchDir(0, false);
@@ -435,6 +440,8 @@ var FixedView = function(options, reader){
 
         if (_zoom.center) {
             self.moveInPage(Math.round(_zoom.center.x * (scaleRatio - 1)) - _$viewport.offset().left, Math.round(_zoom.center.y * (scaleRatio - 1)) - _$viewport.offset().top);
+        } else {
+            self.centerPage();
         }
 
         Globals.logEvent("FXL_VIEW_RESIZED", "EMIT", "fixed_view.js");

@@ -125,7 +125,6 @@ function setGesturesHandler(reader, window) {
       return;
     }
     event.preventDefault();
-    console.log(event.additionalEvent, event.deltaX, event.deltaY);
     reader.moveInPage(-1 * event.deltaX, -1 * event.deltaY);
   };
 

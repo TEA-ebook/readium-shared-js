@@ -1,27 +1,27 @@
 //  Created by Boris Schneiderman.
 // Modified by Daniel Weck
 //  Copyright (c) 2014 Readium Foundation and/or its licensees. All rights reserved.
-//  
-//  Redistribution and use in source and binary forms, with or without modification, 
+//
+//  Redistribution and use in source and binary forms, with or without modification,
 //  are permitted provided that the following conditions are met:
-//  1. Redistributions of source code must retain the above copyright notice, this 
+//  1. Redistributions of source code must retain the above copyright notice, this
 //  list of conditions and the following disclaimer.
-//  2. Redistributions in binary form must reproduce the above copyright notice, 
-//  this list of conditions and the following disclaimer in the documentation and/or 
+//  2. Redistributions in binary form must reproduce the above copyright notice,
+//  this list of conditions and the following disclaimer in the documentation and/or
 //  other materials provided with the distribution.
-//  3. Neither the name of the organization nor the names of its contributors may be 
-//  used to endorse or promote products derived from this software without specific 
+//  3. Neither the name of the organization nor the names of its contributors may be
+//  used to endorse or promote products derived from this software without specific
 //  prior written permission.
-//  
-//  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
-//  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED 
-//  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. 
-//  IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, 
-//  INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, 
-//  BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, 
-//  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF 
-//  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE 
-//  OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED 
+//
+//  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+//  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+//  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+//  IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+//  INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+//  BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+//  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+//  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+//  OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 //  OF THE POSSIBILITY OF SUCH DAMAGE.
 
 define(["../globals", "jquery", "underscore", "eventEmitter", "./fixed_view", "../helpers", "./iframe_loader", "./internal_links_support",
@@ -240,7 +240,7 @@ var ReaderView = function (options) {
 
 
         _currentView = self.createViewForType(desiredViewType, viewCreationParams);
-        
+
         Globals.logEvent("READER_VIEW_CREATED", "EMIT", "reader_view.js");
         self.emit(Globals.Events.READER_VIEW_CREATED, desiredViewType);
 
@@ -272,13 +272,13 @@ var ReaderView = function (options) {
         });
 
         _currentView.on(Globals.Events.CONTENT_DOCUMENT_UNLOADED, function ($iframe, spineItem) {
-            
+
             Globals.logEvent("CONTENT_DOCUMENT_UNLOADED", "EMIT", "reader_view.js [ " + spineItem.href + " ]");
             self.emit(Globals.Events.CONTENT_DOCUMENT_UNLOADED, $iframe, spineItem);
         });
 
         _currentView.on(Globals.InternalEvents.CURRENT_VIEW_PAGINATION_CHANGED, function (pageChangeData) {
-            
+
             Globals.logEvent("InternalEvents.CURRENT_VIEW_PAGINATION_CHANGED", "ON", "reader_view.js");
 
             //we call on onPageChanged explicitly instead of subscribing to the Globals.Events.PAGINATION_CHANGED by
@@ -289,7 +289,7 @@ var ReaderView = function (options) {
             _.defer(function () {
                 Globals.logEvent("PAGINATION_CHANGED", "EMIT", "reader_view.js");
                 self.emit(Globals.Events.PAGINATION_CHANGED, pageChangeData);
-                
+
                 if (!pageChangeData.spineItem) return;
                 _.defer(function () {
                     _externalAgentSupport.updateContentDocument(pageChangeData.spineItem);
@@ -342,7 +342,7 @@ var ReaderView = function (options) {
 
         Globals.logEvent("InternalEvents.CURRENT_VIEW_PAGINATION_CHANGED", "OFF", "reader_view.js");
         _currentView.off(Globals.InternalEvents.CURRENT_VIEW_PAGINATION_CHANGED);
-        
+
         _currentView.remove();
         _currentView = undefined;
     }
@@ -638,11 +638,11 @@ var ReaderView = function (options) {
                         _currentView.setViewSettings(_viewerSettings, docWillChange);
                     }
 
-                    self.once(ReadiumSDK.Events.PAGINATION_CHANGED, function (pageChangeData)
-                    {
-                        var cfi = new BookmarkData(bookMark.idref, bookMark.contentCFI);
-                        self.debugBookmarkData(cfi);
-                    });
+                    // self.once(ReadiumSDK.Events.PAGINATION_CHANGED, function (pageChangeData)
+                    // {
+                    //     var cfi = new BookmarkData(bookMark.idref, bookMark.contentCFI);
+                    //     self.debugBookmarkData(cfi);
+                    // });
 
                     self.openSpineItemElementCfi(bookMark.idref, bookMark.contentCFI, self);
 
@@ -656,7 +656,7 @@ var ReaderView = function (options) {
                     Globals.logEvent("SETTINGS_APPLIED 1 (view update)", "EMIT", "reader_view.js");
                     self.emit(Globals.Events.SETTINGS_APPLIED);
                 });
-                
+
                 return;
             }
         }
@@ -1100,38 +1100,38 @@ var ReaderView = function (options) {
 
         var DEBUG = true; // change this to visualize the CFI range
         if (!DEBUG) return;
-            
+
         var paginationInfo = this.getPaginationInfo();
         console.log(JSON.stringify(paginationInfo));
-        
+
         if (paginationInfo.isFixedLayout) return;
-    
+
         try {
             ReadiumSDK._DEBUG_CfiNavigationLogic.clearDebugOverlays();
-            
+
         } catch (error) {
             //ignore
         }
-        
+
         try {
             console.log(cfi);
-            
+
             var range = this.getDomRangeFromRangeCfi(cfi);
             console.log(range);
-            
+
             var res = ReadiumSDK._DEBUG_CfiNavigationLogic.drawDebugOverlayFromDomRange(range);
             console.log(res);
-        
+
             var cfiFirst = ReadiumSDK.reader.getFirstVisibleCfi();
             console.log(cfiFirst);
-            
+
             var cfiLast  = ReadiumSDK.reader.getLastVisibleCfi();
             console.log(cfiLast);
-            
+
         } catch (error) {
             //ignore
         }
-        
+
         setTimeout(function() {
             try {
                 ReadiumSDK._DEBUG_CfiNavigationLogic.clearDebugOverlays();
@@ -1439,7 +1439,7 @@ var ReaderView = function (options) {
 
         readerView.on(Globals.Events.CONTENT_DOCUMENT_LOADED, function ($iframe, spineItem) {
             Globals.logEvent("CONTENT_DOCUMENT_LOADED", "ON", "reader_view.js (via BackgroundAudioTrackManager) [ " + spineItem.href + " ]");;
-            
+
             try {
                 if (spineItem && spineItem.idref && $iframe && $iframe[0]) {
                     // console.log("CONTENT_DOCUMENT_LOADED");
@@ -1456,7 +1456,7 @@ var ReaderView = function (options) {
 
         readerView.on(Globals.Events.PAGINATION_CHANGED, function (pageChangeData) {
             Globals.logEvent("PAGINATION_CHANGED", "ON", "reader_view.js (via BackgroundAudioTrackManager)");
-            
+
             // console.log("PAGINATION_CHANGED");
             // console.debug(pageChangeData);
             //
@@ -1574,7 +1574,7 @@ var ReaderView = function (options) {
 
         readerView.on(Globals.Events.MEDIA_OVERLAY_STATUS_CHANGED, function (value) {
             Globals.logEvent("MEDIA_OVERLAY_STATUS_CHANGED", "ON", "reader_view.js (via BackgroundAudioTrackManager)");
-            
+
             if (!value.smilIndex) return;
             var packageModel = readerView.package();
             var smil = packageModel.media_overlay.smilAt(value.smilIndex);
@@ -1848,7 +1848,7 @@ var ReaderView = function (options) {
         }
         return undefined;
     };
-       
+
     /**
      * Useful for getting a CFI that's as close as possible to an invisible (not rendered, zero client rects) element
      * @param {HTMLElement} element
@@ -1860,7 +1860,7 @@ var ReaderView = function (options) {
         }
         return undefined;
     };
-    
+
 };
 
 /**

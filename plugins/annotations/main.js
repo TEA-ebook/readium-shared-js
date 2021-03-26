@@ -26,8 +26,9 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
       displayAnnotations();
 
       if (plugin.textSelectionDisabled === true) {
-        setCssProperty('userSelect', 'none');
-        setCssProperty('cursor', 'move');
+        plugin.disableTextSelection();
+      } else {
+        plugin.enableTextSelection();
       }
     });
 

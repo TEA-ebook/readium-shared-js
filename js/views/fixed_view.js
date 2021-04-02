@@ -415,7 +415,8 @@ var FixedView = function(options, reader){
         var left = _bookMargins.padding.left;
         var top = _bookMargins.padding.top;
 
-        var transFunc = viewportIsResizing ? "transformContentImmediate" : "transformContent";
+        //var transFunc = viewportIsResizing ? "transformContentImmediate" : "transformContent";
+        var transFunc = "transformContentImmediate";
 
         if(_leftPageView.isDisplaying()) {
 
@@ -439,7 +440,12 @@ var FixedView = function(options, reader){
         }
 
         if (_zoom.center) {
-            self.moveInPage(Math.round(_zoom.center.x * (scaleRatio - 1)) - _$viewport.offset().left, Math.round(_zoom.center.y * (scaleRatio - 1)) - _$viewport.offset().top);
+            if (_zoom.center.pX) {
+                const viewport = _$viewport[0];
+                viewport.scrollTo((viewport.scrollWidth - viewport.clientWidth) * _zoom.center.pX, (viewport.scrollHeight - viewport.clientHeight) * _zoom.center.pY);
+            } else {
+                self.moveInPage(Math.round(_zoom.center.x * (scaleRatio - 1)) - _$viewport.offset().left, Math.round(_zoom.center.y * (scaleRatio - 1)) - _$viewport.offset().top);
+            }
         } else {
             self.centerPage();
         }

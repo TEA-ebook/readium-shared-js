@@ -68,7 +68,7 @@ function setupHammer(context, Hammer, reader, iframe, element) {
 
   hammertime.get('swipe').set({threshold: 10, velocity: 0.3, direction: Hammer.DIRECTION_HORIZONTAL});
   hammertime.get('pinch').set({enable: true});
-  hammertime.get('pan').set({threshold: 1});
+  hammertime.get('pan').set({threshold: 5, direction: Hammer.DIRECTION_ALL});
   hammertime.get('tap').set({interval: 400, posThreshold: 100, threshold: 10});
 
   // set up the hammer gesture events swiping handlers

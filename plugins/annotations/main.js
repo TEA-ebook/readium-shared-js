@@ -158,6 +158,11 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
   function addHightlightsZone(document) {
     const div = document.createElement('div');
     div.id = HIGHLIGHTS_ZONE_ID;
+
+    if (!document.body) {
+      console.warn('No body on iframe document!');
+      return;
+    }
     document.body.append(div);
 
     return div;
@@ -166,6 +171,11 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
   function addNotesZone(document) {
     const div = document.createElement('div');
     div.id = NOTES_ZONE_ID;
+
+    if (!document.body) {
+      console.warn('No body on iframe document!');
+      return;
+    }
     document.body.append(div);
 
     return div;

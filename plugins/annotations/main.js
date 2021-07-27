@@ -59,7 +59,7 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
       var document = iframe.contentDocument;
       var iframeWindow = iframe.contentWindow;
 
-      var selectEventHandler = function (event) {
+      var selectEventHandler = function () {
         if (plugin.textSelectionDisabled) {
           return;
         }
@@ -67,8 +67,12 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
         var selectedText = selection.toString().trim();
 
         if (selectedText.length > 0) {
-          var cfiRange = reader.getRangeCfiFromDomRange(selection.getRangeAt(0));
+          var domRange = selection.getRangeAt(0);
+          var cfiRange = reader.getRangeCfiFromDomRange(domRange);
           var rangeParts = cfiRange.contentCFI.split(',');
+
+          var annotationClientRect = domRange.getBoundingClientRect();
+          var offsetLeft = iframe.parentElement.parentElement.offsetLeft;
 
           reader.emit(ReadiumSDK.Events.TEXT_SELECTED, {
             text: selectedText,
@@ -83,23 +87,15 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
                 containerRef: cfiRange.idref
               }
             },
-            event: {x: mousePosition.x, y: mousePosition.clientY}
+            event: {
+              x: offsetLeft + annotationClientRect.left + annotationClientRect.width / 2,
+              y: annotationClientRect.top
+            }
           });
         }
       };
       //document.documentElement.addEventListener('mouseup', selectEventHandler, false);
       document.addEventListener('selectionchange', selectEventHandler, false);
-
-      var mousePosition = null;
-      document.addEventListener('mousemove', function (event) {
-        mousePosition = {
-          x: event.screenX,
-          y: event.screenY,
-          clientX: event.clientX,
-          clientY: event.clientY
-        };
-        console.log(mousePosition);
-      }, false);
     }
 
     function displayAnnotations() {

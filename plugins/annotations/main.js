@@ -59,7 +59,7 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
       var document = iframe.contentDocument.documentElement;
       var iframeWindow = iframe.contentWindow;
 
-      document.addEventListener('mouseup', function (event) {
+      document.addEventListener('selectionchange', function (event) {
         if (plugin.textSelectionDisabled) {
           return;
         }

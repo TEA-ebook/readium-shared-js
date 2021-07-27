@@ -56,10 +56,10 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
     }
 
     function handleSelection(iframe) {
-      var document = iframe.contentDocument.documentElement;
+      var document = iframe.contentDocument;
       var iframeWindow = iframe.contentWindow;
 
-      document.addEventListener('selectionchange', function (event) {
+      var selectEventHandler = function (event) {
         if (plugin.textSelectionDisabled) {
           return;
         }
@@ -83,10 +83,23 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
                 containerRef: cfiRange.idref
               }
             },
-            event: {x: event.clientX, y: event.clientY}
+            event: {x: mousePosition.x, y: mousePosition.clientY}
           });
         }
-      });
+      };
+      //document.documentElement.addEventListener('mouseup', selectEventHandler, false);
+      document.addEventListener('selectionchange', selectEventHandler, false);
+
+      var mousePosition = null;
+      document.addEventListener('mousemove', function (event) {
+        mousePosition = {
+          x: event.screenX,
+          y: event.screenY,
+          clientX: event.clientX,
+          clientY: event.clientY
+        };
+        console.log(mousePosition);
+      }, false);
     }
 
     function displayAnnotations() {

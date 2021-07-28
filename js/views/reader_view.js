@@ -65,6 +65,7 @@ var ReaderView = function (options) {
     var _mediaOverlayDataInjector;
     var _iframeLoader;
     var _$el;
+    var _disableResize = false;
 
     //We will call onViewportResize after user stopped resizing window
     var lazyResize = Helpers.extendedThrottle(
@@ -1322,7 +1323,6 @@ var ReaderView = function (options) {
     var _resizeMOWasPlaying = false;
 
     function handleViewportResizeStart() {
-
         _resizeBookmark = null;
         _resizeMOWasPlaying = false;
 
@@ -1861,6 +1861,20 @@ var ReaderView = function (options) {
         return undefined;
     };
 
+    this.disableResize = function() {
+        _disableResize = true;
+    };
+
+    this.enableResize = function() {
+       _disableResize = false;
+      if (_currentView) {
+        _currentView.onViewportResize();
+      }
+    };
+
+    this.isResizeDisabled = function() {
+      return _disableResize;
+    };
 };
 
 /**

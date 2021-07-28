@@ -60,7 +60,9 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
       var iframeWindow = iframe.contentWindow;
 
       document.documentElement.addEventListener('contextmenu', function (event) {
-        event.preventDefault();
+        if (iframeWindow.getSelection().toString().trim().length > 0) {
+          event.preventDefault();
+        }
       }, true);
 
       var selectEventHandler = function () {

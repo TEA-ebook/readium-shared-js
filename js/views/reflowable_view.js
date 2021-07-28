@@ -143,7 +143,9 @@ var ReflowableView = function(options, reader){
     };
 
     this.onViewportResize = function() {
-
+        if (reader.isResizeDisabled()) {
+            return;
+        }
         if(updateViewportSize()) {
             updatePagination();
         }

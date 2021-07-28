@@ -59,6 +59,10 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
       var document = iframe.contentDocument;
       var iframeWindow = iframe.contentWindow;
 
+      document.documentElement.addEventListener('contextmenu', function (event) {
+        event.preventDefault();
+      }, true);
+
       var selectEventHandler = function () {
         if (plugin.textSelectionDisabled) {
           return;
@@ -66,36 +70,40 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
         var selection = iframeWindow.getSelection();
         var selectedText = selection.toString().trim();
 
-        if (selectedText.length > 0) {
-          var domRange = selection.getRangeAt(0);
-          var cfiRange = reader.getRangeCfiFromDomRange(domRange);
-          var rangeParts = cfiRange.contentCFI.split(',');
-
-          var annotationClientRect = domRange.getBoundingClientRect();
-          var offsetLeft = iframe.parentElement.parentElement.offsetLeft;
-
-          reader.emit(ReadiumSDK.Events.TEXT_SELECTED, {
-            text: selectedText,
-            range: {
-              contentCFI: cfiRange.contentCFI,
-              start: {
-                partialCfi: rangeParts[0] + rangeParts[1],
-                containerRef: cfiRange.idref
-              },
-              end: {
-                partialCfi: rangeParts[0] + rangeParts[2],
-                containerRef: cfiRange.idref
-              }
-            },
-            event: {
-              x: offsetLeft + annotationClientRect.left + annotationClientRect.width / 2,
-              y: annotationClientRect.top
-            }
-          });
+        if (selectedText.length === 0) {
+          return false;
         }
+
+        var domRange = selection.getRangeAt(0);
+        var cfiRange = reader.getRangeCfiFromDomRange(domRange);
+        var rangeParts = cfiRange.contentCFI.split(',');
+
+        var annotationClientRect = domRange.getBoundingClientRect();
+        var offsetLeft = iframe.parentElement.parentElement.offsetLeft;
+
+        reader.emit(ReadiumSDK.Events.TEXT_SELECTED, {
+          text: selectedText,
+          range: {
+            contentCFI: cfiRange.contentCFI,
+            start: {
+              partialCfi: rangeParts[0] + rangeParts[1],
+              containerRef: cfiRange.idref
+            },
+            end: {
+              partialCfi: rangeParts[0] + rangeParts[2],
+              containerRef: cfiRange.idref
+            }
+          },
+          event: {
+            x: offsetLeft + annotationClientRect.left + annotationClientRect.width / 2,
+            y: annotationClientRect.top
+          }
+        });
+
+        return false;
       };
-      //document.documentElement.addEventListener('mouseup', selectEventHandler, false);
-      document.addEventListener('selectionchange', selectEventHandler, false);
+
+      document.addEventListener('selectionchange', selectEventHandler, true);
     }
 
     function displayAnnotations() {

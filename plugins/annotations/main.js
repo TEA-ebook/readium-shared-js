@@ -1,7 +1,10 @@
-define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
+define(['readium_js_plugins', 'underscore', 'text!./styles.css'], function (Plugins, _, css) {
 
   var HIGHLIGHTS_ZONE_ID = 'annotations-highlights-zone';
   var NOTES_ZONE_ID = 'annotations-notes-zone';
+
+  var VERTICAL_OFFSET = 70;
+  var NOTE_ICON_OFFSET = 6;
 
   var annotations = [];
   var lastPaginationData;
@@ -18,7 +21,7 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
       addHightlightsZone(iframe.contentDocument);
       addNotesZone(iframe.contentDocument);
 
-      handleSelection(iframe);
+      setupSelectionListeners(iframe);
     });
 
     reader.on(ReadiumSDK.Events.PAGINATION_CHANGED, function (data) {
@@ -55,7 +58,7 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
       });
     }
 
-    function handleSelection(iframe) {
+    function setupSelectionListeners(iframe) {
       var document = iframe.contentDocument;
       var iframeWindow = iframe.contentWindow;
 
@@ -98,14 +101,15 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
           },
           event: {
             x: offsetLeft + annotationClientRect.left + annotationClientRect.width / 2,
-            y: annotationClientRect.top
+            bottom: annotationClientRect.bottom + VERTICAL_OFFSET,
+            top: annotationClientRect.top
           }
         });
 
         return false;
       };
 
-      document.addEventListener('selectionchange', selectEventHandler, true);
+      document.addEventListener('selectionchange', _.debounce(selectEventHandler, 400), false);
     }
 
     function displayAnnotations() {
@@ -163,7 +167,6 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
 
         index++;
       });
-
     }
 
     function onNoteClick(event) {
@@ -225,8 +228,8 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
   function drawNote(document, zone, clickHandler, left, top) {
     const div = document.createElement('div');
     div.classList.add('annotation-note');
-    div.style.left = left + 'px';
-    div.style.top = top + 'px';
+    div.style.left = (left - NOTE_ICON_OFFSET) + 'px';
+    div.style.top = (top - NOTE_ICON_OFFSET) + 'px';
     zone.append(div);
     div.addEventListener('click', clickHandler, false);
 

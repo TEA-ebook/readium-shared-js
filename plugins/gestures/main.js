@@ -55,6 +55,7 @@ define(['readium_js_plugins', 'jquery', 'hammer'], function (Plugins, $, Hammer)
 });
 
 var onSwipe, onTap, onPinch, onPinchMove, onPanMove, onPress;
+var VERTICAL_OFFSET = 70;
 
 function setupHammer(context, Hammer, reader, iframe, element) {
   setGesturesHandler(reader, iframe);
@@ -103,6 +104,7 @@ function setGesturesHandler(reader, window) {
     if (event.target.hasAttribute('href') || (event.target.parentNode.hasAttribute && event.target.parentNode.hasAttribute('href'))) {
       //$(event.target).click();
     } else {
+      event.center.y += VERTICAL_OFFSET;
       reader.trigger(ReadiumSDK.Events.GESTURE_TAP, event);
     }
   };

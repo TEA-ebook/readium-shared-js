@@ -36,9 +36,12 @@
 
 .annotation-note {
   background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAALCAYAAABGbhwYAAAASklEQVQYGWMUSd/dwMDAUA/E2EAjULDh9QwXBkagwv/YVCCJgRWzwARAupCBaMYeGBdsGzEmgjXgNBFmHMzkYWUiE9B3oAAlBBoBvxIeobfDoeQAAAAASUVORK5CYII=);
+  background-repeat: no-repeat;
+  background-position: center;
   cursor: pointer;
   height: 11px;
   opacity: 0.8;
+  padding: 6px;
   position: fixed;
   width: 10px;
   z-index: 999;

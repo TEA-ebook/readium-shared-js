@@ -5,6 +5,10 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
   let highlightRequest = null;
   let lastPaginationData = null;
 
+  var config = {
+    highlightColor: 'rgba(255, 0, 69, 0.18)'
+  };
+
   Plugins.register('highlighter', function (api) {
     const reader = api.reader;
 
@@ -113,8 +117,11 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
     div.style.top = top + 'px';
     div.style.width = width + 'px';
     div.style.height = height + 'px';
+    div.style.backgroundColor = config.highlightColor;
     zone.append(div);
 
     return div;
   }
+
+  return config;
 });

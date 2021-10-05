@@ -386,6 +386,9 @@ var ReflowableView = function(options, reader){
 
         _$epubHtml.css("column-axis", (_htmlBodyIsVerticalWritingMode ? "vertical" : "horizontal"));
 
+        //disable Android one tap text selection
+        _$htmlBody.css("tabindex", "-1");
+
         //apply hyphens auto
         _$htmlBody.css('hyphens', 'auto');
         _$htmlBody.css('-o-hyphens', 'auto');

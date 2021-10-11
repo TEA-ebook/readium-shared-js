@@ -1692,6 +1692,15 @@ var ReaderView = function (options) {
     };
 
     /**
+     * Get the visible text from the current view
+     *
+     * @returns string
+     */
+    this.getVisibleText = function() {
+        return _currentView.getVisibleText ? _currentView.getVisibleText() : "";
+    };
+
+    /**
      * Get the pagination info from the current view
      *
      * @returns {ReadiumSDK.Models.CurrentPagesInfo}

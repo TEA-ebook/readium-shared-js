@@ -1172,6 +1172,155 @@ var ReflowableView = function(options, reader){
         return _navigationLogic.getElements(selector);
     };
 
+    function getFrameRect() {
+        return {
+            left: 0,
+            right: window.innerWidth,
+            top: 0,
+            bottom: window.innerHeight
+        };
+    }
+
+    function isValidTextNode(node) {
+        if (!node) {
+            return false;
+        }
+        if (node.nodeType === Node.TEXT_NODE) {
+            return isValidTextNodeContent(node.nodeValue);
+        }
+
+        return false;
+    }
+
+    function isValidTextNodeContent(text) {
+        // Heuristic to find a text node with actual text
+        // If we don't do this, we may get a reference to a node that doesn't get rendered
+        // (such as for example a node that has tab character and a bunch of spaces)
+        // this is would be bad! ask me why.
+        return !!text.trim().length;
+    }
+
+    function getTextVisibleRatio(textNode, frameRect) {
+        const range = document.createRange();
+        range.selectNode(textNode);
+        let textTotalSurface = 0, textVisibleSurface = 0;
+        Array.from(range.getClientRects()).forEach((current) => {
+            const surface = current.width * current.height;
+            textTotalSurface += surface;
+            if (intersectRect(current, frameRect)) {
+                textVisibleSurface += surface;
+            }
+        });
+
+        return textVisibleSurface / textTotalSurface;
+    }
+
+    function intersectRect(r1, r2) {
+        return !(r2.left >= r1.right ||
+            r2.right <= r1.left ||
+            r2.top >= r1.bottom ||
+            r2.bottom <= r1.top);
+    }
+
+    function isRectVisible(rect, frameRect) {
+        // Text nodes without printable text don't have client rectangles
+        if (!rect) {
+            return false;
+        }
+        // Sometimes we get client rects that are "empty" and aren't supposed to be visible
+        if (rect.left === 0 && rect.right === 0 && rect.top === 0 && rect.bottom === 0) {
+            return false;
+        }
+
+        return intersectRect(rect, frameRect);
+    }
+
+    function isNodeElementVisible(node, frameRect) {
+        if (node.nodeType === Node.TEXT_NODE) {
+            const range = document.createRange();
+            range.selectNode(node);
+            const clientRectList = range.getClientRects();
+            return Array.from(clientRectList).some(rect => isRectVisible(rect, frameRect));
+        } else {
+            const elementRect = node.getBoundingClientRect();
+            return isRectVisible(elementRect, frameRect);
+        }
+    }
+
+    function findVisibleElements(viewport) {
+        const bodyElement = document.body.querySelector('#epubContentIframe').contentWindow.document.body;
+
+        if (!bodyElement) {
+            return null;
+        }
+
+        const visibleElements = [];
+
+        const treeWalker = document.createTreeWalker(
+            bodyElement,
+            NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
+            function (node) {
+                if (node.nodeType === Node.TEXT_NODE && !isValidTextNode(node)) {
+                    return NodeFilter.FILTER_REJECT;
+                }
+
+                return NodeFilter.FILTER_ACCEPT;
+            },
+            false
+        );
+
+        while (treeWalker.nextNode()) {
+            const node = treeWalker.currentNode;
+            if (isNodeElementVisible(node, viewport)) {
+                visibleElements.push(node);
+            }
+        }
+
+        return visibleElements;
+    }
+
+    function getVisibleText(viewport, elements) {
+        const textNodes = elements.filter(el => el.nodeType === Node.TEXT_NODE);
+        let fullVisibleText;
+
+        if (textNodes.length === 0)
+            return "";
+
+        const firstTextNode = textNodes[0];
+
+        // Offset from which where text is visible on screen
+        const visibleTextOffset = Math.round(firstTextNode.wholeText.length * (1 - getTextVisibleRatio(firstTextNode, viewport)));
+
+        // Retrieving visible text
+        fullVisibleText = Array.from(textNodes)
+            .slice(0, 5)
+            .map(text => text.textContent)
+            .join(' ')
+            .substring(visibleTextOffset);
+
+        // Offset to remove truncated words
+        const cleanStartOffset = fullVisibleText.indexOf(' ') + 1;
+        fullVisibleText = fullVisibleText.substring(cleanStartOffset, 250);
+
+        // End offset to remove truncated words
+        const cleanEndOffset = fullVisibleText.lastIndexOf(' ');
+
+        // Return cleaned visible text
+        return fullVisibleText.substring(0, cleanEndOffset);
+    }
+
+    this.getVisibleText = function() {
+        const viewport = getFrameRect();
+        const elements = findVisibleElements(viewport);
+
+        if (elements.length === 0) {
+            return "";
+        }
+
+        return getVisibleText(viewport, elements);
+    };
+
+
     this.isNodeFromRangeCfiVisible = function (spineIdref, partialCfi) {
         if (_currentSpineItem.idref === spineIdref) {
             return _navigationLogic.isNodeFromRangeCfiVisible(partialCfi);

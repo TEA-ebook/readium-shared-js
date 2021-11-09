@@ -1,4 +1,4 @@
-define(['readium_js_plugins'], function (Plugins) {
+define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
 
     // don't block anything by default
     var config = {
@@ -57,6 +57,9 @@ define(['readium_js_plugins'], function (Plugins) {
             if (config.blockContext) {
                 doc.addEventListener('contextmenu', blockContext, true);
                 api.reader.on(ReadiumSDK.Events.GESTURE_PRESS, blockContext);
+                
+                // We add css in order to prevent image copy on safari iOs
+                loadCss($iframe[0].contentDocument, css);
             }
 
             if (config.copyCharCount !== false) {
@@ -68,6 +71,16 @@ define(['readium_js_plugins'], function (Plugins) {
 
     return config;
 });
+
+function loadCss(document, css) {
+  if (!document.head) {
+    return;
+  }
+  var style = document.createElement('style');
+  style.type = 'text/css';
+  style.innerHTML = css;
+  document.head.appendChild(style);
+}
 
 function loadPrintCss(document) {
   if (!document.head) {

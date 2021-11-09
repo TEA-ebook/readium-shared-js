@@ -57,6 +57,8 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
             if (config.blockContext) {
                 doc.addEventListener('contextmenu', blockContext, true);
                 api.reader.on(ReadiumSDK.Events.GESTURE_PRESS, blockContext);
+                
+                // We add css in order to prevent image copy on safari iOs
                 loadCss($iframe[0].contentDocument, css);
             }
 

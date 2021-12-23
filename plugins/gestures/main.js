@@ -5,7 +5,7 @@ define(['readium_js_plugins', 'jquery', 'hammer'], function (Plugins, $, Hammer)
 
     api.reader.on(ReadiumSDK.Events.CONTENT_DOCUMENT_LOADED, function ($iframe) {
       var doc = $iframe[0].contentDocument.documentElement;
-      var iframe = $iframe[0].contentWindow;
+      var iframe = $iframe[0];
 
       // remove stupid ipad safari elastic scrolling (improves UX for gestures)
       $(doc).on('touchmove', function (e) {
@@ -25,7 +25,7 @@ define(['readium_js_plugins', 'jquery', 'hammer'], function (Plugins, $, Hammer)
         api.reader.trigger(ReadiumSDK.Events.MOUSE_MOVE, event);
       }, false);
 
-      iframe.addEventListener('wheel', function (event) {
+      iframe.contentWindow.addEventListener('wheel', function (event) {
         if (event.ctrlKey || event.metaKey) {
           var iframes = api.reader.getCurrentView().getIframes();
           var pageIndex = iframes.indexOf(event.view.frameElement);
@@ -84,12 +84,12 @@ function setupHammer(context, Hammer, reader, iframe, element) {
   return hammertime;
 }
 
-function setGesturesHandler(reader, window) {
+function setGesturesHandler(reader, iframe) {
   onSwipe = function (event) {
     if (this.swipeDisabled === true) {
       return;
     }
-    if (window.getSelection().toString().length > 0) {
+    if (iframe.contentWindow.getSelection().toString().length > 0) {
       return;
     }
 
@@ -105,6 +105,10 @@ function setGesturesHandler(reader, window) {
       //$(event.target).click();
     } else {
       event.center.y += VERTICAL_OFFSET;
+      if (iframe && typeof iframe.getBoundingClientRect === 'function') {
+        var frameRect = iframe.getBoundingClientRect();
+        event.center.x += frameRect ? frameRect.x : 0;
+      }
       reader.trigger(ReadiumSDK.Events.GESTURE_TAP, event);
     }
   };

@@ -53,7 +53,11 @@ define(['readium_js_plugins', 'underscore', 'text!./styles.css'], function (Plug
     };
 
     function setCssProperty(property, value) {
-      reader.getCurrentView().getIframes().forEach(frame => {
+      var view = reader.getCurrentView();
+      if (!view) {
+        return;
+      }
+      view.getIframes().forEach(frame => {
         frame.contentDocument.body.style[property] = value;
       });
     }
@@ -78,9 +82,12 @@ define(['readium_js_plugins', 'underscore', 'text!./styles.css'], function (Plug
         var selectedText = selection.toString().trim();
 
         if (selectedText.length === 0) {
-          reader.emit(ReadiumSDK.Events.TEXT_SELECTED, {
-            text: ''
-          });
+          if (lastSelection) {
+            reader.emit(ReadiumSDK.Events.TEXT_SELECTED, {
+              text: ''
+            });
+            lastSelection = null;
+          }
           return false;
         }
 

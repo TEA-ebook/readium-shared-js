@@ -61,6 +61,7 @@ define(['readium_js_plugins', 'underscore', 'text!./styles.css'], function (Plug
     function setupSelectionListeners(iframe) {
       var document = iframe.contentDocument;
       var iframeWindow = iframe.contentWindow;
+      var lastSelection = null;
 
       document.documentElement.addEventListener('contextmenu', function (event) {
         if (iframeWindow.getSelection().toString().trim().length > 0) {
@@ -72,10 +73,14 @@ define(['readium_js_plugins', 'underscore', 'text!./styles.css'], function (Plug
         if (plugin.textSelectionDisabled) {
           return;
         }
+
         var selection = iframeWindow.getSelection();
         var selectedText = selection.toString().trim();
 
         if (selectedText.length === 0) {
+          reader.emit(ReadiumSDK.Events.TEXT_SELECTED, {
+            text: ''
+          });
           return false;
         }
 
@@ -84,7 +89,16 @@ define(['readium_js_plugins', 'underscore', 'text!./styles.css'], function (Plug
         var rangeParts = cfiRange.contentCFI.split(',');
 
         var annotationClientRect = domRange.getBoundingClientRect();
-        var offsetLeft = iframe.parentElement.parentElement.offsetLeft;
+        var readiumIframe = iframe.parentElement.parentElement;
+        var offsetLeft = readiumIframe.offsetLeft;
+        var screenWidth = readiumIframe.parentElement ? readiumIframe.parentElement.clientWidth : Number.MAX_SAFE_INTEGER;
+
+        // user text selection start or end is not out of the screen, we revert it to the last good one
+        if (lastSelection && (annotationClientRect.x < 0 || annotationClientRect.width > screenWidth)) {
+          selection.setBaseAndExtent(lastSelection.anchorNode, lastSelection.anchorOffset, lastSelection.focusNode, lastSelection.focusOffset);
+        } else {
+          lastSelection = null;
+        }
 
         reader.emit(ReadiumSDK.Events.TEXT_SELECTED, {
           text: selectedText,
@@ -105,6 +119,13 @@ define(['readium_js_plugins', 'underscore', 'text!./styles.css'], function (Plug
             top: annotationClientRect.top
           }
         });
+
+        lastSelection = {
+          anchorNode: selection.anchorNode,
+          anchorOffset: selection.anchorOffset,
+          focusNode: selection.focusNode,
+          focusOffset: selection.focusOffset
+        };
 
         return false;
       };
@@ -266,7 +287,7 @@ define(['readium_js_plugins', 'underscore', 'text!./styles.css'], function (Plug
         contentCFI: rangeParts[0] + rangeParts[2],
         idref: annotationRange.end.containerRef
       }
-    }
+    };
   }
 
   function filterRectList(rectList) {

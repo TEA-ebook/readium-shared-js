@@ -104,10 +104,12 @@ function setGesturesHandler(reader, iframe) {
     if (event.target.hasAttribute('href') || (event.target.parentNode.hasAttribute && event.target.parentNode.hasAttribute('href'))) {
       //$(event.target).click();
     } else {
-      event.center.y += VERTICAL_OFFSET;
-      if (iframe && typeof iframe.getBoundingClientRect === 'function') {
-        var frameRect = iframe.getBoundingClientRect();
-        event.center.x += frameRect ? frameRect.x : 0;
+      if (iframe && iframe.parentElement && typeof iframe.parentElement.getBoundingClientRect === 'function') {
+        var screenFrame = iframe.parentElement.getBoundingClientRect();
+        event.center = {
+          x: (event.srcEvent.pageX / iframe.clientWidth) * screenFrame.width + screenFrame.left,
+          y: (event.srcEvent.pageY / iframe.clientHeight) * screenFrame.height + screenFrame.top,
+        };
       }
       reader.trigger(ReadiumSDK.Events.GESTURE_TAP, event);
     }

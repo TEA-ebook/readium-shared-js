@@ -68,7 +68,7 @@ function setupHammer(context, Hammer, reader, iframe, element) {
   });
 
   hammertime.get('swipe').set({threshold: 10, velocity: 0.3, direction: Hammer.DIRECTION_HORIZONTAL});
-  hammertime.get('pinch').set({enable: true});
+  hammertime.get('pinch').set({enable: false});
   hammertime.get('pan').set({threshold: 5, direction: Hammer.DIRECTION_ALL});
   hammertime.get('tap').set({interval: 400, posThreshold: 100, threshold: 10});
 
@@ -76,8 +76,8 @@ function setupHammer(context, Hammer, reader, iframe, element) {
   hammertime.on('swipeleft', onSwipe.bind(context));
   hammertime.on('swiperight', onSwipe.bind(context));
   hammertime.on('tap', onTap);
-  hammertime.on('pinchin', onPinch);
-  hammertime.on('pinchout', onPinch);
+  // hammertime.on('pinchin', onPinch);
+  // hammertime.on('pinchout', onPinch);
   hammertime.on('panmove', onPanMove.bind(context));
   hammertime.on('press', onPress);
 

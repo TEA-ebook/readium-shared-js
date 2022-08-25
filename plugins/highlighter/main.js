@@ -117,7 +117,7 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
     div.style.top = top + 'px';
     div.style.width = width + 'px';
     div.style.height = height + 'px';
-    div.style.backgroundColor = config.highlightColor;
+    div.style.setProperty('background-color', config.highlightColor, 'important');
     zone.append(div);
 
     return div;

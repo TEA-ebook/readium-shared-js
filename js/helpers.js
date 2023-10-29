@@ -835,8 +835,9 @@ Helpers.setStyles = function (styles, $element) {
             var styleElement = doc.createElement('style');
             styleElement.setAttribute("id", "readium-bookStyles");
             styleElement.appendChild(doc.createTextNode(cssStylesheet));
-
-            doc.head.appendChild(styleElement);
+            if (doc.head != undefined) {
+                doc.head.appendChild(styleElement);
+            }
 
             //bookStyleElement = $(styleElement);
         }

@@ -31,6 +31,11 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
         api.reader.on(ReadiumSDK.Events.CONTENT_DOCUMENT_LOADED, function ($iframe) {
             var doc = $iframe[0].contentDocument.documentElement;
             var win = $iframe[0].contentWindow;
+            var body = $iframe[0].contentDocument.body;
+
+            if (body) {
+              body.setAttribute('oncopy', 'return false;');
+            }
 
             if (config.pagePrintCount !== false) {
               var beforePrint = function () {

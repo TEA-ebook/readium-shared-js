@@ -34,7 +34,15 @@ define(['readium_js_plugins', 'text!./styles.css'], function (Plugins, css) {
             var body = $iframe[0].contentDocument.body;
 
             if (body) {
-              body.setAttribute('oncopy', 'return false;');
+              body.ondragstart = () => {
+                return false;
+              };
+              body.addEventListener("copy", (event) => {
+                event.preventDefault();
+              });
+              body.addEventListener("contextmenu", (event) => {
+                event.preventDefault();
+              });
             }
 
             if (config.pagePrintCount !== false) {
